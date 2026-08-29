@@ -1,0 +1,31 @@
+---
+title: "Retrieval vs Stuffing: Fetch Just-in-Time or Load It All"
+track: "context-engineering"
+status: live
+summary: "Two ways to get information into a model's context: dump everything up front, or fetch just the piece it needs, when it needs it."
+duration: "5 min read"
+---
+
+Every context window has to get filled somehow. You can load it up front with everything the model might conceivably need, or you can give the model a way to fetch things itself, one piece at a time, as the task unfolds. Neither is universally right — the choice is a real engineering tradeoff, not a style preference.
+
+## Context stuffing: load it all, up front
+
+Stuffing means assembling the full context before the model's first turn — the whole document, the whole customer history, every file in the repo that might be relevant. It's simple to build: no retrieval step, no ranking logic, nothing that can fail to find the right chunk. For small, bounded inputs — a single support ticket, one contract, a short codebase — stuffing is often the right call, because the "retrieval problem" barely exists when everything fits comfortably.
+
+The cost shows up as the input grows. Tokens cost money whether the model uses them or not, so stuffing pays for information on every single call regardless of whether that call needs it. Worse, dumping in far more than is relevant doesn't just waste tokens — it actively degrades output quality, a failure mode covered in [Context Rot](/learn/context-engineering/context-rot). A model burying the one relevant paragraph inside forty irrelevant ones has to do the retrieval work itself, silently, and it does that work worse than a real retrieval system would.
+
+## Just-in-time retrieval: fetch on demand
+
+The alternative is to give the model a way to go get information rather than have it delivered wholesale — a search tool, a file-read tool, a database query. The model sees a lightweight reference (a filename, a ticket ID, a short description) and decides whether it's worth paying the tokens to pull in the full content. This is the same shape as how a person works: you don't memorize a codebase before touching it, you open the files you need as you need them.
+
+This is what [retrieval-augmented generation](/learn/rag/what-is-rag-and-when-to-use-it) formalizes for unstructured knowledge bases — embed a query, find the nearest chunks, inject only those. But the same principle shows up any time an agent has read tools instead of a pre-loaded dump: an agent poking through a repo with `grep` and `read_file` is doing just-in-time retrieval, even with no embeddings in sight.
+
+Just-in-time keeps each individual call's context small and relevant, which is good for cost and for quality. It costs you round-trips (each fetch is another turn) and it introduces a new failure mode: retrieval that misses the right piece entirely, or a query too vague for the tool to answer well.
+
+## Choosing between them
+
+The deciding factor is usually size and predictability. If the universe of possibly-relevant information is small and known ahead of time, stuffing is simpler and has no retrieval failure mode to debug. If it's large, growing, or you can't tell in advance what a given request will need, retrieval wins — you're trading a small amount of latency and tool-design effort for a context window that stays small no matter how big the underlying knowledge base gets.
+
+In practice, most production systems land on a hybrid: stuff the small, always-needed stuff (system instructions, a short user profile, the current task) and retrieve everything else on demand. That split is the core move that [Context Engineering vs Prompt Engineering](/learn/context-engineering/context-engineering-vs-prompting) is really about — deciding, deliberately, what belongs in every call versus what gets fetched only when it's asked for.
+
+**Related:** [Context Engineering vs Prompt Engineering](/learn/context-engineering/context-engineering-vs-prompting), [Context Rot](/learn/context-engineering/context-rot), [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it)

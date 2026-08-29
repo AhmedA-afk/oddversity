@@ -1,0 +1,53 @@
+---
+title: "JSON Schema: Specifying Your Exact Data Contract"
+track: "structured-outputs"
+status: live
+summary: "Move past 'valid JSON' and write a JSON Schema that pins down field names, types, enums, and required keys."
+duration: "5 min read"
+---
+
+"Return valid JSON" tells a model almost nothing about the JSON you actually want. A JSON Schema is how you say exactly which keys exist, what type each one is, which are required, and which values are even allowed — a contract the model (and your code) can both check against.
+
+## From a vibe to a contract
+
+Say you're extracting a support ticket into structured data. Asking for "JSON with the ticket info" invites drift: one response calls it `priority`, the next `urgency`; one gives you a string `"high"`, the next a number `3`. A schema removes the guessing:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["summary", "priority"],
+  "additionalProperties": false
+}
+```
+
+Every field, every type, every allowed value is explicit. The model isn't inferring your data model from an English sentence — it's filling in a shape you defined.
+
+## The keywords that carry the most weight
+
+You don't need the whole JSON Schema spec to get most of the benefit. A small set of keywords does the heavy lifting:
+
+- `type` — string, number, integer, boolean, object, array, or null. Get this wrong (say, `"count": "5"` instead of `5`) and downstream code that expects a number breaks.
+- `enum` — constrains a field to a fixed set of values, which is far more reliable than describing the options in prose and hoping the model picks one verbatim.
+- `required` — lists which keys must appear. Without it, a model under token pressure may quietly drop a field.
+- `additionalProperties: false` — refuses extra keys the model might invent, like adding a `notes` field nobody asked for.
+- `items` — describes the shape of elements inside an array, so a list of objects gets validated member by member, not just as "an array."
+
+Nested objects and arrays compose these the same way — a `properties` block inside an `items` block inside a top-level `properties` block, as deep as your data actually needs to go.
+
+## Strict mode versus a schema as a suggestion
+
+Some providers let you pass a JSON Schema as a *hint* the model tries to follow; others support a strict or constrained mode where the schema is enforced at the token-sampling level, so the output is guaranteed to validate. The difference matters: a hint can still drift on edge cases, while true constrained decoding cannot produce a token that would violate the schema. Check what your provider actually guarantees before you skip [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) downstream — even strict modes only enforce shape, not whether the *values* are correct.
+
+## Keep the schema honest
+
+A schema that's too loose (every field optional, everything typed as `string`) barely improves on free text. A schema that's too rigid (deeply nested required structures for a simple extraction) gives the model more ways to fail. Write the schema for the data you'll actually consume — no more, no less — and you get output your parser can trust without a pile of defensive code around it.
+
+**Related:** [Why Structured Output](/learn/structured-outputs/why-structured-output), [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair)

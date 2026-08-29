@@ -1,0 +1,32 @@
+---
+title: "When a Workflow Beats an Agent"
+track: "agentic-ai"
+status: live
+summary: "Recognizing tasks where a deterministic pipeline or a single prompt is more reliable and cheaper than an agent loop."
+duration: "5 min read"
+---
+
+An agent earns its keep when a task's path can't be known in advance. Most tasks aren't like that — and forcing them into an agent loop trades predictability for flexibility you don't need.
+
+## The default should be the simplest thing that works
+
+Start every task at the bottom of the ladder: a single prompt. If the model needs outside information or a fixed sequence of steps to get there, move up to a workflow — a pipeline you write in code, where you decide what happens after each step. Reach for an agent only when the number of steps, and which tools get used, genuinely can't be pinned down ahead of time. Each rung up costs you determinism, latency, and money, so climb only as far as the task actually forces you to.
+
+Take "summarize this document and email it to the team." The steps never change: read the file, call the model once to summarize, call an email API. There's no branching decision to make along the way, so writing it as a workflow — three function calls, no loop — is both cheaper and more reliable than handing an agent a summarize tool and an email tool and asking it to figure out the sequence itself. An agent might do it correctly. It might also re-read the file twice, summarize the wrong section, or call the email tool before the summary finishes. You're paying for a decision that was never in doubt.
+
+## Signs a workflow is the better fit
+
+- **The steps are known and fixed.** Extract-transform-load, classify-then-route, retrieve-then-answer — these are pipelines, not open problems. Write them as code with the model called at the steps that need judgment.
+- **Correctness matters more than adaptability.** A workflow does the same thing every run, which makes it testable. An agent can take a different path each time, which makes "did this work?" harder to answer and to debug.
+- **Latency or cost is tight.** Every additional [agent loop](/learn/agentic-ai/the-agent-loop) iteration is another model call. A workflow calls the model exactly as many times as the pipeline requires — often once.
+- **The task doesn't need tool selection.** If you already know which tool applies at each step, you don't need a model deciding that at runtime — that's the part [ReAct](/learn/agentic-ai/react-pattern)-style reasoning is actually for.
+
+## When the agent is worth it
+
+Flip these signs around and you get the real case for an agent: open-ended debugging, multi-step research where the next query depends on what the last one returned, or a task where the tools needed genuinely aren't knowable until the model sees intermediate results. That's what separates [an agent](/learn/agentic-ai/what-is-an-agent) from a script — it's not the presence of an LLM call, it's the model choosing its own next step based on what just happened.
+
+## The practical test
+
+Before reaching for an agent framework, try writing the task as a flowchart. If you can draw it — box, arrow, box, arrow — with no box that says "model decides what to do next," you've just designed your workflow. Build that instead, and save the agent loop for the box you genuinely can't draw.
+
+**Related:** [What Makes Something an Agent](/learn/agentic-ai/what-is-an-agent), [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern)

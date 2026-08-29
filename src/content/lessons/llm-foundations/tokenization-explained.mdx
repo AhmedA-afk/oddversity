@@ -1,0 +1,29 @@
+---
+title: "Tokenization: How Text Becomes Tokens"
+track: "llm-foundations"
+status: live
+summary: "LLMs never see words — they see tokens, subword chunks from a tokenizer, and everything from cost to odd spelling failures traces back to this step."
+duration: "7 min read"
+---
+
+Before a language model can do anything with your text, it has to turn it into numbers. That conversion is **tokenization**, and it happens in two stages: split the text into tokens, then map each token to an integer ID the model can look up.
+
+## Tokens are subwords, not words
+
+A token is usually a chunk of a word, not a whole word. Common words are often a single token; rarer words get split. "Tokenization" might break into `token` + `ization`, and an unusual name might split into three or four pieces. Whitespace and punctuation get their own tokens too.
+
+The rulebook for how to split is learned once, ahead of time, by an algorithm like **Byte-Pair Encoding (BPE)**: start from individual characters and repeatedly merge the most frequent adjacent pair into a new token, until you reach a fixed vocabulary size (commonly 50k–200k tokens).
+
+## Why you should care
+
+This isn't trivia — token boundaries explain a lot of everyday behaviour:
+
+- **Cost and limits are counted in tokens**, not words (roughly 4 characters per token in English). See [Tokens, Context, and Cost](/learn/ai-foundations/tokens-context-cost).
+- **Spelling and counting quirks.** Because the model sees `straw` + `berry` rather than the letters, "how many r's are in strawberry?" is genuinely awkward for it.
+- **Other languages can cost more.** Text in languages under-represented in training tends to split into more tokens, so the same sentence can cost several times as much.
+
+## Every token becomes an ID
+
+After splitting, each token maps to an integer, and that integer indexes into the model's embedding table — the bridge from text to the geometry the network actually computes on. From there the model does its one job: [next-token prediction](/learn/llm-foundations/next-token-prediction).
+
+**Related:** [Next-Token Prediction](/learn/llm-foundations/next-token-prediction), [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture)

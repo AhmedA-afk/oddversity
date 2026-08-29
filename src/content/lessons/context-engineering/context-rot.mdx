@@ -1,0 +1,38 @@
+---
+title: "Context Rot: When More Tokens Make the Model Worse"
+track: "context-engineering"
+status: live
+summary: "Adding more tokens, even relevant ones, can quietly degrade output quality long before you hit the context limit."
+duration: "5 min read"
+---
+
+A model advertising a huge context window can technically read a million tokens. That doesn't mean it reasons over all of them equally well. As you fill the window, the model's ability to find, weigh, and use the right information tends to drop — even when nothing you added was irrelevant. That drop is context rot.
+
+## It's not about running out of room
+
+The instinct is to treat the context window like a bucket: as long as everything fits, you're fine. Context rot shows that's wrong. Long-context evaluations that go beyond simple "find one fact buried in a haystack" tests — asking the model to track multiple facts, follow a thread across distractors, or reason over information scattered through a long document — consistently show accuracy sliding downward as input length grows, well before the token limit is reached.
+
+The mechanism is architectural, not a bug you can patch. Attention is finite: every additional token means every other token gets a slightly smaller share of the model's "focus." Relevant details don't get deleted, they get diluted. A fact placed in the middle of a 50,000-token context is measurably harder for the model to retrieve and use correctly than the same fact in a 2,000-token context, even though both technically fit.
+
+## What actually triggers it
+
+Three things tend to accelerate context rot:
+
+- **Volume of irrelevant or loosely relevant content.** Extra background, boilerplate, or "just in case" documents dilute attention even if they never actively contradict anything.
+- **Distractors.** Content that's topically similar to the right answer but wrong is worse than random noise — the model has to actively discriminate, not just filter.
+- **Position.** Models are typically strongest at the very start and very end of the context, and weaker in the middle — the so-called "lost in the middle" effect. Where you put critical information matters as much as whether you included it.
+
+This is why "just add more context, the model can handle it" is a bad default. A bigger window raises the ceiling on what's *possible* to include, not on what's *useful* to include.
+
+## Designing around it
+
+Treat context as a curated, ordered resource, not a dumping ground:
+
+1. **Retrieve, don't accumulate.** Pull in only what's needed for the current step instead of front-loading everything the model might ever need — see [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing).
+2. **Put the load-bearing content at the edges.** Critical instructions and facts belong near the start or the end of the prompt, not buried in the middle of a long document dump.
+3. **Prune aggressively between turns.** In long agent loops, summarize or drop stale tool output and dead-end reasoning rather than letting the transcript grow unbounded.
+4. **Test at realistic lengths.** A prompt that works great in a 500-token demo can silently fail at 30,000 tokens. Evaluate at the context sizes your app actually produces, not just the smallest one.
+
+Context rot reframes the core question of this track: it's not "does it fit?" but "does it fit *and stay usable*?" That's the difference between context engineering and just prompting, covered in [Context Engineering vs Prompt Engineering](/learn/context-engineering/context-engineering-vs-prompting).
+
+**Related:** [Context Engineering vs Prompt Engineering](/learn/context-engineering/context-engineering-vs-prompting), [Retrieval vs Stuffing: Fetch Just-in-Time or Load It All](/learn/context-engineering/retrieval-vs-context-stuffing)

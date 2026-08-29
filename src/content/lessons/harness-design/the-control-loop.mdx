@@ -1,0 +1,48 @@
+---
+title: "Building the Control Loop"
+track: "harness-design"
+status: live
+summary: "How a harness implements read-plan-act-observe in code, turning model output into tool calls and feeding results back in."
+duration: "5 min read"
+---
+
+Every agentic harness, underneath its UI and prompts, is one loop running over and over: ask the model what to do, do it, tell the model what happened, repeat. Understanding that loop in code demystifies almost everything a harness like this one does.
+
+## The four steps, concretely
+
+The classic shape is read → plan → act → observe, and you can trace it in a handful of lines:
+
+```python
+messages = [{"role": "user", "content": user_task}]
+
+while True:
+    response = model.call(messages, tools=tool_schemas)   # PLAN
+    messages.append(response)
+
+    if response.stop_reason != "tool_use":
+        break                                              # done, no more acting
+
+    for call in response.tool_calls:
+        result = execute_tool(call.name, call.input)       # ACT
+        messages.append({                                  # OBSERVE
+            "role": "tool_result",
+            "tool_use_id": call.id,
+            "content": result,
+        })
+    # loop back: READ happens on the next model.call with
+    # the updated messages array
+```
+
+The model doesn't call functions directly — it can't touch your filesystem or network. It emits a structured request ("call `read_file` with this path"), the harness is the only thing that can actually execute code, and the harness decides whether to honor that request at all. That gap between "model asked" and "harness acted" is where policy lives, and it's the whole subject of the harness's [approval gates](/learn/harness-design/permission-and-approval-systems) and [deny-floors](/learn/harness-design/deny-floors-and-policy-layers).
+
+## Why "observe" is the step people underrate
+
+Plan and act get the attention because they look like the interesting part — the model reasoning, the tool firing. But the loop only works because every result, success or failure, gets serialized back into the conversation before the next turn. A failed shell command, a 404 from an API, a file that didn't exist — all of it becomes text the model reads on its next turn, exactly like a human glancing at a terminal after running a command. Skip this step, or truncate it too aggressively, and the model starts re-planning against stale beliefs about the world: retrying a command that already failed, editing a file it already edited, ignoring an error it never actually saw.
+
+This is also why context management matters here more than almost anywhere else in the harness: the loop's memory *is* the messages array, and every observation you append grows it. A harness that lets that array grow unbounded eventually blows its context window mid-task; one that summarizes or drops old turns too eagerly gives the model amnesia about what it already tried.
+
+## Termination is a design choice, not a given
+
+The loop above stops when the model stops asking for tools — but a harness rarely trusts that alone. Real implementations add a hard cap on iterations, timeouts per tool call, and often a separate check for "is this task actually done" rather than "did the model say it's done." Without those guards, a model stuck in a bad plan will happily keep calling tools forever, and the harness — not the model — is what has to notice and stop it.
+
+**Related:** [The Harness: Everything Around the Model](/learn/harness-design/what-is-a-harness), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers)

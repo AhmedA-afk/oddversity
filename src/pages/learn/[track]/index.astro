@@ -1,0 +1,83 @@
+---
+import Layout from '../../../components/Layout.astro';
+import { tracks, getTrack, statusLabel, type NodeStatus } from '../../../data/curriculum.ts';
+
+export function getStaticPaths() {
+  return tracks.map((t) => ({ params: { track: t.id } }));
+}
+
+const { track: trackId } = Astro.params;
+const track = getTrack(trackId!)!;
+const idx = tracks.findIndex((t) => t.id === track.id);
+const prev = tracks[idx - 1];
+const next = tracks[idx + 1];
+
+const dotClass = (s: NodeStatus) =>
+  s === 'curated' ? 'node-dot is-curated' : s === 'coming' ? 'node-dot is-coming' : 'node-dot';
+---
+<Layout title={track.name} description={track.summary}>
+  <section class="head container">
+    <a href="/learn" class="back mono">← The map</a>
+    <div class="hub-row">
+      <span class="hub mono">{track.n}</span>
+      <span class="eyebrow">{track.group} track</span>
+    </div>
+    <h1>{track.name}</h1>
+    <p class="summary">{track.summary}</p>
+    <p class="meta mono">{track.meta}</p>
+  </section>
+
+  <section class="container lessons">
+    <ol>
+      {track.nodes.map((nd, i) => (
+        <li class="lesson">
+          <span class="ln mono">{String(i + 1).padStart(2, '0')}</span>
+          <span class={dotClass(nd.status)} aria-hidden="true"></span>
+          <span class="body">
+            {nd.slug ? (
+              <a href={`/learn/${track.id}/${nd.slug}`} class="title">{nd.title}</a>
+            ) : (
+              <span class:list={['title', { dim: nd.status !== 'live' }]}>{nd.title}</span>
+            )}
+          </span>
+          <span class="right mono">{nd.eta ?? statusLabel[nd.status]}</span>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <nav class="pager container" aria-label="Track navigation">
+    {prev ? <a href={`/learn/${prev.id}`} class="pg"><span class="mono">← Previous</span><span class="pt">{prev.name}</span></a> : <span></span>}
+    {next ? <a href={`/learn/${next.id}`} class="pg alignr"><span class="mono">Next →</span><span class="pt">{next.name}</span></a> : <span></span>}
+  </nav>
+</Layout>
+
+<style>
+  .head { padding: 48px 0 8px; }
+  .back { font-size: 12px; color: var(--muted); }
+  .back:hover { color: var(--accent); text-decoration: none; }
+  .hub-row { display: flex; align-items: center; gap: 12px; margin: 22px 0 12px; }
+  .hub { flex: none; width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-contrast); font-size: 12px; font-weight: 500; }
+  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; }
+  .summary { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--muted); max-width: 60ch; }
+  .meta { margin-top: 14px; font-size: 11px; color: var(--faint); letter-spacing: .04em; }
+
+  .lessons { padding-top: 36px; }
+  .lessons ol { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+  .lesson { display: flex; align-items: center; gap: 14px; padding: 16px 4px; border-bottom: 1px solid var(--rule); }
+  .ln { flex: none; width: 22px; font-size: 11px; color: var(--faint); }
+  .lesson .node-dot { flex: none; }
+  .body { flex: 1; }
+  .title { font: 500 15px/1.4 'IBM Plex Sans', sans-serif; color: var(--text); }
+  a.title:hover { color: var(--accent); text-decoration: none; }
+  .title.dim { color: var(--muted); font-weight: 400; }
+  .right { flex: none; font-size: 11px; color: var(--faint); }
+
+  .pager { display: flex; justify-content: space-between; gap: 16px; padding-top: 40px; }
+  .pg { display: flex; flex-direction: column; gap: 4px; }
+  .pg:hover { text-decoration: none; }
+  .pg.alignr { text-align: right; }
+  .pg .mono { font-size: 11px; color: var(--faint); }
+  .pg .pt { font: 500 15px/1.2 'Source Serif 4', Georgia, serif; color: var(--text); }
+  .pg:hover .pt { color: var(--accent); }
+</style>

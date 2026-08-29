@@ -1,0 +1,37 @@
+---
+title: Answer-first prompting
+track: prompt-engineering
+order: 1
+status: live
+summary: The single highest-leverage prompt structure — tell the model what you want back, in what shape, before anything else.
+duration: 8 min read
+---
+
+Most weak prompts fail the same way: they describe the situation at length and leave the model to *guess* what output you want. Answer-first prompting flips that. You state the deliverable up front, precisely, then supply context.
+
+## The shape
+
+```text
+[ROLE / TASK]      One line: what to do.
+[OUTPUT CONTRACT]  Exactly what to return, and in what format.
+[CONTEXT]          The material to work from.
+[CONSTRAINTS]      What to avoid, edge cases, tone.
+```
+
+The order matters. The model conditions on everything, but a crisp output contract near the top pulls the whole distribution toward the response you actually want.
+
+## Make the output contract unambiguous
+
+"Summarise this" invites a paragraph of unknown length. Instead:
+
+> Return **exactly three bullet points**, each under 15 words, describing the customer's problem. No preamble.
+
+If you'll parse the result in code, ask for JSON and give the shape. We go deep on that in the next lesson, *Structured output & JSON*.
+
+## Show, don't only tell
+
+One or two examples of a good answer (few-shot) usually beats another paragraph of instructions. The model is a pattern-matcher — a concrete example is the most efficient pattern you can give it.
+
+## Why this works
+
+From [How LLMs actually work](/learn/ai-foundations/how-llms-work): the model predicts the most probable continuation of your prompt. An explicit output contract makes your desired answer the most probable thing to come next. You're not "asking nicely" — you're shaping the distribution.

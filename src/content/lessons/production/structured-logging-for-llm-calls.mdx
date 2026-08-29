@@ -1,0 +1,50 @@
+---
+title: "Log Every LLM Call as Structured Data"
+track: "production"
+status: live
+summary: "Capture every LLM call as queryable structured data, not a text dump, so you can answer questions instead of grepping logs."
+duration: "5 min read"
+---
+
+A `print(response.text)` statement is not logging. It's a note to yourself that disappears the moment something actually goes wrong in production.
+
+## Why a text dump fails you
+
+Say a user reports a bad answer from three days ago. With free-text logs, you're grepping for a timestamp and hoping the surrounding lines still have enough context. You can't ask "what was the average latency for this prompt version," "how many calls used the fallback model this week," or "which user is burning the most tokens" — because none of that is a field, it's buried in a paragraph you'd have to re-read.
+
+Structured logging fixes this by treating every LLM call as a row of data with named fields, written as JSON (or your log pipeline's native structured format) instead of a sentence. Once it's structured, it's queryable: filter it, aggregate it, graph it, alert on it.
+
+## What to capture per call
+
+At minimum, log these fields for every request:
+
+```json
+{
+  "timestamp": "2026-08-29T14:03:11Z",
+  "request_id": "req_8f2a...",
+  "user_id": "u_4471",
+  "feature": "support-summarizer",
+  "model": "claude-opus-4",
+  "prompt_version": "v3",
+  "input_tokens": 812,
+  "output_tokens": 194,
+  "latency_ms": 2140,
+  "status": "success",
+  "finish_reason": "end_turn",
+  "cost_usd": 0.0134
+}
+```
+
+Notice what's deliberately absent: the full prompt and completion text aren't in this row. Log those separately (often to a different store, sometimes with shorter retention or redaction) since they can contain sensitive user content and get large fast. The structured row should always be enough on its own to answer "what happened, how much did it cost, how long did it take, and did it work" without opening the payload.
+
+## Make it queryable, not just readable
+
+The payoff of structured fields only shows up once they land somewhere you can query them — a log platform, a data warehouse, or even a simple table — instead of a rotating text file. That's what turns "grep and hope" into an actual dashboard: cost per feature over time, p95 latency by model, error rate after a prompt change. This is also the raw material for [tracking cost per request and per user](/learn/production/token-and-cost-tracking): you can't attribute spend to a feature or a user if the call that generated it was never logged as data in the first place.
+
+`request_id` matters more than it looks. In an agent or a multi-step pipeline, one user action can trigger several LLM calls plus tool calls. Tag them all with the same trace or request ID and you can reconstruct the whole sequence — not just one row in isolation — when you're debugging why a run went wrong.
+
+## Don't let logging become the outage
+
+Structured logging should never be on the hot path in a way that can take your feature down. If your logging backend is slow or unreachable, the LLM call should still complete and return to the user — write the log asynchronously (a background queue, a buffered writer, fire-and-forget with local fallback) rather than blocking the response on a successful log write. A feature that fails because its logging pipeline hiccuped is a self-inflicted outage, and it pairs badly with not having a [kill switch](/learn/production/feature-flags-and-kill-switches) to fall back on when things do go wrong.
+
+**Related:** [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches)

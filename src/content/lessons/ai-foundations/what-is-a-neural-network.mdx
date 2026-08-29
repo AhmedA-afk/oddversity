@@ -1,0 +1,37 @@
+---
+title: "What a Neural Network Actually Is"
+track: "ai-foundations"
+status: live
+summary: "A neural network is layers of simple weighted-sum-and-threshold units stacked together, the one building block under every modern AI system."
+duration: "4 min read"
+---
+
+Strip away the mystique and a neural network is a pile of arithmetic: multiply, add, squash, repeat. Every headline AI system, from image classifiers to the model answering your prompt right now, is built from this one repeated unit.
+
+## The single unit: a neuron
+
+A neuron takes a handful of numbers in, multiplies each by a weight, adds them up, adds one more number called a bias, then passes the result through a small nonlinear function called an activation. That's the whole thing:
+
+```
+output = activation(w1*x1 + w2*x2 + w3*x3 + ... + bias)
+```
+
+The weights and bias are the only things the network actually "knows." Training a network means searching for weight values that make this arithmetic produce useful outputs — nudged step by step through [gradient descent](/learn/maths-foundations/gradient-descent-intuition). Nothing here is hand-coded logic; every capability the network has lives in these numbers.
+
+The activation function matters more than it looks. Without it, stacking layers would collapse into one big linear equation — no better than a single layer, no matter how many you add. A simple nonlinearity (something like ReLU, which just zeroes out negative values) is what lets the network bend and combine features into curves instead of straight lines, which is what lets it represent things as messy as "this pixel pattern is a cat."
+
+## Stacking neurons into layers
+
+One neuron can only draw a straight boundary through its inputs. Put many neurons side by side and you get a layer, where each neuron looks at the same inputs but learns to notice something different. Stack several layers and each one takes the previous layer's outputs as its inputs.
+
+This is where depth earns its name. Early layers in an image network tend to pick up on edges and textures; middle layers combine those into shapes; later layers combine shapes into objects. No one designs this division of labor by hand — it falls out of training, because that decomposition happens to minimize error. The "deep" in deep learning just means enough of these layers stacked to let that kind of hierarchy emerge, distinct from shallower [machine learning](/learn/ai-foundations/ai-vs-ml-vs-deep-learning) methods that rely on hand-built features.
+
+## What the network is actually doing
+
+Every input a network takes — an image, a sentence, a sound clip — first gets converted into a [vector](/learn/maths-foundations/what-is-a-vector) of numbers. The network's whole job is transforming that vector, layer by layer, into an output vector that answers the question it was trained for: a probability per class, a next-token prediction, a single number.
+
+Large language models use this same neuron-layer-weight machinery, just organized around a specific layout called the transformer, with attention layers deciding which earlier tokens matter most to the current one. The [transformer architecture](/learn/llm-foundations/the-transformer-architecture) is a particular way of arranging and connecting these basic units — not a different kind of computation underneath.
+
+That's the entire trick, at every scale: simple weighted sums and nonlinear squashing, repeated across enough layers and tuned against enough data, produce behavior that looks like understanding.
+
+**Related:** [AI vs. Machine Learning vs. Deep Learning](/learn/ai-foundations/ai-vs-ml-vs-deep-learning), [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition), [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture)

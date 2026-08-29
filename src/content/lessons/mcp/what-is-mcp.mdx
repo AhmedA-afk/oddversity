@@ -1,0 +1,37 @@
+---
+title: "What Is MCP"
+track: "mcp"
+status: live
+summary: "MCP is an open protocol that lets any AI app talk to any tool or data source through one shared interface instead of custom code per pair."
+duration: "5 min read"
+---
+
+Before MCP, connecting a model to your database, your file system, or your ticketing tool meant writing a bespoke integration for each pairing. Every AI app that wanted to talk to Slack wrote its own Slack glue. Every Slack-like tool that wanted to be usable by an AI app wrote its own AI-specific API. The result was an M×N problem: M applications times N tools, each combination hand-built.
+
+## The standardization move
+
+MCP (Model Context Protocol) is an open protocol, originally released by Anthropic, that defines a single, consistent way for an AI application to discover and use external tools and data. Instead of M×N custom integrations, you get M+N: a tool builder implements the protocol once, as an MCP server, and every MCP-compatible AI app can use it immediately. An AI app implements the protocol once, as an MCP client, and it can use every MCP server that exists.
+
+It's the same trick USB-C pulled for hardware. Before USB-C, every device had its own connector and every cable was device-specific. USB-C didn't make any single device better — it made the *connection* a shared, boring standard, so anything could plug into anything. MCP does that for models and the tools around them.
+
+## What actually gets standardized
+
+MCP defines the shape of the conversation between a host application and a server, not the tool itself. A server can expose:
+
+- **Tools** the model can call to take an action or fetch something dynamic — see [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling) for the underlying mechanism MCP builds on.
+- **Resources** the client can read, like files or database rows.
+- **Prompts** the server offers as reusable templates.
+
+The protocol also standardizes how a client discovers what a server offers, how arguments and results are shaped, and how a connection is authenticated and kept alive. None of that logic lives in the model's weights — it's part of the surrounding [harness](/learn/harness-design/what-is-a-harness) that assembles context and executes calls on the model's behalf.
+
+## Why this mattered enough to spread
+
+A model that can only produce text is limited to what was in its training data and whatever the user pastes in. Real usefulness comes from reaching live systems: a codebase, a calendar, a CRM, a search index. Before a shared protocol, every one of those connections was a one-off maintenance burden, and it discouraged tool builders from investing, since their integration only worked with one AI app.
+
+MCP shifted the incentive. A company can write one MCP server for its product and reach every client that speaks the protocol — the same reasoning that made REST APIs and USB-C worth building in the first place. That's why, by 2026, MCP servers exist for a wide range of developer tools, SaaS products, and data sources, and most major AI coding tools and assistants ship an MCP client.
+
+## What MCP is not
+
+MCP is not a replacement for tool calling — it's a transport and discovery layer built on top of it. It doesn't make a model smarter or more accurate; a model still has to decide when and how to use what a server exposes, the same reasoning covered in [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema). And it doesn't eliminate integration work — someone still has to build the server, decide what it exposes, and reason about what happens when the content that comes back is untrusted.
+
+**Related:** [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling), [MCP Architecture: Hosts, Clients, Servers](/learn/mcp/mcp-architecture-hosts-clients-servers), [The Harness: Everything Around the Model](/learn/harness-design/what-is-a-harness)

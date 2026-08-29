@@ -1,0 +1,31 @@
+---
+title: "What Makes Something an Agent"
+track: "agentic-ai"
+status: live
+summary: "An agent decides its own next step from a tool's result — a chatbot or workflow just follows the path you wrote for it."
+duration: "5 min read"
+---
+
+Everyone calls their product an "agent" now, which makes the word nearly useless. Here's the test that actually holds up: does the system decide what to do next based on what just happened, or did a human decide that in advance?
+
+## The single-call baseline
+
+A plain LLM call is not an agent. You send a prompt, you get a completion, done. Ask a model "what's the weather in Lisbon," and without tools it can only guess or admit it doesn't know — see [what LLMs can and cannot do](/learn/ai-foundations/what-llms-can-and-cannot-do). One call in, one response out, no loop.
+
+Bolting on retrieval doesn't change that. A [RAG](/learn/rag/what-is-rag-and-when-to-use-it) pipeline that always does "embed query, fetch top-k chunks, generate answer" is still a fixed pipeline — impressive, but every step was decided by the engineer who wrote it, not by the model at runtime.
+
+## What autonomy actually means here
+
+An agent earns the name when the model's output determines the next action, and that decision happens repeatedly until some condition says stop. Concretely: the model looks at a state (a user request, a tool result, an error message), reasons about what to do, picks a tool or gives a final answer, and — if it picked a tool — the result gets fed back in for another round of that same reasoning. That cycle is [the agent loop](/learn/agentic-ai/the-agent-loop).
+
+The load-bearing property is that the model chooses *which* tool, *whether* to call one at all, and *when* it has enough to stop — not the developer, at write time, for every possible input. A coding agent that reads an error, decides to grep the codebase, reads the file that turns up, and only then decides whether to edit it or search again, is exercising exactly this kind of judgment call at each step. Compare that to a support bot that always classifies-then-templates-a-reply: same shape of task, zero runtime decision-making, not an agent by this definition.
+
+## Autonomy is a spectrum, not a switch
+
+Systems don't split cleanly into "agent" and "not agent." A single tool call with no follow-up sits near the workflow end. A model that plans multiple steps, executes them, checks its own results, and revises the plan sits near the full-agent end. Most production systems live in between, on purpose — full autonomy is powerful but also unpredictable and expensive, and a lot of tasks are better served by a well-designed [workflow](/learn/agentic-ai/when-not-to-use-an-agent) that never needs the model to improvise. Knowing where a given feature should sit on that spectrum is a design decision, not a default.
+
+## Why the distinction is worth defending
+
+It's not pedantry — it changes what you build and how you test it. A workflow is deterministic enough to unit-test path by path. An agent's path through the loop depends on the model's judgment call at each step, so you evaluate it more like you'd evaluate a person doing the task: does it reliably reach the goal, not "does it always take step 3 after step 2." That's also where the risk shifts — an agent that decides its own actions needs guardrails around *what* it's allowed to decide, which is the whole subject of [harness design](/learn/harness-design/what-is-a-harness).
+
+**Related:** [The Agent Loop](/learn/agentic-ai/the-agent-loop), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent), [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling)

@@ -1,0 +1,38 @@
+---
+title: "Fine-Tune with LoRA and QLoRA"
+track: "fine-tuning"
+status: live
+summary: "How low-rank adapters work, what rank and alpha to pick, and how QLoRA fine-tunes a quantized base model on a single GPU."
+duration: "7 min read"
+---
+
+Full fine-tuning updates every weight in a model — for a 7B-parameter model that's 7 billion numbers to store gradients and optimizer states for, which needs far more memory than the model itself. LoRA sidesteps this by freezing the original weights entirely and training a tiny set of new ones instead.
+
+## The idea behind LoRA
+
+Every weight matrix in a transformer (attention projections, feed-forward layers) can be adjusted with an update matrix. Normally that update matrix is the same size as the original — full fine-tuning territory. LoRA (Low-Rank Adaptation) replaces it with the product of two much smaller matrices, A and B, whose inner dimension is the "rank." Multiply them together and you get an update matrix the same shape as the original, but because it's built from two skinny matrices, it has far fewer trainable parameters.
+
+During training, the base weights stay frozen. Only A and B get gradients. At inference, you either keep them as a separate adapter that's added on the fly, or merge A×B back into the original weights so there's no extra latency at all.
+
+This is why LoRA adapters are small — often tens of megabytes instead of gigabytes — and why you can train several task-specific adapters and swap them on top of one shared base model.
+
+## Rank and alpha, in practice
+
+Two knobs matter most:
+
+- **Rank (r)** controls how much capacity the adapter has. Low rank (4-8) is enough for narrow tasks like adopting a tone or a fixed output format. Higher rank (16-64) helps when you're teaching the model new knowledge or a more complex skill. Going higher than that rarely helps and just costs more memory and training time.
+- **Alpha** is a scaling factor applied to the adapter's output before it's added to the frozen weights. A common starting convention is setting alpha to roughly twice the rank, then adjusting based on validation results — if outputs barely change, the adapter's effective influence is too weak; if training is unstable, it's too strong.
+
+Treat both as hyperparameters to sweep on your own [fine-tuning dataset](/learn/fine-tuning/building-a-fine-tuning-dataset), not settings to copy blindly from a tutorial. What works for a summarization adapter won't necessarily work for a coding one.
+
+## QLoRA: fine-tuning on one GPU
+
+QLoRA adds one more trick: quantize the frozen base model to 4-bit precision before attaching LoRA adapters. The base weights sit in memory at a quarter of their usual size, while the trainable LoRA matrices stay in higher precision so gradient updates remain accurate. A few supporting techniques make this stable — double quantization to shrink the quantization constants further, and paged optimizers that spill to CPU memory during activation spikes instead of crashing.
+
+The result is dramatic: models that needed multiple high-end GPUs for full fine-tuning can be adapted on a single consumer or prosumer GPU, with quality close to full fine-tuning on most tasks.
+
+## When to reach for this
+
+If you've already decided fine-tuning is the right call over prompting or RAG, LoRA (or QLoRA when GPU memory is tight) should be your default starting point rather than full fine-tuning. It's cheaper, faster to iterate on, produces portable adapter files, and for the vast majority of tasks — style adoption, domain adaptation, structured output — the quality gap versus full fine-tuning is small enough not to matter.
+
+**Related:** [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag), [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset)

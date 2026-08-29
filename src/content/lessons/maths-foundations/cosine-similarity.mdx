@@ -1,0 +1,55 @@
+---
+title: "Cosine Similarity: Measuring How Alike Two Things Are"
+track: "maths-foundations"
+status: live
+summary: "Cosine similarity normalizes the dot product into a -1..1 score that ignores vector length, the standard way to compare embeddings."
+duration: "4 min read"
+---
+
+Every time an AI system says two pieces of text are "similar," there's a good chance cosine similarity is doing the comparing. It's the default metric for comparing [vectors](/learn/maths-foundations/what-is-a-vector), and it's worth understanding exactly what it does and doesn't measure.
+
+## The problem with raw distance
+
+Say you've turned two sentences into vectors using an embedding model. The obvious way to compare them is to check how close the vectors are, or how large their dot product is. But raw magnitude gets in the way. A long, repetitive document and a short one can point in nearly the same direction in vector space, yet the long document's vector might have a much bigger dot product with anything, purely because it has more "mass." You'd end up ranking documents by length instead of by meaning.
+
+What you actually want to know is: do these two vectors point in the same *direction*, regardless of how long they are?
+
+## The fix: normalize by length
+
+Cosine similarity answers exactly that. It takes the dot product of two vectors and divides by the product of their magnitudes:
+
+```
+cosine_similarity(A, B) = (A · B) / (|A| * |B|)
+```
+
+Dividing out the magnitudes cancels the length effect. What's left is the cosine of the angle between the two vectors, which is why it's bounded between -1 and 1:
+
+- **1** means the vectors point in exactly the same direction (maximally similar)
+- **0** means they're perpendicular, no directional overlap
+- **-1** means they point in exactly opposite directions
+
+In practice, most embedding models produce vectors that cluster in a narrow positive range, so scores in real systems usually fall somewhere between 0 and 1.
+
+## Seeing it in code
+
+```python
+import numpy as np
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+cat = np.array([0.9, 0.1, 0.2])
+kitten = np.array([0.85, 0.15, 0.25])
+car = np.array([0.1, 0.9, 0.4])
+
+print(cosine_similarity(cat, kitten))  # close to 1: similar direction
+print(cosine_similarity(cat, car))     # much lower: different direction
+```
+
+Notice the function never looks at the raw size of the numbers, only their relative proportions. That's the whole point: two vectors can be scaled up or down and still score a perfect 1.0 as long as the direction matches.
+
+## Where it actually shows up
+
+This is the metric that ranks results in vector search, decides which document chunks to retrieve in a [RAG](/learn/rag/embeddings-and-semantic-similarity) pipeline, and clusters similar embeddings together. It's cheap to compute, well understood, and works well because most modern embedding models are trained specifically so that direction, not magnitude, is where the meaning lives.
+
+**Related:** [Vectors: The Basic Unit of Data](/learn/maths-foundations/what-is-a-vector), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)

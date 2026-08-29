@@ -1,0 +1,41 @@
+---
+title: "The Transformer Architecture"
+track: "llm-foundations"
+status: live
+summary: "Stack attention and feed-forward blocks with residuals and normalization, and you get the architecture behind every major LLM."
+duration: "5 min read"
+---
+
+Every model you've used this year — chat assistants, coding agents, image captioners — is built from the same handful of parts, repeated dozens of times. That repeating part is the transformer block, and once you can see its shape, the rest of "how LLMs work" stops feeling like magic.
+
+## The block, piece by piece
+
+A transformer block does two things to a sequence of token representations, in order:
+
+1. **Self-attention** — each token looks at every other token and pulls in relevant information from them, weighted by relevance. This is where a model figures out that "it" refers to "the trophy" three words back, or that a closing bracket needs to match an opening one from a paragraph ago. See [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained) for the mechanics.
+2. **A feed-forward network** — a small two-layer network applied to each token independently. If attention is where tokens exchange information, the feed-forward layer is where the model does the actual "thinking" with what it just gathered — this is widely believed to be where a lot of factual and pattern knowledge gets stored.
+
+Both steps are wrapped the same way: take the input, run it through the sub-layer, add the original input back (a **residual connection**), then normalize the result. The residual connection is easy to skim past but it's load-bearing — it gives gradients a direct path back to early layers during training, which is a big part of why you can stack this block 30, 60, or 100+ times without training collapsing.
+
+A minimal block looks like this in pseudocode:
+
+```python
+def transformer_block(x):
+    x = x + self_attention(layer_norm(x))
+    x = x + feed_forward(layer_norm(x))
+    return x
+```
+
+Stack that block N times, and you have a transformer. GPT-style models stack dozens of these; the "depth" of a model is literally how many of these blocks are chained together.
+
+## Why this shape won
+
+Before transformers, sequence models (RNNs, LSTMs) processed tokens one at a time, in order — token 500 couldn't be computed until token 499 was done. That's slow to train and struggles to connect information that's far apart in the sequence.
+
+Self-attention breaks that constraint: every token's representation can be computed in parallel, and any two tokens can interact directly regardless of distance. That parallelism is what let labs train on far more data with far more compute, which turned out to matter more than any single architectural trick. The 2017 paper that introduced this design was literally titled "Attention Is All You Need" — and for the current generation of frontier models, that claim has mostly held up. You'll see architecture research proposing alternatives to full self-attention (mixture-of-experts variants, state-space and linear-attention hybrids aimed at cheaper long-context inference), but they typically graft onto this same block-and-residual skeleton rather than replace it outright.
+
+## What actually goes in
+
+Before any of this runs, raw text is chopped into tokens ([Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained)) and converted into vectors. Position information is added in too, since attention on its own has no sense of order — a set of tokens, not a sequence — so the model needs to be told which token came first. Once that's in place, the stack of transformer blocks transforms those vectors layer by layer, and the final layer's output is what gets turned into a prediction for the next token — the single training objective that shapes everything here, covered in [Next-Token Prediction: The One Objective](/learn/llm-foundations/next-token-prediction).
+
+**Related:** [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained), [Next-Token Prediction: The One Objective](/learn/llm-foundations/next-token-prediction)

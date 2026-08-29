@@ -1,0 +1,29 @@
+---
+title: "Vectors: The Basic Unit of Data"
+track: "maths-foundations"
+status: live
+summary: "A vector is an ordered list of numbers — how AI turns words, images, and preferences into points in space."
+duration: "4 min read"
+---
+
+Every piece of data an AI model touches — a word, a picture, your taste in movies — eventually becomes a vector: an ordered list of numbers. Once you can see that, a huge amount of what "AI" does stops looking mysterious and starts looking like geometry.
+
+## What a Vector Actually Is
+
+A vector is just a list of numbers with a fixed order, like `[3, 7, 1]`. Nothing more mystical than that. The order matters — `[3, 7, 1]` is not the same vector as `[7, 3, 1]` — because each position (or "dimension") means something specific.
+
+Say you're describing a house with three numbers: square footage, number of bedrooms, and distance to downtown in miles. A particular house might be `[1800, 3, 5.2]`. That's a vector in 3 dimensions. Each house in a city becomes its own point in that 3D space, and houses with similar numbers end up near each other. That's the whole idea, just scaled up.
+
+## From Three Dimensions to Thousands
+
+Real AI systems don't stop at three numbers. A modern text embedding model turns a sentence into a vector with hundreds or thousands of dimensions — often 768, 1024, or 1536 depending on the model. You can't draw that in a picture, but the math doesn't care. Each dimension is just another slot in the list, and "nearness" in that space still means "similar" in some sense the model learned during training, not one a human hand-picked.
+
+This is exactly how `embeddings` work: a chunk of text goes in, a long vector of numbers comes out, and texts with related meaning land near each other in that space, even if they don't share a single word. Read more on this in [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity).
+
+## Why Everything Gets Converted to Vectors
+
+Neural networks only know how to do one kind of thing: math on numbers — additions, multiplications, weighted sums. They cannot directly "read" a word or "look at" a pixel grid the way you do. So before anything reaches the model, it gets converted into a vector: a word becomes a vector via an embedding lookup, an image becomes a vector of pixel intensities or learned features, a user's preferences become a vector of scores. Inside the model, that vector gets transformed into other vectors, layer after layer, until the final vector is decoded back into something we can read — a next word, a classification, a probability distribution.
+
+Two operations you'll see constantly once you're working with vectors: measuring how alike two of them are (see [Cosine Similarity](/learn/maths-foundations/cosine-similarity)), and turning a vector of raw scores into a set of probabilities (see [The Softmax Function](/learn/maths-foundations/the-softmax-function)). Both build directly on the idea that a vector is nothing more than coordinates in space — which is exactly why this is the first stop in the maths track.
+
+**Related:** [Cosine Similarity](/learn/maths-foundations/cosine-similarity), [The Softmax Function](/learn/maths-foundations/the-softmax-function), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)

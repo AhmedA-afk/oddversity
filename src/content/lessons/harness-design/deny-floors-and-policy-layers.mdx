@@ -1,0 +1,43 @@
+---
+title: "Deny-Floors: Rules No Prompt Can Override"
+track: "harness-design"
+status: live
+summary: "Hard-coded refusal and permission rules enforced outside the model's control, as the floor no jailbreak or instruction can talk it past."
+duration: "5 min read"
+---
+
+A system prompt is a suggestion the model can be talked out of. A deny-floor is not a suggestion — it's a check that runs in code, outside the model's context window entirely, and it fires the same way whether the model was persuaded, confused, or working exactly as intended.
+
+## Why prompts alone aren't enough
+
+Instructions in a system prompt share the same channel as everything else the model reads: user messages, tool output, file contents. That's the core weakness. A cleverly worded request, a poisoned document the agent reads mid-task, or just a long enough conversation can erode a rule that was only ever "please don't." The model isn't being unsafe on purpose — it's doing what language models do, which is weigh the text in front of it. If the only thing blocking a dangerous action is more text, that block is negotiable.
+
+A deny-floor moves the decision outside that negotiation. Before a tool call executes, code — not the model — checks it against a fixed policy: is this path outside the project directory, is this command on a blocklist, does this action need a credential the agent was never given. The model can generate the request to `rm -rf /` all it wants; if the floor rejects it, nothing happens. There's no phrasing that changes the outcome, because the rejection isn't reading phrasing.
+
+## What belongs on the floor vs. in the prompt
+
+Not every rule deserves this treatment — deny-floors are expensive to build and rigid by design, so they're reserved for the failures you cannot tolerate even once: destructive filesystem operations, network calls to disallowed hosts, credential exfiltration, spending past a hard budget. Softer preferences — writing style, which tool to prefer first, how verbose to be — stay in the prompt, where flexibility is a feature, not a bug.
+
+Concretely, this often looks like a policy layer sitting between the model's tool call and its execution:
+
+```
+tool_call = model.propose_action()
+
+if policy.is_denied(tool_call):      # hard-coded, no model input
+    return reject(tool_call)
+
+if policy.needs_approval(tool_call): # see allow/ask/deny gates
+    await user_confirmation()
+
+execute(tool_call)
+```
+
+That `is_denied` check has no access to "but the user said it was fine" — it evaluates the action itself, against rules the harness author set at build time, not the agent's context.
+
+## The floor is a foundation, not the whole building
+
+Deny-floors catch the worst outcomes; they don't replace good judgment for everything else. A harness that relies entirely on deny rules ends up either too permissive (the floor only catches catastrophic cases) or too restrictive (everything gets hard-blocked, and the agent can't do useful work). The floor is meant to sit underneath a graded system — most decisions still route through [approval gates](/learn/harness-design/permission-and-approval-systems) that ask a human or apply softer heuristics, inside the larger [control loop](/learn/harness-design/the-control-loop) that decides what runs and what waits.
+
+Think of it as the last line, not the whole defense: the floor exists so that even if every softer layer fails — a bad prompt, a compromised tool, an agent that's been talked into something — the one outcome you truly cannot afford still doesn't happen.
+
+**Related:** [Building the Control Loop](/learn/harness-design/the-control-loop), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [The Harness: Everything Around the Model](/learn/harness-design/what-is-a-harness)

@@ -1,0 +1,35 @@
+---
+title: "Teaching a Model to Say 'I Don't Know'"
+track: "hallucinations"
+status: live
+summary: "Models guess instead of abstaining because guessing is rewarded — fix the incentive, not just the prompt."
+duration: "5 min read"
+---
+
+Ask most models a question they don't know the answer to, and they'll invent one anyway. Not because they're broken — because every training and evaluation step they've been through rewards a confident guess over an honest "I don't know."
+
+## Why guessing wins by default
+
+Standard accuracy scoring is binary: right answers get credit, everything else — wrong answers and abstentions alike — gets zero. If a model is 30% sure of an answer, guessing still beats abstaining on expected score. Multiply that across millions of training examples and you get a model that has learned, correctly, that hedging is a losing strategy. This is the same mechanics covered in [why models hallucinate](/learn/hallucinations/why-models-hallucinate): the model isn't malfunctioning, it's optimizing for the metric it was actually given.
+
+So "just prompt it to say I don't know" only goes so far. The instruction competes against a much stronger, deeply trained habit of always producing *an* answer. It helps, but it's not the fix on its own.
+
+## Change what gets rewarded
+
+The real fix happens upstream, in how the model is trained and evaluated:
+
+- **Score abstention above wrong answers.** If "I don't know" scores 0 and a wrong guess also scores 0, nothing changes. Give abstention partial credit, or penalize confident wrong answers more heavily than admitted uncertainty — so the expected-value math favors honesty.
+- **Ask for calibrated confidence, not just an answer.** Training or prompting a model to attach a confidence level to each claim gives you a lever: you can instruct it (or your application code) to abstain whenever confidence drops below a threshold.
+- **Build "I don't know" into your eval set.** If none of your test questions are actually unanswerable, you're never measuring whether the model can recognize the limits of its knowledge — see [building a golden dataset](/learn/evals-red-teaming/building-a-golden-dataset). Include questions with no correct answer in the source material, and check that the model abstains on them.
+
+## What you can do at the application layer
+
+You don't control how a foundation model was trained, but you can still shift its behavior at inference time:
+
+- **Give it permission, explicitly.** A system prompt that says "if the answer isn't in the provided context, or you're not confident, say so — don't guess" measurably reduces fabrication, especially combined with [grounding](/learn/hallucinations/grounding-with-source-documents) so the model has a clear boundary of what counts as "known."
+- **Ask for the abstention up front, not as an afterthought.** "State your confidence before answering" or "list what you'd need to know to answer this" both interrupt the reflex to complete an answer.
+- **Treat refusals as a UX problem, not just a model problem.** A model that abstains constantly is useless even if it's never wrong. The goal is a model that's honest about the boundary between what it knows and what it's inferring — not one that hedges on everything to be safe.
+
+The underlying pattern holds across the research on this: hallucination isn't a bug you patch with a prompt, it's an incentive you have to actually change — at the scoring level, not just the wording of the instruction.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)

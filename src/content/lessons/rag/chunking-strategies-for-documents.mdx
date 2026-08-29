@@ -1,0 +1,37 @@
+---
+title: "Chunking Strategies for Documents"
+track: "rag"
+status: live
+summary: "Split source documents into chunks that preserve meaning, sized for retrieval precision and context budget."
+duration: "5 min read"
+---
+
+Before you can retrieve anything, you have to decide how to cut it up. Chunking is the step everyone skips past on the way to embeddings, and it's the step that quietly determines whether your [RAG](/learn/rag/what-is-rag-and-when-to-use-it) system actually works.
+
+## Why chunk size is a trade-off, not a setting
+
+A chunk is the unit you embed, store, and eventually hand back to the model as context. Make chunks too big — a whole chapter, say — and each one covers so many ideas that its embedding becomes a blurry average of all of them, so a specific query stops matching it well. Retrieval also drags in a lot of irrelevant text along with the useful sentence, wasting context budget and diluting the model's attention on what matters.
+
+Make chunks too small — a single sentence — and each one embeds cleanly and matches queries precisely, but it loses surrounding context. A sentence like "It doesn't apply to enterprise accounts" is useless on its own if the paragraph that defines "it" got split into a different chunk. You've optimized for precision and broken comprehension.
+
+There's no universal right size. It depends on your documents and your queries: dense technical docs with self-contained paragraphs tolerate smaller chunks; narrative or legal text with long-range dependencies needs more room.
+
+## Fixed-size vs. structure-aware splitting
+
+The naive approach is fixed-size chunking: cut every N tokens, maybe with some overlap between consecutive chunks so an idea straddling a boundary still appears intact in at least one chunk. It's simple and fast, but it's blind — it will cut a chunk mid-sentence, mid-table, or mid-code-block without caring.
+
+Recursive or structure-aware chunking fixes this by splitting along natural boundaries first — headings, paragraphs, list items, code blocks — and only falling back to a hard token cut when a single unit is still too large. This respects the document's own structure instead of imposing an arbitrary grid on it, and it's the default strategy in most production pipelines because it's a large quality improvement for very little extra complexity.
+
+## Semantic chunking
+
+A more adaptive option is semantic chunking: embed individual sentences, then group consecutive sentences into a chunk only as long as their embeddings stay similar to each other, starting a new chunk when the topic clearly shifts. This produces chunks that track actual meaning boundaries rather than character counts, which can noticeably improve retrieval on documents that mix topics within a single section.
+
+The cost is real: it requires embedding at the sentence level before you even form chunks, which adds latency and compute to your ingestion pipeline. For most applications, well-tuned structure-aware chunking gets you most of the benefit at a fraction of the cost — reach for semantic chunking when your documents are long, topically heterogeneous, and retrieval quality is worth the extra pipeline complexity.
+
+## Metadata and overlap matter as much as the split point
+
+Whatever strategy you use, attach metadata to every chunk — source document, section heading, page number — so a chunk retrieved out of context can still be traced and, if needed, expanded back to its neighbors. And keep a modest overlap (roughly 10-20% of chunk length) between adjacent chunks so ideas near a boundary don't vanish entirely from either side.
+
+Once you've settled on a chunking strategy, the next question is how those chunks get compared to a query at all — that's what [embeddings](/learn/rag/embeddings-and-semantic-similarity) are for, and it's worth measuring whether your choices actually help with [RAG evaluation](/learn/rag/evaluating-rag-quality) rather than assuming they do.
+
+**Related:** [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

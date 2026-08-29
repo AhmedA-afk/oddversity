@@ -1,0 +1,71 @@
+---
+import Layout from '../../components/Layout.astro';
+import { roles, getRole, conceptTitles } from '../../data/roles.ts';
+import { getTrack } from '../../data/curriculum.ts';
+
+export function getStaticPaths() {
+  return roles.map((r) => ({ params: { role: r.id } }));
+}
+
+const { role: roleId } = Astro.params;
+const role = getRole(roleId!)!;
+
+const steps = role.path.map((ref) => {
+  const [tid, slug] = ref.split('/');
+  const track = getTrack(tid);
+  const node = track?.nodes.find((n) => n.slug === slug);
+  return {
+    href: `/learn/${tid}/${slug}`,
+    trackName: track?.name ?? tid,
+    title: conceptTitles[ref] ?? slug,
+    hasPage: !!node && node.status === 'live',
+  };
+});
+---
+<Layout title={`AI for ${role.name}s`} description={role.description}>
+  <section class="head container">
+    <a href="/roles" class="back mono">← Roles</a>
+    <div class="row"><span class="node-dot" aria-hidden="true"></span><span class="eyebrow">Role path</span></div>
+    <h1>AI for {role.name}s</h1>
+    <p class="desc">{role.description}</p>
+    <p class="meta mono">{steps.length} lessons, in order</p>
+  </section>
+
+  <section class="container path">
+    <ol>
+      {steps.map((s, i) => (
+        <li class="step">
+          <span class="sn mono">{String(i + 1).padStart(2, '0')}</span>
+          <span class="body">
+            {s.hasPage ? <a href={s.href} class="title">{s.title}</a> : <span class="title dim">{s.title}</span>}
+            <span class="track mono">{s.trackName}</span>
+          </span>
+          <span class="right mono">{s.hasPage ? 'Start →' : 'Coming'}</span>
+        </li>
+      ))}
+    </ol>
+    <p class="foot">Want the whole picture? <a href="/learn">Open the full map →</a></p>
+  </section>
+</Layout>
+
+<style>
+  .head { padding: 48px 0 8px; }
+  .back { font-size: 12px; color: var(--muted); }
+  .back:hover { color: var(--accent); text-decoration: none; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; }
+  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; }
+  .desc { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--muted); max-width: 60ch; }
+  .meta { margin-top: 14px; font-size: 11px; color: var(--faint); letter-spacing: .04em; }
+
+  .path { padding-top: 32px; }
+  .path ol { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+  .step { display: flex; align-items: center; gap: 16px; padding: 15px 4px; border-bottom: 1px solid var(--rule); }
+  .sn { flex: none; width: 24px; font-size: 11px; color: var(--faint); }
+  .body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .title { font: 500 15px/1.35 'IBM Plex Sans', sans-serif; color: var(--text); }
+  a.title:hover { color: var(--accent); text-decoration: none; }
+  .title.dim { color: var(--muted); font-weight: 400; }
+  .track { font-size: 10.5px; color: var(--faint); letter-spacing: .03em; }
+  .right { flex: none; font-size: 11px; color: var(--faint); }
+  .foot { margin-top: 28px; font-size: 14px; color: var(--muted); }
+</style>

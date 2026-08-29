@@ -1,0 +1,43 @@
+---
+title: "Decide: Fine-Tune, Prompt, or RAG?"
+track: "fine-tuning"
+status: live
+summary: "A decision framework for when fine-tuning actually beats better prompting or retrieval, and when it's a waste of money."
+duration: "6 min read"
+---
+
+Most teams reach for fine-tuning before they've exhausted the cheaper options. The order that actually saves you time and money is: prompt first, retrieve second, fine-tune last — and only for the right kind of problem.
+
+## What each tool actually fixes
+
+These three techniques solve different failure modes, not competing versions of the same problem.
+
+**Prompting** fixes *instruction-following* problems. The model knows the facts and can do the task, but isn't doing it the way you want — wrong tone, wrong format, missing a step. A better system prompt, a few examples, or a stricter output schema usually closes this gap in an afternoon.
+
+**Retrieval (RAG)** fixes *knowledge* problems. The model doesn't know something — your product docs, last week's support tickets, a customer's account history — because that information wasn't in its training data and changes too often to bake in. You fetch the relevant text at query time and hand it to the model as context. See [what RAG is and when to use it](/learn/rag/what-is-rag-and-when-to-use-it) for the mechanics.
+
+**Fine-tuning** fixes *behavior* problems that prompting can't reach: consistently reproducing a house style across thousands of examples, following a narrow output format with near-zero deviation, or performing a specialized skill (a particular classification scheme, a domain-specific transformation) that no amount of in-context instruction reliably nails. It changes the model's weights, not its inputs.
+
+## The test before you fine-tune
+
+Ask three questions in order, and stop as soon as one gives you an answer.
+
+1. **Can a better prompt fix it?** Try few-shot examples, a clearer system prompt, and structured output constraints first. Most "the model isn't good enough" problems are actually "the prompt isn't specific enough" problems.
+2. **Is the model missing information, not a skill?** If it's failing because it doesn't know a fact, RAG is almost always cheaper and easier to maintain than fine-tuning — and it updates the moment your source documents change, with no retraining cycle.
+3. **Is the failure a consistent, learnable pattern across many examples, and does it survive a good prompt and good context?** If yes, and you can gather (or already have) enough labeled examples to teach it, fine-tuning is worth the cost. If you're not sure you have enough data, see [building a fine-tuning dataset](/learn/fine-tuning/building-a-fine-tuning-dataset) before committing.
+
+## Signals it's genuinely time to fine-tune
+
+A few concrete situations where fine-tuning tends to win over the alternatives:
+
+- **Latency and cost pressure.** RAG and long few-shot prompts add tokens to every call. A fine-tuned model can bake the behavior in and run on a shorter prompt, which matters at high volume.
+- **A narrow, repetitive task done at scale.** Classifying support tickets into your exact taxonomy, converting messy input into one strict JSON schema, or matching a brand voice across thousands of generations — these are exactly the "same shape, over and over" tasks fine-tuning is good at.
+- **Prompting has plateaued.** You've iterated on instructions and examples and the model still makes the same category of mistake. That's a sign the fix needs to live in the weights, not the prompt.
+
+## What fine-tuning won't fix
+
+It won't teach the model new facts reliably — it's not a good way to inject knowledge, and it can't be updated as cheaply as a retrieval index when that knowledge changes. It also won't fix a task the base model fundamentally can't reason through; fine-tuning sharpens a skill the model already has some grasp of, it doesn't install a new one from scratch. If a much larger or more capable model solves your task easily but your target model can't even with fine-tuning, the gap is capability, not specialization — and no amount of fine-tuning data closes that on its own.
+
+In practice, the cheapest path wins by default. Reach for fine-tuning only when the failure is a behavior, not missing knowledge or a vague instruction, and when you have enough consistent examples to actually teach it. Once you've made that call, [LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning) are the efficient way to do it without full-parameter retraining costs.
+
+**Related:** [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset), [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning)

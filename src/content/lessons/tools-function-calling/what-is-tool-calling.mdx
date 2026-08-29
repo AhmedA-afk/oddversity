@@ -1,0 +1,50 @@
+---
+title: "What Is Tool Calling"
+track: "tools-function-calling"
+status: live
+summary: "How a model requests a function call instead of generating text, and how your code carries out the request."
+duration: "5 min read"
+---
+
+A model can only produce text. It cannot check today's weather, query your database, or send an email. Tool calling is the pattern that bridges that gap: you describe a set of functions the model is allowed to ask for, and when a request needs one, the model outputs a structured "call this function with these arguments" message instead of a plain-English answer. Your code is the one that actually runs it.
+
+## The request-response shape
+
+The flow has four steps, and it's worth holding all four in your head at once:
+
+1. You send the model a prompt plus a list of tool definitions (name, description, and a schema for its parameters).
+2. The model decides a tool is needed and replies not with prose but with a structured object naming the tool and its arguments, for example a function called `get_weather` with `{"city": "Lisbon"}`.
+3. Your application code reads that structured object, calls the real `get_weather` function, and gets back a result.
+4. You send that result back to the model as a new message, and the model uses it to write the final answer to the user.
+
+The model never touches the network, the filesystem, or your database. It only ever produces a request. Every action is executed by code you control, which is what makes tool calling safe to build on: you can validate, rate-limit, or block any call before it runs.
+
+## Why not just ask the model to describe what it wants in plain text?
+
+Early workarounds did exactly that — prompt the model to write something like "ACTION: search(query='weather in Lisbon')" and then parse that string with regex. It worked until it didn't: models would phrase the action slightly differently each time, forget to quote a string, or bury the action inside an explanation. Native tool calling fixes this by training the model to emit a fixed, machine-parseable structure (usually JSON) that matches a schema you supplied, so your code can parse it reliably instead of guessing at free text. This is the same shift covered in [why structured output beats free text](/learn/structured-outputs/why-structured-output) — tool calling is that idea applied specifically to actions instead of data.
+
+## One call, or a loop
+
+The simplest case is one tool call and one response back. But most real tasks take several: look something up, look at the result, decide another lookup is needed, and so on until the model has enough to answer. That repeating cycle — the model calls a tool, your code executes it, the result goes back in, the model decides what's next — is the same loop that [ReAct](/learn/agentic-ai/react-pattern) and agent frameworks are built on. Tool calling is the low-level mechanism; an agent is what you get when you let that mechanism run for more than one turn without a human approving each step.
+
+## What actually gets sent
+
+Concretely, a tool definition is just a name, a description, and a JSON Schema for its inputs:
+
+```json
+{
+  "name": "get_weather",
+  "description": "Get current weather for a city",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "city": { "type": "string" }
+    },
+    "required": ["city"]
+  }
+}
+```
+
+The model reads the description and schema to decide whether and how to call it — which is why the wording of that description matters as much as the schema itself, a topic covered in [writing tool descriptions models actually follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow). Getting the schema itself right — types, required fields, enums — is its own skill, covered next in [designing a tool schema](/learn/tools-function-calling/designing-a-tool-schema).
+
+**Related:** [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow), [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern)

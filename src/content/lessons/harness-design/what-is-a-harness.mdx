@@ -1,0 +1,34 @@
+---
+title: "The Harness: Everything Around the Model"
+track: "harness-design"
+status: live
+summary: "The harness is the code around the model: the loop, tool router, policy layer, and prompt assembly that turn an LLM into an agent."
+duration: "5 min read"
+---
+
+An LLM by itself is a function that turns text into text. Ask it a question, it answers, and the conversation is over. What makes it feel like an "agent" that can browse the web, edit files, or run commands isn't the model at all — it's everything wired around it. That surrounding system is the **harness**.
+
+## What the harness actually does
+
+Strip away the marketing and every coding agent, browser agent, or autonomous assistant is the same handful of parts, none of which is the model:
+
+- **A control loop.** Something has to call the model repeatedly, feed it the result of each action, and decide when to stop. The model doesn't loop itself — the harness does.
+- **A tool router.** When the model outputs `{"tool": "read_file", "args": {...}}`, something has to parse that, actually read the file, and hand the result back in a format the model expects. The model can only *ask*; the harness *executes*.
+- **A policy layer.** Rules about what the model is allowed to do without asking, what needs a human's yes, and what's off the table no matter what the prompt says. This is where safety actually lives — not in the model's good intentions.
+- **Prompt and context assembly.** The system prompt, the running conversation, tool results, retrieved files — someone has to build that context window fresh on every single call, because the model has no memory between calls of its own.
+
+None of this is exotic. A harness can be a few hundred lines of Python around an API call. Claude Code, Cursor, and every browser-use agent are harnesses at heart — bigger, with more tools and more edge cases handled, but structurally the same loop.
+
+## Why the distinction matters
+
+Two agents built on the identical model can behave completely differently, because "the agent" is mostly harness. A better model gives you better *reasoning inside each step*. A better harness gives you better *tool selection, error recovery, safety guarantees, and task completion* — the things users actually notice as "this agent is good at its job."
+
+This is also why prompt injection and jailbreaks matter so much in agentic systems: if the policy layer is weak or missing, a clever prompt can talk the model into calling tools it should never touch. The fix isn't a smarter model — it's a harness with rules the model's output can't override. That's the whole idea behind [deny-floors](/learn/harness-design/deny-floors-and-policy-layers): hard limits enforced in code, not in a system prompt the model might talk itself out of.
+
+## The mental model to keep
+
+Think of the LLM as a very capable but forgetful advisor sitting inside a room. It can only see what's handed to it, and it can only act by writing down a request. The harness is the room: it decides what gets handed in, it's the only thing that can actually walk over to a tool and use it, and it holds the door — deciding which requests execute automatically and which need someone to say yes first.
+
+Once that split is clear, the rest of this track is really about designing that room well: building the [control loop](/learn/harness-design/the-control-loop) that drives the model call by call, and [approval gates](/learn/harness-design/permission-and-approval-systems) that decide what the harness will do on its own versus ask about first.
+
+**Related:** [Building the Control Loop](/learn/harness-design/the-control-loop), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems)

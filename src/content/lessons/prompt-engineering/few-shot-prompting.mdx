@@ -1,0 +1,44 @@
+---
+title: "Few-Shot Prompting: Teaching by Example"
+track: "prompt-engineering"
+status: live
+summary: "Show the model input-output examples instead of describing the task, and learn how many examples actually move the needle."
+duration: "5 min read"
+---
+
+The fastest way to fix a model that keeps misunderstanding your task isn't a longer instruction — it's an example. Few-shot prompting means showing the model a handful of input-output pairs before you give it the real input, letting it infer the pattern instead of you having to spell it out in prose.
+
+## Zero-shot vs. few-shot
+
+Zero-shot means you just ask, with no examples: "Classify this support ticket as billing, bug, or feature request." That works fine when the task is common and the labels are self-explanatory. But the moment your task has house-specific conventions — a particular tone, an unusual output format, edge cases that are hard to describe — zero-shot instructions tend to drift. Few-shot fixes this by demonstrating the pattern directly:
+
+```
+Ticket: "I was charged twice this month."
+Label: billing
+
+Ticket: "The export button does nothing when I click it."
+Label: bug
+
+Ticket: "Could you add dark mode?"
+Label: feature_request
+
+Ticket: "My invoice shows the wrong plan tier."
+Label:
+```
+
+The model completes the last line by pattern-matching against the three examples above it, not by reasoning from a rulebook. This is often more reliable than a long written description of each category, because examples remove ambiguity that adjectives can't.
+
+## How many examples, and how to pick them
+
+There's no fixed number that's always right, but a few things consistently matter more than quantity:
+
+- **Diversity beats volume.** Three examples that cover the edge cases in your data teach more than ten near-duplicates. If all your billing examples look alike, the model won't generalize to a billing ticket phrased differently.
+- **Order and formatting matter.** Keep every example in the exact same structure — same delimiters, same field order — so the model can find the pattern rather than inferring one from formatting noise. See [delimiters](/learn/prompt-engineering/delimiters-and-formatting) for how to fence examples off cleanly.
+- **Label distribution leaks in.** If four of your five examples are "billing," the model will lean toward predicting "billing" regardless of the actual input. Balance your examples across the outcomes you care about.
+- **More isn't free.** Every example costs context-window space and, at scale, money — see [tokens, context, and cost](/learn/ai-foundations/tokens-context-cost). Modern models often need surprisingly few examples (one to five) for well-defined tasks; reserve larger example sets for genuinely subtle formatting or style tasks.
+
+## When to reach for it
+
+Few-shot earns its keep on tasks with a specific output shape or house style: extracting fields into a fixed schema, matching a tone of voice, or classifying into categories that aren't obvious from their names alone. It's less useful for open-ended reasoning tasks, where showing worked examples can sometimes anchor the model to the surface pattern of your examples rather than the underlying logic — for that class of problem, [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting) is usually the better tool. And when you need output the rest of your system can actually parse, pair few-shot examples with real [structured output](/learn/structured-outputs/why-structured-output) constraints rather than relying on the examples alone to enforce format.
+
+**Related:** [Chain-of-Thought Prompting](/learn/prompt-engineering/chain-of-thought-prompting), [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Tokens, Context, and Cost](/learn/ai-foundations/tokens-context-cost)

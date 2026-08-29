@@ -1,0 +1,28 @@
+---
+import Layout from '../../components/Layout.astro';
+import SkillTree from '../../components/SkillTree.astro';
+---
+<Layout title="Learn" description="The full Fieldguide curriculum — every track, from AI foundations to production agents.">
+  <section class="head container">
+    <span class="eyebrow">The map</span>
+    <h1>The whole curriculum, one map.</h1>
+    <p class="sub">Eight technical tracks and six role paths. Start anywhere — the map shows you what leads where.</p>
+    <ul class="legend">
+      <li><span class="node-dot" aria-hidden="true"></span> Live — published lessons</li>
+      <li><span class="node-dot is-curated" aria-hidden="true"></span> Curated — best external source, sequenced</li>
+      <li><span class="node-dot is-coming" aria-hidden="true"></span> Coming soon</li>
+    </ul>
+  </section>
+  <section class="container tree-wrap">
+    <SkillTree variant="full" />
+  </section>
+</Layout>
+
+<style>
+  .head { padding: 56px 0 8px; }
+  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; margin-top: 14px; max-width: 18ch; }
+  .sub { margin-top: 16px; color: var(--muted); max-width: 62ch; font-size: 15px; }
+  .legend { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 20px; }
+  .legend li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .tree-wrap { padding-top: 40px; }
+</style>

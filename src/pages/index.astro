@@ -1,0 +1,72 @@
+---
+import Layout from '../components/Layout.astro';
+import SkillTree from '../components/SkillTree.astro';
+
+const values = [
+  { h: 'Free and complete', p: 'The whole curriculum is open — no locked lessons, no “upgrade to continue.”' },
+  { h: 'Hands-on from lesson one', p: 'You build, not just read. Runnable code and real projects, the whole way through.' },
+  { h: 'A path, not a pile', p: 'A structured map from your first prompt to production agents. You always know what’s next.' },
+];
+---
+<Layout>
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Free · hands-on · built for the agentic era</span>
+      <h1>Learn to actually build with&nbsp;AI.</h1>
+      <p class="sub">A complete, structured path from your first prompt to production agents — with runnable code at every step. No paywall, no fluff.</p>
+      <div class="cta">
+        <a href="/learn" class="btn btn-primary">Start free</a>
+        <a href="/learn" class="btn btn-ghost">Open the map →</a>
+      </div>
+      <p class="stat mono">8 tracks · 6 role paths · built to be studied end to end</p>
+    </div>
+  </section>
+
+  <section class="values container">
+    {values.map((v) => (
+      <div class="value">
+        <h3>{v.h}</h3>
+        <p>{v.p}</p>
+      </div>
+    ))}
+  </section>
+
+  <section class="map container">
+    <div class="map-head">
+      <div>
+        <span class="eyebrow">The map</span>
+        <h2>The whole curriculum, open.</h2>
+      </div>
+      <a href="/learn" class="btn btn-ghost">Explore the tree →</a>
+    </div>
+    <SkillTree variant="preview" />
+  </section>
+
+  <section class="closing container">
+    <h2>Pick a track and start building.</h2>
+    <p>Everything’s free. Start where you are.</p>
+    <a href="/learn" class="btn btn-primary">Open the map</a>
+  </section>
+</Layout>
+
+<style>
+  .hero { padding: 76px 0 64px; border-bottom: 1px solid var(--rule); }
+  .hero h1 { font-size: clamp(38px, 6vw, 60px); font-weight: 700; letter-spacing: -.022em; max-width: 15ch; margin-top: 16px; }
+  .sub { margin-top: 20px; font-size: clamp(16px, 2.2vw, 19px); line-height: 1.6; color: var(--muted); max-width: 56ch; }
+  .cta { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  .stat { margin-top: 22px; font-size: 11.5px; color: var(--faint); letter-spacing: .02em; }
+
+  .values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; padding-top: 56px; }
+  .value h3 { font-size: 18px; }
+  .value p { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+
+  .map { padding-top: 64px; }
+  .map-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 34px; flex-wrap: wrap; }
+  .map-head h2 { font-size: 28px; margin-top: 6px; }
+
+  .closing { text-align: center; padding: 84px 0 8px; }
+  .closing h2 { font-size: 30px; }
+  .closing p { margin: 10px 0 24px; color: var(--muted); }
+
+  @media (max-width: 760px) { .values { grid-template-columns: 1fr; gap: 22px; } }
+</style>

@@ -1,0 +1,58 @@
+---
+title: "Designing a Tool Schema"
+track: "tools-function-calling"
+status: live
+summary: "Define tool names, parameters, and types so the model calls your functions with valid, usable arguments."
+duration: "5 min read"
+---
+
+A tool schema is the contract between you and the model: it tells the model what a function does, what arguments it takes, and what shape those arguments must be. Get the contract loose or ambiguous, and you get malformed calls, missing fields, or the model reaching for the wrong tool entirely.
+
+## The three parts every schema needs
+
+Every tool definition, whether you're writing it for Claude's `tools` parameter or OpenAI's `function` spec, boils down to three things:
+
+- **Name** — a short, unambiguous identifier like `get_weather` or `search_flights`, not `helper` or `do_thing`.
+- **Description** — a plain-language explanation of what the tool does and when to use it. The model reads this to decide whether to call the tool at all, so treat it as documentation for a very literal new hire.
+- **Parameters** — a JSON Schema object describing each argument's name, type, and constraints.
+
+Here's a minimal, well-formed example:
+
+```json
+{
+  "name": "get_weather",
+  "description": "Get the current weather for a city. Use this when the user asks about temperature, rain, or conditions in a specific location.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "City and state, e.g. San Francisco, CA"
+      },
+      "unit": {
+        "type": "string",
+        "enum": ["celsius", "fahrenheit"],
+        "description": "Temperature unit to return"
+      }
+    },
+    "required": ["location"]
+  }
+}
+```
+
+## Types and constraints do real work
+
+JSON Schema isn't decoration here — it's the difference between the model guessing and the model knowing. A few habits matter more than the rest:
+
+- **Use `enum` whenever the valid values are a fixed, small set.** An `enum` on `unit` above means the model can only send `"celsius"` or `"fahrenheit"`, not `"C"` or `"Fahrenheit please"`.
+- **Mark fields `required`** if your function will fail without them. Optional fields should have sane defaults documented in their description, since the model won't always include them.
+- **Prefer flat, simple types** (`string`, `number`, `boolean`, `enum`) over deeply nested objects. Every extra layer of nesting is another place the model can produce a shape you didn't expect.
+- **Give every parameter its own description.** A field named `id` means nothing on its own — is it a user ID, an order ID, a UUID? Say so.
+
+## One tool, one job
+
+Resist the urge to build a single do-everything tool with a `mode` or `action` parameter that switches between unrelated behaviors. It's tempting because it means fewer entries in your tool list, but it pushes complexity into the parameters, where the model has to infer both *which* operation to run and *what arguments* that operation needs from the same flat parameter list. Two well-named, narrowly scoped tools — `create_ticket` and `close_ticket` — are almost always easier for the model to call correctly than one `manage_ticket` with an `action` enum bolted on.
+
+Schema design is also where you set the boundary for what the model is even capable of requesting — see [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling) for how that request actually gets executed. Once the shape is right, the words you choose inside `description` fields decide whether the model actually follows it — that's covered in [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow).
+
+**Related:** [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling), [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow)

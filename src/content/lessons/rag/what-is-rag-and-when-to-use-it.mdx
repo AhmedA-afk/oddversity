@@ -1,0 +1,44 @@
+---
+title: "What Is RAG and When to Use It"
+track: "rag"
+status: live
+summary: "Understand the retrieve-then-generate pattern and the failure modes it's built to fix."
+duration: "5 min read"
+---
+
+Ask a model a question about your company's internal handbook and it will confidently make something up — not because it's broken, but because it has never seen that document. RAG (retrieval-augmented generation) fixes this by fetching the relevant text first, then handing it to the model as context before asking for an answer.
+
+## The pattern
+
+RAG has three steps that repeat on every query:
+
+1. **Retrieve** — search a knowledge base (usually a vector database of your documents) for chunks relevant to the user's question.
+2. **Augment** — insert those chunks into the prompt, alongside the question.
+3. **Generate** — let the model answer using only what it was just given, instead of relying on what it memorized during training.
+
+The model isn't learning your data. It's reading it, fresh, every single time — the way you'd hand a colleague the right page of a manual instead of expecting them to have memorized the whole thing.
+
+## The problem it solves
+
+Two failure modes push teams toward RAG:
+
+- **Hallucination on unknown facts.** A base model has no way to say "I don't know your refund policy" — it will pattern-match to something plausible-sounding instead. Grounding it in real retrieved text gives it something true to paraphrase from.
+- **Stale knowledge.** Training data has a cutoff. Your product docs, support tickets, and internal wikis change weekly. Retrieval pulls from a live index, so the model always sees this week's version, not the one baked into its weights.
+
+RAG doesn't make the model smarter. It makes the model's answers traceable to a source you control, which is also why RAG answers can cite where they came from.
+
+## When RAG is the right call
+
+Reach for RAG when the knowledge is large, changes often, or is private — a support knowledge base, internal documentation, a legal contract archive, a codebase. Retrieval scales to millions of documents without retraining anything, and updating the index is as simple as adding a new file.
+
+## When to skip it
+
+RAG adds real complexity: a chunking strategy, an embedding model, a vector store, and a retrieval step that can itself go wrong (see [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)). It's not free, so skip it when:
+
+- The relevant material comfortably fits in a single prompt — just paste it in.
+- The task depends on reasoning or style, not facts you own — fine-tuning or better prompting fits better.
+- The knowledge is small and static enough to memorize once and rarely touch again.
+
+If you do go the RAG route, the two decisions that matter most early on are how you split documents into chunks and how you turn those chunks into searchable vectors — covered next in [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents) and [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity).
+
+**Related:** [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

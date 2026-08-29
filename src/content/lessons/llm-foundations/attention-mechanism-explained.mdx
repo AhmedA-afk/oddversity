@@ -1,0 +1,43 @@
+---
+title: "The Attention Mechanism, Explained"
+track: "llm-foundations"
+status: live
+summary: "Self-attention lets every token weigh every other token, replacing recurrence and making transformers parallelizable."
+duration: "5 min read"
+---
+
+Before a model can predict the next word, every token in its input needs to figure out which other tokens actually matter to it. That's the whole job of attention: for each token, look at all the others and decide how much to weigh them.
+
+## The problem attention solves
+
+Take the sentence "The trophy didn't fit in the suitcase because it was too big." What does "it" refer to — the trophy or the suitcase? You resolve this instantly by relating "it" back to the rest of the sentence. Older architectures like RNNs processed text one token at a time, left to right, carrying a single compressed summary forward. By the time they reached "it," the details of "trophy" had faded into that one running summary. Attention instead lets "it" look directly back at every earlier token and pull information from whichever ones are relevant — no compression bottleneck, no fading signal.
+
+## Queries, keys, and values
+
+Attention computes this "looking back" with three vectors derived from each token's embedding:
+
+- **Query (Q):** what this token is looking for
+- **Key (K):** what this token has to offer, as a label
+- **Value (V):** the actual content this token contributes if selected
+
+For a given token, its query is compared against every other token's key (via a dot product) to produce a relevance score. Those scores are run through [softmax](/learn/maths-foundations/the-softmax-function) so they turn into weights that sum to 1. The token's new representation is then the weighted sum of every token's value vector, using those weights. In the trophy example, "it" ends up with a high weight on "trophy" and a low one on "suitcase," because their key and query vectors happen to align.
+
+This is why it's called *self*-attention: the queries, keys, and values all come from the same sequence, so tokens attend to each other rather than to some separate input.
+
+```
+score(i, j) = Q_i · K_j
+weight(i, j) = softmax(score(i, :))
+output_i = Σ_j weight(i, j) * V_j
+```
+
+## Why it's parallelizable
+
+Every token's attention computation only depends on the full set of keys and values, not on the output of the token before it. That means every position in the sequence can be computed at the same time, on a GPU, as one big matrix multiplication — instead of the strictly sequential, one-token-at-a-time loop an RNN required. That single property is why transformers scaled to the sizes they have: training time stopped being bound by sequence length and became bound by compute you could throw at parallel matrix math.
+
+## Multi-head attention
+
+In practice, a model doesn't do this once — it does it several times in parallel, each with its own learned Q/K/V projections, called "heads." One head might specialize in tracking pronoun references, another in verb-subject agreement, another in something with no clean English name at all. The outputs of all heads are concatenated and passed on. This gives the model several independent "attention patterns" to draw on per layer, rather than forcing everything through one relevance calculation.
+
+Stack enough of these attention layers with feed-forward layers in between, and you get [the transformer architecture](/learn/llm-foundations/the-transformer-architecture) — the design behind every major LLM today.
+
+**Related:** [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), [Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained), [The Softmax Function](/learn/maths-foundations/the-softmax-function)

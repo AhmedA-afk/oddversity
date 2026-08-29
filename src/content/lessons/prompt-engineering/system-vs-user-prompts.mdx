@@ -1,0 +1,43 @@
+---
+title: "System Prompts vs User Prompts"
+track: "prompt-engineering"
+status: live
+summary: "The system prompt sets standing behavior for the whole conversation; the user prompt carries the one-off ask. Mixing them causes real bugs."
+duration: "6 min read"
+---
+
+Every chat-style API call carries at least two channels: a system prompt and a user prompt. They look similar — both are just text — but the model weighs them differently, and conflating them is one of the most common reasons a "good" prompt stops working once it's wired into a real app.
+
+## What each one is for
+
+The **system prompt** is the standing instruction: role, tone, output format, hard rules, tool access. It's set once by you, the developer, and typically doesn't change per request. Think of it as configuration.
+
+The **user prompt** is the per-turn ask — whatever the actual person (or your application code) sends this time. It changes with every message.
+
+A minimal example of the split:
+
+```json
+{
+  "system": "You are a support agent for Acme. Reply in under 100 words. Never quote internal pricing docs verbatim.",
+  "messages": [
+    { "role": "user", "content": "Why was I charged twice this month?" }
+  ]
+}
+```
+
+The system prompt doesn't mention this customer's charge at all — it doesn't need to. It's describing how to behave *in general*. The user message supplies the specific thing to behave about.
+
+## Why the split matters
+
+Providers train models to treat system-level instructions as higher-priority and longer-lived than a single user turn. That has two practical effects:
+
+- **Stability.** Rules you actually want enforced every time — tone, format, safety constraints — belong in the system prompt. Put them in the user message instead and they tend to get diluted or ignored a few turns into a conversation, because the model is weighing them against whatever the user just said.
+- **Reusability.** The system prompt is where you put things that don't change per request, so you're not re-typing "respond only in valid JSON" into every user message your app constructs.
+
+This is also the boundary that matters for [prompt injection](/learn/evals-red-teaming/prompt-injection-basics): a system prompt written by you is trusted; a user prompt, or worse, content fetched from a webpage and dropped into the user turn, is not. If your harness ever asks the model to treat retrieved content as instructions rather than data, you've effectively erased this boundary — which is exactly how injection attacks work.
+
+## A common mistake
+
+Stuffing everything into the system prompt — including the specific question or data for this request — is a frequent anti-pattern. It works today because most models are lenient about it, but it wastes the one channel a well-designed harness treats as cacheable and stable, and it makes multi-turn conversations awkward: the "current" request keeps living inside a block of text meant to describe general behavior. Keep standing rules in system, put the live request in user, and reserve dedicated [delimiters](/learn/prompt-engineering/delimiters-and-formatting) for any third kind of content — retrieved documents, tool output — that needs to be clearly neither.
+
+**Related:** [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Answer-First Prompting](/learn/prompt-engineering/answer-first-prompting), [Prompt Injection: When Content Becomes Instructions](/learn/evals-red-teaming/prompt-injection-basics)

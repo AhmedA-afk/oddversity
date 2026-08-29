@@ -1,0 +1,33 @@
+---
+title: "The Softmax Function"
+track: "maths-foundations"
+status: live
+summary: "Softmax turns raw scores into a valid probability distribution, the last step every LLM takes before picking its next word."
+duration: "4 min read"
+---
+
+Every time an LLM picks its next word, it doesn't jump straight from "raw guesses" to "a word." It runs those guesses through softmax first, a function that converts a list of arbitrary numbers into a set of probabilities that all sit between 0 and 1 and sum to exactly 1.
+
+## The problem softmax solves
+
+A language model's last layer outputs one raw score, called a logit, for every token in its vocabulary — tens of thousands of numbers. These logits can be any real number: negative, huge, tiny, whatever the network computed. They're not probabilities yet. You can't sample "the next word" from a list like `[2.1, -0.5, 4.8, 0.0]` directly, because those numbers don't mean anything on their own and don't sum to 1.
+
+Softmax fixes both problems at once. For a list of scores `z1, z2, ..., zn`, it computes:
+
+```
+softmax(z_i) = exp(z_i) / sum(exp(z_j) for all j)
+```
+
+Exponentiating first does two useful things: it makes every value positive (so nothing sums to something less than 0), and it exaggerates differences — a score that's a little higher becomes a lot more probable. Dividing by the sum of all the exponentials then rescales everything so the whole set adds up to 1, which is the definition of a probability distribution.
+
+## Turning scores into a choice
+
+Take the toy example above: `[2.1, -0.5, 4.8, 0.0]`. After softmax, that becomes roughly `[0.075, 0.005, 0.914, 0.007]`. Notice the token with score 4.8 now dominates with about 91% of the probability mass, even though its raw score was only somewhat higher than 2.1. That sharpening effect is intentional — softmax doesn't just rank the scores, it decides how confidently the model should commit to the top choice versus spreading probability across runner-ups.
+
+This output distribution is exactly what feeds into sampling. A model set to pick the single most likely token every time (greedy decoding) just takes the max. A model sampling more creatively draws from the full distribution, so a token with 5% probability still gets chosen 1 in 20 times. Turning up "temperature" flattens the distribution before this draw, which is why softmax is the hinge point between a model's internal scoring and its final word choice — see [Next-Token Prediction](/learn/llm-foundations/next-token-prediction) for how that scoring gets produced in the first place.
+
+## Where else it shows up
+
+Softmax isn't only for choosing words. Inside the transformer, [attention](/learn/llm-foundations/attention-mechanism-explained) uses softmax to turn raw similarity scores between tokens into attention weights that sum to 1 — deciding how much each token should "listen to" every other token. Any time a model needs to convert a pile of unbounded scores into something that behaves like a probability, softmax is the standard tool for the job.
+
+**Related:** [Next-Token Prediction](/learn/llm-foundations/next-token-prediction), [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [Vectors: The Basic Unit of Data](/learn/maths-foundations/what-is-a-vector)

@@ -1,0 +1,39 @@
+---
+title: "Validation and Auto-Repair: Catching and Fixing Bad Output"
+track: "structured-outputs"
+status: live
+summary: "Schema-validate every model response before your code touches it, then re-prompt with the error to fix what fails."
+duration: "5 min read"
+---
+
+A schema tells the model what shape to return. It doesn't guarantee the model obeys it. Validation is the step that checks, and auto-repair is what you do when the check fails.
+
+## Why you can't skip validation
+
+Even with [JSON Schema](/learn/structured-outputs/json-schema-for-outputs) attached to the request, models still produce output that's syntactically broken (a trailing comma, an unclosed brace), semantically wrong (a string where you asked for a number, a date in the wrong format), or just incomplete (a required field silently missing). Some providers offer a "strict" mode that constrains generation to match the schema token by token, which cuts failures a lot but doesn't erase them — a strict schema can still be satisfied with values that are the wrong ones, like an empty string where you needed a real one. Treat every response as untrusted until it passes a validator, the same way you'd treat any external input.
+
+The validator itself should be boring and mechanical: run the parsed output against your schema (a library like Zod, Pydantic, or Ajv, not hand-rolled if-checks) and get back either "valid" or a list of specific failures — which field, what was expected, what showed up instead.
+
+## The repair loop
+
+When validation fails, the fix is rarely "give up." It's to re-prompt, once or twice, using the validator's own error message as the instruction:
+
+```text
+Your last response failed validation:
+- field "due_date": expected format YYYY-MM-DD, got "next Friday"
+- field "priority": required, but missing
+
+Return the corrected JSON only, matching the schema exactly.
+```
+
+This works well because the model doesn't need to guess what went wrong — you're handing it the exact diagnostic. Feed the original schema, the model's bad output, and the validator's errors back in as context, cap it at two or three retries, and fall back to a default value, a cheaper model, or a human queue if it still won't pass. An unbounded retry loop is just a slower, more expensive way to hang.
+
+## What this buys you
+
+Without this loop, a malformed field either crashes your code with a parse error or — worse — passes silently and corrupts a database row or triggers the wrong downstream action. With it, bad output becomes a handled case instead of an incident. It's the same instinct behind [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know): you're building a system that fails loudly and recoverably instead of quietly and wrong.
+
+## Where to draw the line
+
+Auto-repair earns its keep on structural mistakes — wrong types, missing fields, bad enums. It won't fix a model that's confidently wrong about the facts inside a correctly-shaped object; that's a [hallucination](/learn/hallucinations/why-models-hallucinate) problem, not a validation one, and needs grounding or fact-checking, not a stricter schema. Know which failure you're looking at before you reach for a retry.
+
+**Related:** [Why Structured Output](/learn/structured-outputs/why-structured-output), [JSON Schema for Outputs](/learn/structured-outputs/json-schema-for-outputs), [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know)

@@ -1,0 +1,36 @@
+---
+title: "Allow/Ask/Deny: Designing Approval Gates"
+track: "harness-design"
+status: live
+summary: "Design allow, ask, and deny rules for tool calls, and figure out where a human approval step actually belongs in the loop."
+duration: "4 min read"
+---
+
+Not every tool call deserves the same level of scrutiny. Reading a file and deleting a database are both "tool calls," but treating them identically is how agents either get too annoying to use or too dangerous to trust.
+
+## Three Buckets, Not One Switch
+
+A permission system for an agent harness usually sorts every possible action into one of three buckets:
+
+- **Allow** — runs immediately, no friction. Reading a file, listing a directory, calling a read-only API.
+- **Ask** — pauses and shows a human what the agent wants to do before it happens. Writing a file, sending an email, running a shell command with side effects.
+- **Deny** — never runs, full stop, regardless of what the model argues for. Deleting production data, exfiltrating secrets, calling a tool outside the agent's declared scope.
+
+The point of splitting into three instead of a single "human in the loop: yes/no" toggle is that most actions an agent takes are low-stakes and reversible. If you route all of them through a human, people stop reading the prompts and start clicking "approve" on autopilot — which defeats the purpose. Reserve Ask for the calls where a wrong move actually costs something, and let Allow absorb everything else so the approvals people do see are ones worth their attention.
+
+Deny sits below both. It's not "ask, but default to no" — it's a rule the model's own persuasion can't touch, because the check runs in code the harness controls, not in text the model reads and might talk itself around. That's the same idea covered in [Deny-Floors](/learn/harness-design/deny-floors-and-policy-layers), just applied one level up: floors are the deny rules; this lesson is about the allow/ask split above them.
+
+## Where the Ask Goes
+
+The mechanics of an Ask gate are simple: the [control loop](/learn/harness-design/the-control-loop) intercepts the tool call before execution, serializes what the agent wants to do (tool name, arguments, sometimes a plain-English description) and blocks on a response — a UI prompt, a Slack message, a CLI `y/n`. Nothing in the loop advances until that response arrives, and a "no" needs to feed back into the model as a real observation ("user declined; do not retry with the same arguments") rather than a silent failure it might reinterpret as a transient error worth another shot.
+
+## Designing the Boundaries Well
+
+Two mistakes show up constantly:
+
+- **Coarse rules.** Blanket-approving every call to a tool named `run_shell` treats `ls` and `rm -rf /` identically. Match on the argument shape, not just the tool name — `git status` and `git push --force` are not the same risk.
+- **Approval fatigue by default.** Starting everything in Ask and loosening later feels safe, but it trains users to rubber-stamp. Start from what's actually reversible and low-blast-radius, put that in Allow, and keep Ask for the genuinely consequential calls.
+
+A good rule of thumb: if undoing the action costs more than five minutes of someone's time, it belongs in Ask or Deny, not Allow.
+
+**Related:** [The Harness: Everything Around the Model](/learn/harness-design/what-is-a-harness), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Building the Control Loop](/learn/harness-design/the-control-loop)

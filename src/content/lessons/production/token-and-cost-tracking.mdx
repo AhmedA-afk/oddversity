@@ -1,0 +1,50 @@
+---
+title: "Track Cost Per Request and Per User"
+track: "production"
+status: live
+summary: "Attribute every LLM call's token spend to a feature, user, and prompt version so you see the bill coming before it arrives."
+duration: "5 min read"
+---
+
+A single "AI is expensive this month" invoice tells you nothing you can act on. Cost tracking means attaching a dollar figure to every individual call, then rolling those figures up by feature, by user, and by prompt version — so when spend spikes, you know exactly which line moved.
+
+## Why the aggregate number is useless
+
+Provider dashboards give you one total. That total can't tell you whether last week's jump came from a new feature, a runaway retry loop, one power user pasting entire codebases into the prompt, or a model upgrade that quietly doubled your per-token price. Without attribution, every cost conversation turns into guesswork, and the fix — capping a feature, rate-limiting a user, rolling back a prompt change — has no target to aim at.
+
+## What to record on every call
+
+The provider's response gives you input and output token counts for that call. Multiply each by your current per-token price (input and output are usually priced differently, and a system prompt cached across turns should be priced at the cheaper cached rate, not full price) and store the result alongside identifiers you'll want to group by later:
+
+```json
+{
+  "request_id": "req_8f2a",
+  "user_id": "u_4471",
+  "feature": "email-summarizer",
+  "prompt_version": "v3",
+  "model": "claude-...-2026xxxx",
+  "input_tokens": 1840,
+  "output_tokens": 312,
+  "cached_input_tokens": 1200,
+  "cost_usd": 0.0071,
+  "latency_ms": 940
+}
+```
+
+This is the same event you're already writing if you followed [structured logging for LLM calls](/learn/production/structured-logging-for-llm-calls) — cost is just fields on that row, not a separate system. Write it at the call site, right after the response comes back, so a crash downstream never loses the record.
+
+## Roll it up before it becomes a surprise
+
+Raw per-call rows are for debugging one incident; the dashboard you actually check is an aggregation:
+
+- **By feature** — which product surface is driving spend, so you can prioritize optimizing the expensive one over the cheap one.
+- **By user** — catches the outlier: a script hammering your API, a user with an unusually long document workflow, or a genuine abuse pattern.
+- **By prompt version** — the fastest way to catch a regression. If `v3` of a prompt costs 40% more per call than `v2` for the same task, someone padded the system prompt with context nobody's using — see [context rot](/learn/context-engineering/context-rot) for why that also hurts quality, not just cost.
+
+Set a daily or hourly rollup job rather than computing this live on every dashboard load — at meaningful volume, querying raw call logs per page view gets slow and expensive in its own right.
+
+## Turn the number into an action, not just a chart
+
+Tracking without a threshold is just a nicer chart. Pair the per-user and per-feature numbers with actual limits: a soft cap that switches a user to a cheaper model, a hard cap that queues or rejects further requests, an alert that fires when a feature's daily spend crosses a set multiple of its trailing average. The tracking work only pays off once it's wired to something that reacts — which is exactly the job of a [kill switch](/learn/production/feature-flags-and-kill-switches) sitting in front of the feature.
+
+**Related:** [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches), [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot)

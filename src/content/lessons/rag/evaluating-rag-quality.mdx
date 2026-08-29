@@ -1,0 +1,45 @@
+---
+title: "Evaluating RAG Quality"
+track: "rag"
+status: live
+summary: "Measure retrieval precision/recall and answer faithfulness so you know if a RAG change actually helped."
+duration: "5 min read"
+---
+
+"It feels better" is not an evaluation. RAG systems fail in two independent places — retrieval and generation — and you need a separate measurement for each, or you'll ship a change that helps one and quietly breaks the other.
+
+## Split the pipeline before you measure it
+
+A RAG answer is only as good as two things: whether you fetched the right chunks, and whether the model actually used them faithfully. Grade the whole pipeline with one end-to-end score and you can't tell which stage to fix. Grade each stage separately instead.
+
+**Retrieval quality** asks: of the chunks you fetched, how many were actually relevant to the question (precision), and of all the relevant chunks that exist in your corpus, how many did you find (recall)? A retriever with high precision but low recall is missing information the model needed. High recall but low precision buries the right chunk in noise, and long-context models don't handle that gracefully — see [Context Rot](/learn/context-engineering/context-rot).
+
+**Generation quality**, given the retrieved chunks, asks: did the model's answer stick to what those chunks actually said? This is usually called faithfulness or groundedness. A model can retrieve the perfect passage and still hallucinate a detail that isn't in it, or confidently answer from its own training data instead of the source you gave it. Faithfulness catches that; retrieval metrics can't.
+
+## Building a test set
+
+You need example questions paired with the chunks that *should* be retrieved and, ideally, a reference answer. Hand-labeling a few dozen realistic questions from your own domain beats a large but generic set — see [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset). For each question, log which chunks came back, in what order, and what the model said. That log is what every metric below runs on.
+
+Precision and recall are usually computed at a cutoff — "precision@5" means: of the top 5 chunks returned, what fraction were relevant. This matters because most generation steps only use the top handful of results regardless of how many the retriever technically found.
+
+```python
+def precision_at_k(retrieved_ids, relevant_ids, k):
+    top_k = retrieved_ids[:k]
+    hits = [c for c in top_k if c in relevant_ids]
+    return len(hits) / k
+
+def recall_at_k(retrieved_ids, relevant_ids, k):
+    top_k = retrieved_ids[:k]
+    hits = [c for c in top_k if c in relevant_ids]
+    return len(hits) / len(relevant_ids) if relevant_ids else 0
+```
+
+## Checking faithfulness
+
+Faithfulness is harder to compute automatically because "did the answer stay grounded in the source" is a judgment call, not a set overlap. The common approach is to break the model's answer into individual claims, then check each claim against the retrieved chunks — either with a second LLM acting as a judge, or with simpler string/entailment checks for narrower domains. A useful sanity check: rerun the same question with the retrieved chunks *removed* and see how much the answer changes. If it barely changes, the model wasn't really grounding on your data in the first place, which is exactly the gap [Grounding](/learn/hallucinations/grounding-with-source-documents) is meant to close.
+
+## What to actually track over time
+
+Pick one retrieval metric (recall@k is usually the more decision-relevant one — you can't generate a faithful answer from a chunk you never fetched) and one faithfulness metric, run both against your golden set on every change to chunking, embeddings, or prompt, and watch for regressions before they reach users. A RAG system that scores well on both is doing its job; one that scores well on retrieval but poorly on faithfulness has a prompting or model problem, not a search problem — and that distinction is the entire point of measuring the two separately.
+
+**Related:** [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)

@@ -1,0 +1,46 @@
+---
+title: "ReAct: Interleaving Reasoning and Acting"
+track: "agentic-ai"
+status: live
+summary: "The pattern where a model alternates Thought, Action, and Observation steps instead of reasoning once and acting blind."
+duration: "5 min read"
+---
+
+Ask a model to just "think step by step" and it reasons in a vacuum — every fact it uses has to come from memory, so a wrong assumption early on quietly poisons everything after it. ReAct fixes this by making the model stop and check its work against the real world, one step at a time.
+
+## The pattern
+
+ReAct (Reasoning + Acting) interleaves three kinds of steps in a loop:
+
+- **Thought** — the model reasons about what it knows and what it needs next
+- **Action** — it calls a tool (a search, a database query, a calculator) to get that information
+- **Observation** — the tool's actual result comes back into context
+
+The model repeats Thought → Action → Observation until it has enough grounded information to give a final answer. This is the same shape as the [agent loop](/learn/agentic-ai/the-agent-loop) — sense, think, act — but ReAct is specifically about writing the *reasoning* out loud between actions, not just picking the next tool call silently.
+
+A trace might look like:
+
+```
+Thought: I need this quarter's revenue figure before I can compute growth.
+Action: query_database("revenue", quarter="Q2 2026")
+Observation: $4.2M
+Thought: Now I need Q1's figure to compare against.
+Action: query_database("revenue", quarter="Q1 2026")
+Observation: $3.8M
+Thought: Growth is (4.2 - 3.8) / 3.8 ≈ 10.5%.
+Final answer: Revenue grew about 10.5% quarter over quarter.
+```
+
+Each thought is short and grounded in the observation right before it, rather than a single long chain of guesses.
+
+## Why interleaving beats reasoning-then-acting
+
+Compare this to plain [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting), where the model reasons through an entire problem before taking any action. If it makes a wrong assumption in step two of ten, nothing catches it — the model just reasons confidently to a wrong conclusion. That's a textbook case of what makes models [hallucinate](/learn/hallucinations/why-models-hallucinate): reasoning that's fluent but ungrounded.
+
+ReAct breaks the chain into short hops, each checked against a real observation before the next thought is built. A wrong assumption gets corrected within one or two steps instead of compounding for ten. This is also why ReAct traces are easier to debug — you can watch exactly where reasoning and reality diverged, instead of untangling one long paragraph of speculation.
+
+## The tradeoff
+
+Interleaving isn't free. Each round trip costs a tool call and a fresh model turn, so ReAct is slower and more token-hungry than reasoning straight to an answer. It earns that cost specifically on tasks where facts change between steps or aren't in the model's training data at all — multi-hop lookups, live data, anything requiring verification along the way. For a task that's genuinely self-contained — no external facts needed — a plain prompt or a single reasoning pass is cheaper and just as accurate; see [when a workflow beats an agent](/learn/agentic-ai/when-not-to-use-an-agent) for how to tell the difference.
+
+**Related:** [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent)

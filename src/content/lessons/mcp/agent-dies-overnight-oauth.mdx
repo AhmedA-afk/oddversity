@@ -1,0 +1,66 @@
+---
+title: "Why your agent dies overnight: OAuth token refresh"
+track: mcp
+order: 2
+status: live
+summary: The classic MCP failure — everything works in the demo, then the agent goes silent at 3am because a token expired and nothing refreshed it.
+duration: 14 min
+---
+
+Here's a bug that has cost more debugging hours than almost any other in agent land: it works perfectly when you test it, and then hours later — often overnight — the agent quietly stops doing anything useful. The cause is almost always an **expired access token that never got refreshed.**
+
+## The setup that fails
+
+Your MCP server calls some third-party API (Google, GitHub, a SaaS) using an OAuth **access token**. Access tokens are short-lived by design — often one hour. You grab one at startup, it works, you ship. An hour later it's dead, and your server keeps sending it.
+
+## Why it's silent
+
+The failure is quiet for two reasons:
+
+1. The API returns a `401 Unauthorized`, but if your tool swallows errors it just returns nothing — and the model, handed nothing, moves on.
+2. Nobody's watching at 3am. The demo passed; everyone went home.
+
+## The fix: refresh before you're asked
+
+Along with the access token, OAuth gives you a long-lived **refresh token**. Use it to mint a new access token *before* the old one expires — don't wait for a 401.
+
+```python
+import time, requests
+
+class Token:
+    def __init__(self, access, refresh, expires_at):
+        self.access, self.refresh, self.expires_at = access, refresh, expires_at
+
+    def valid(self) -> str:
+        # refresh 60s early — never cut it close
+        if time.time() > self.expires_at - 60:
+            self._refresh()
+        return self.access
+
+    def _refresh(self):
+        r = requests.post(TOKEN_URL, data={
+            "grant_type": "refresh_token",
+            "refresh_token": self.refresh,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+        })
+        r.raise_for_status()
+        data = r.json()
+        self.access = data["access_token"]
+        self.expires_at = time.time() + data["expires_in"]
+        # some providers rotate the refresh token — store the new one!
+        if "refresh_token" in data:
+            self.refresh = data["refresh_token"]
+```
+
+Call `token.valid()` on every request and expiry stops being your problem.
+
+## Three things that still bite
+
+- **Rotating refresh tokens.** Some providers hand you a *new* refresh token on each refresh and invalidate the old one. If you don't persist it, you're locked out next time. (Handled above — persist it.)
+- **Refresh tokens expire too**, just slowly (days to months, or on password change). When that happens you need real re-authentication, not another refresh. Fail *loudly* here.
+- **Never swallow the 401.** Surface auth failures as an explicit tool error so the model — and your logs — know what happened.
+
+## The takeaway
+
+Treat tokens as expiring by default and refresh proactively. "It worked in the demo" and "it works overnight" are two different claims, and only the second one ships.

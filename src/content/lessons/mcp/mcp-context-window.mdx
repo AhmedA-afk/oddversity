@@ -1,0 +1,40 @@
+---
+title: Stop your MCP tools eating the context window
+track: mcp
+order: 3
+status: live
+summary: Tool definitions are sent on every call. Ten verbose tools can quietly cost you thousands of tokens per turn — here's how to find and fix it.
+duration: 11 min
+---
+
+Every time the model takes a turn, the definitions of *all* your available tools are sent along with the prompt — names, descriptions, and full parameter schemas. It's easy to forget, because you wrote those definitions once and never see them again. But they're on the bill every single turn.
+
+## Do the math on your own tools
+
+Ten tools with rich descriptions and nested parameter schemas can easily run **1,500–3,000 tokens**. If your agent takes 8 turns to finish a task, you've paid for those definitions eight times — before a single word of actual work.
+
+```text
+10 tools × ~250 tokens each   = ~2,500 tokens
+× 8 turns in a task           = ~20,000 tokens
+                                just to remind the model what its tools are
+```
+
+That's often larger than the prompt you were worrying about.
+
+## Three fixes, in order of payoff
+
+### 1. Tighten the schemas
+
+Long, chatty tool descriptions don't make the model smarter — they make it poorer. Write the description like a good docstring: one clear sentence. Drop parameters the model never needs to set. From [Build your first MCP server](/learn/mcp/first-mcp-server): the docstring *is* the schema, so editing it is free and immediate.
+
+### 2. Don't expose every tool at once
+
+If a task only touches three tools, the model only needs those three. Group tools and load the relevant set per task, rather than presenting all forty on every call. Fewer, sharper tools also improve tool-*choice* accuracy — the model picks better from a short menu.
+
+### 3. Summarise tool *results*, not just definitions
+
+A tool that returns a 5,000-token blob of JSON puts all of it into context, where it sits for the rest of the conversation. Have the tool return only what the model needs, or summarise before returning.
+
+## Measure it
+
+Don't guess — count. Log the token count of your serialized tool definitions once, and you'll usually find an easy 40–60% to cut. This is the same discipline from [Tokens, context & cost](/learn/ai-foundations/tokens-context-cost): measure before you optimise, and the fix picks itself.

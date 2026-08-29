@@ -1,0 +1,49 @@
+---
+title: "Rate Limits and Retry Strategies"
+track: "genai-app-dev"
+status: live
+summary: "Handle 429s and transient provider failures with backoff, jitter, and queuing instead of crashing the request."
+duration: "5 min read"
+---
+
+Every LLM provider caps how many requests and tokens you can send per minute. Hit the cap and you get a 429 back. What your app does next is the difference between a five-second delay the user never notices and a stack trace in production.
+
+## Why rate limits exist
+
+Providers set limits per account, usually split into requests-per-minute and tokens-per-minute, and the tighter of the two is the one that bites you. A summarization feature that sends long documents can exhaust its token budget in a handful of calls, well before it comes close to the request count. Limits typically rise automatically as your usage and spend grow, but a naive burst of concurrent calls — like fanning out one request per item in a batch job — can trip them long before you're near your steady-state ceiling.
+
+## Read the error before you react
+
+A 429 isn't the only failure worth retrying. Timeouts, connection resets, and 5xx server errors are usually transient too — retrying them is safe. A 400 (bad request) or 401 (bad auth) will fail identically every time, so retrying just wastes latency and burns your remaining rate-limit budget on calls that can't succeed. Branch on status code before you decide to retry at all.
+
+When a provider does return a 429 or 503, check the response for a `Retry-After` header first. If it's present, wait exactly that long — the provider is telling you precisely when capacity frees up, and it's more accurate than any guess your own backoff logic could make.
+
+## Exponential backoff with jitter
+
+When there's no `Retry-After` header, back off exponentially: wait 1 second, then 2, then 4, then 8, doubling each retry up to a capped maximum (commonly 30–60 seconds) and a maximum retry count (3–5 is typical) before giving up and surfacing an error.
+
+Add random jitter to each wait so retries don't synchronize:
+
+```python
+import random
+import time
+
+def backoff_delay(attempt, base=1, cap=60):
+    exp = min(cap, base * (2 ** attempt))
+    return random.uniform(0, exp)  # full jitter
+
+for attempt in range(5):
+    try:
+        response = call_model(prompt)
+        break
+    except RateLimitError:
+        time.sleep(backoff_delay(attempt))
+```
+
+Without jitter, every client that got rate-limited at the same moment retries at the same moment, recreating the exact spike that caused the 429 in the first place. Jitter spreads those retries out so the queue actually drains.
+
+## Queuing beyond retries
+
+Retries handle occasional spikes. If your app regularly saturates its rate limit — a batch job processing thousands of records, or a spike in concurrent users — put requests through a queue with a fixed concurrency limit instead of firing them all and hoping backoff sorts it out. A worker pool that only ever runs N calls at once keeps you comfortably under the ceiling and turns rate limiting from an exception path into a non-event. This pairs naturally with the rest of your [feature's request path](/learn/genai-app-dev/anatomy-of-a-genai-feature): the queue sits between your backend and the provider call, so retries and backoff become one contained layer instead of scattered try/except blocks.
+
+**Related:** [Anatomy of a GenAI Feature](/learn/genai-app-dev/anatomy-of-a-genai-feature), [Shipping Your First End-to-End GenAI App](/learn/genai-app-dev/shipping-your-first-end-to-end-app), [Tokens, Context, and Cost](/learn/ai-foundations/tokens-context-cost)

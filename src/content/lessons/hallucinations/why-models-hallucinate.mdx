@@ -1,0 +1,33 @@
+---
+title: "Why Models Hallucinate: The Mechanics Behind Confident Wrong Answers"
+track: "hallucinations"
+status: live
+summary: "The training and inference mechanics behind confident wrong answers, and why fluent text isn't the same as true text."
+duration: "5 min read"
+---
+
+Ask a model for a paper's DOI or a court case's citation and it will often hand you one — formatted correctly, plausible-sounding, and completely made up. That's not a bug you can patch out. It's a direct consequence of how these models are built and trained.
+
+## The model is a next-token predictor, not a fact database
+
+A language model doesn't look up answers. At each step it estimates a probability distribution over the next token, given everything before it, and samples from that distribution. Nothing in that process checks a claim against reality — it only checks a claim against "what tends to follow text like this."
+
+So when you ask for a citation, the model isn't retrieving a real paper. It's generating a sequence that has the statistical shape of a citation: author names that sound right for the topic, a plausible journal, a year in the right range. If enough real citations with that shape existed in training data, the fake one can be nearly indistinguishable in form from a real one — right up until you try to find it.
+
+## Training rewards confident answers, not calibrated uncertainty
+
+Pretraining teaches the model the distribution of human text, which is mostly written by people who sound like they know what they're talking about. Instruction tuning and RLHF push further in that direction: evaluators (human or automated) tend to rate a fluent, specific, confident answer higher than a hedged one, even when the confident answer is wrong. A model that says "I'm not sure" scores worse on many training signals than one that guesses well — so guessing well, including guessing convincingly when it's wrong, gets reinforced.
+
+This is why hallucinations so often come dressed in the register of expertise: complete sentences, specific numbers, an authoritative tone. The model isn't lying in the human sense — it has no separate channel that "knows" the true answer and is choosing to withhold it. It's producing the most probable-sounding continuation, and probable-sounding and true come apart whenever the training data thins out.
+
+## Where the gaps actually open up
+
+Three situations reliably widen the gap between fluent and true:
+
+- **Long-tail facts.** A famous event was described thousands of times in training data; an obscure internal API or a niche researcher's paper was described once or never. The model fills the gap with the nearest plausible pattern.
+- **Post-training-cutoff events.** The model has no signal at all past its knowledge cutoff, so it extrapolates from older trends and states the extrapolation as fact.
+- **Precise, structured outputs.** Exact quotes, page numbers, statute numbers, and API parameter names have almost no tolerance for "approximately right," but the model generates them the same way it generates everything else — by pattern, not by lookup.
+
+None of this means hallucination is unfixable — it means the fix has to work *with* these mechanics rather than hoping the model will self-correct. That's the point of [grounding answers in supplied sources](/learn/hallucinations/grounding-with-source-documents) and explicitly [training or prompting models to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know) instead of guessing.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Teaching a Model to Say 'I Don't Know'](/learn/hallucinations/teaching-models-to-say-i-dont-know)

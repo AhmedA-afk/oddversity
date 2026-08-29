@@ -1,0 +1,35 @@
+---
+title: "Gradient Descent, Intuitively"
+track: "maths-foundations"
+status: live
+summary: "Gradient descent nudges a model's parameters a little at a time in the direction that most reduces error — the engine behind all neural-network training."
+duration: "7 min read"
+---
+
+Training a neural network means finding values for millions of parameters that make its predictions good. Gradient descent is the algorithm that does the finding. Hold this picture: you're on a foggy hillside and want the lowest point. You can't see the valley, but you can feel the slope under your feet — so you step downhill a little, and repeat.
+
+## The loss is the landscape
+
+First you need a number for how wrong the model is right now: the **loss**. High loss means bad predictions, low loss means good ones. Every setting of the parameters produces some loss, so you can imagine a vast surface — the "loss landscape" — where height is loss and every horizontal direction is one parameter you could turn. Training is the search for a low point on that surface.
+
+## The gradient points uphill, so step the other way
+
+The **gradient** is the slope of the loss with respect to every parameter at once — the direction that increases loss fastest. To *decrease* loss, you step the opposite way. That's the whole idea in one line:
+
+```text
+new_parameter = old_parameter − learning_rate × gradient
+```
+
+Do that for every parameter, over and over.
+
+## The learning rate is your step size
+
+The `learning_rate` sets how big each step is. Too large and you bound across the valley and never settle; too small and training crawls. It's the single most important knob to get roughly right.
+
+## One noisy step at a time
+
+Computing the gradient over the entire dataset every step is expensive, so real training uses **mini-batches**: estimate the gradient from a small sample, take a step, grab the next batch. This is *stochastic* gradient descent — noisier, but far faster, and the noise even helps skip past shallow dips.
+
+That's the engine. Everything that "learns" — a tiny classifier or a frontier LLM — is running this loop: measure error, compute the gradient, step downhill, repeat billions of times. The values it is nudging are [vectors](/learn/maths-foundations/what-is-a-vector) of numbers, and the final output layer is squeezed into probabilities by [the softmax function](/learn/maths-foundations/the-softmax-function).
+
+**Related:** [Vectors: The Basic Unit of Data](/learn/maths-foundations/what-is-a-vector), [The Softmax Function](/learn/maths-foundations/the-softmax-function)

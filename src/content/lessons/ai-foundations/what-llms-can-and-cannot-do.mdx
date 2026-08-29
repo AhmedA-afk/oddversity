@@ -1,0 +1,33 @@
+---
+title: "A Mental Model for What LLMs Can and Can't Do"
+track: "ai-foundations"
+status: live
+summary: "A working model of LLM strengths and hard limits, so you stop being surprised by what breaks."
+duration: "5 min read"
+---
+
+An LLM is a pattern-completion engine trained on next-token prediction, not a database and not a calculator. Almost every "why did it just do that" moment traces back to forgetting this one fact.
+
+## What it's genuinely good at
+
+LLMs are strong at anything that looks like fluent pattern transformation: rewriting, summarizing, translating, explaining code, drafting boilerplate, brainstorming variations, and holding a coherent conversational thread. They're also good at synthesis — pulling together ideas from disparate parts of a prompt and producing something that reads as if a knowledgeable person wrote it, because the training data is full of knowledgeable people writing things. Code generation for common patterns is a particular strength: there's an enormous amount of code in the training data, so the model has seen thousands of variations of "parse a CSV" or "write a REST handler."
+
+The common thread: these are tasks where "sounds right" and "is right" are strongly correlated, because fluent-sounding text was the training signal.
+
+## Where the correlation breaks
+
+The failure modes cluster around cases where fluency and correctness come apart.
+
+**Arithmetic and exact computation.** A model predicts the next plausible token, not the result of a computation. It can often get small sums right because it's memorized the pattern, but it has no internal calculator, so multi-digit multiplication or exact counting degrades fast. Pair it with a code interpreter or calculator tool for anything that needs to be exactly right — see [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling).
+
+**Facts past the training cutoff, or facts that were never in it.** The model's knowledge is frozen at training time and weighted toward what appeared often in its data. Ask about last week's news, an obscure internal API, or a rarely-discussed niche topic, and it will often generate something fluent and wrong rather than say "I don't know" — because fluent completion is the only thing it was ever trained to produce. This is the root of hallucination, covered in depth in [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate).
+
+**True multi-step reasoning under novel constraints.** The model can imitate reasoning it has seen the shape of before, but genuinely novel logic puzzles, especially ones requiring it to track state precisely over many steps, are where it's most likely to confidently produce a plausible-looking wrong answer.
+
+**Knowing what it doesn't know.** There's no built-in confidence signal a model reliably exposes. It will state a fabricated citation with the same tone as a verified one, because tone and confidence in the output text aren't wired to actual certainty inside the model.
+
+## The practical rule of thumb
+
+Ask: "Is this task mostly about producing fluent, well-patterned text, or does it need to be exactly, verifiably correct?" The first category is where LLMs shine unassisted. The second needs scaffolding — retrieval to ground facts, tools to do exact computation, or a human check — layered around the model, not left to the model alone. That scaffolding is most of what separates a demo from a shipped product; see [How LLMs Work](/learn/ai-foundations/how-llms-work) for the mechanics underneath, and [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network) for the layer below that.
+
+**Related:** [How LLMs Work](/learn/ai-foundations/how-llms-work), [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling)

@@ -1,0 +1,51 @@
+---
+title: "Shipping Your First End-to-End GenAI App"
+track: "genai-app-dev"
+status: live
+summary: "Wire streaming, retries, and error handling into one deployed request-response path, not four separate demos."
+duration: "6 min read"
+---
+
+Every piece of a GenAI feature is easy in isolation. A streaming demo. A retry wrapper. A prompt that works in a playground. Shipping is what happens when those pieces have to survive contact with each other, in one process, under a real request.
+
+## The path a real request takes
+
+A production request is not "call the model, get text back." It's a sequence, and each step can fail independently:
+
+1. **Validate the input** — reject empty, oversized, or malformed requests before they cost you a token.
+2. **Assemble context** — pull in system prompt, retrieved documents, conversation history. This is where [context engineering](/learn/context-engineering/context-engineering-vs-prompting) choices actually land.
+3. **Call the provider** — with a timeout, not an open-ended wait.
+4. **Stream the response back** — see [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui) for the mechanics.
+5. **Handle failure at every step above** — a bad request, a timeout, a rate limit, a mid-stream disconnect. See [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies).
+6. **Log what happened** — request, response, latency, token count, error if any.
+
+Step 6 is the one people skip first, and the one you need most the first time something goes wrong in production and you have no idea why.
+
+## Build it as a pipe, not a blob
+
+The instinct on a first pass is to write one function that does everything: takes the request, builds the prompt, calls the API, streams the result, catches errors inline. It works, right up until you need to add caching, or swap providers, or add a retry only on the model-call step and not the whole request.
+
+Separate the stages so each one can fail, retry, or be replaced without touching the others:
+
+```ts
+async function handleChatRequest(req: Request) {
+  const input = validate(req.body);            // fails fast, no API call
+  const context = await assembleContext(input); // retrieval, history, system prompt
+  const stream = await callModelWithRetry(context); // isolated retry/timeout logic
+  return streamToClient(stream, { onError: logAndFallback });
+}
+```
+
+Each function in that chain is independently testable, and each is where a specific failure mode lives — bad input dies in `validate`, a flaky provider dies in `callModelWithRetry`, a dropped client connection dies in `streamToClient`.
+
+## The budget you're actually shipping against
+
+Before you deploy, know three numbers for this feature: **latency** (how long a user will wait before they bail), **cost** (dollars per request, and per user per month if usage is unbounded), and **failure rate** you're willing to tolerate before the fallback kicks in. These aren't nice-to-haves you add later — they decide real design choices now: whether you stream or wait for the full response, whether you cache the context assembly step, whether a timeout is 5 seconds or 30.
+
+A feature with no budget in mind ships fine in the demo and then surprises you on the first invoice or the first angry user staring at a spinner.
+
+## What "done" looks like
+
+The end-to-end app is done when it survives the boring failures, not just the happy path: a timed-out provider call, a malformed model response, a user who disconnects mid-stream, a burst of concurrent requests. If you've read [Anatomy of a GenAI Feature](/learn/genai-app-dev/anatomy-of-a-genai-feature), this lesson is that anatomy assembled and load-bearing — the point where the separate parts become one thing a user can actually depend on.
+
+**Related:** [Anatomy of a GenAI Feature](/learn/genai-app-dev/anatomy-of-a-genai-feature), [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies)

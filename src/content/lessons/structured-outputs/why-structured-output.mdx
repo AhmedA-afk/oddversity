@@ -1,0 +1,43 @@
+---
+title: "Why Structured Output: Free Text vs Machine-Parseable Data"
+track: "structured-outputs"
+status: live
+summary: "Free text is for humans; pipelines need machine-parseable data — see exactly what breaks when you skip that distinction."
+duration: "4 min read"
+---
+
+Ask a model "extract the name, email, and order total from this message" and you'll get an answer that reads well and parses terribly. Structured output is the fix: instead of a sentence, the model returns data shaped to a contract your code already knows how to handle.
+
+## The problem with free text
+
+Say you ask for a customer's order details and the model replies:
+
+"Sure! The customer is Priya Shah (priya@example.com) and her order came to $84.50."
+
+A human reads that instantly. Your code doesn't. To get `name`, `email`, and `total` out of it, you're now writing regex or another LLM call just to undo the first one. Change the wording slightly — "totalling $84.50" instead of "came to $84.50" — and a brittle parser breaks. Multiply that across thousands of requests and inconsistent phrasing turns into a steady stream of silent extraction failures.
+
+Now compare a structured response:
+
+```json
+{
+  "name": "Priya Shah",
+  "email": "priya@example.com",
+  "total": 84.50
+}
+```
+
+Any language, any downstream system, one line of code: `data.total`. No regex, no synonym-guessing, no re-prompting to reformat something that was already correct.
+
+## Where free text is still right
+
+This isn't "always force JSON." A chat reply, a summary, a piece of marketing copy — anything a human reads directly — should stay free text, because forcing it into fields makes it worse to read and buys you nothing. Structured output earns its keep specifically at the boundary between a model and code: when the response feeds a database, an API call, a UI component, or another program's next step. If nothing downstream parses the output, don't structure it.
+
+## What "structured" actually means
+
+Structured output isn't just "ask nicely for JSON." Modern APIs give you real mechanisms: JSON mode that guarantees syntactically valid JSON, and constrained decoding against a [JSON Schema](/learn/structured-outputs/json-schema-for-outputs) that guarantees both the syntax and the shape — right keys, right types, required fields present. Without one of these, you're relying on the model to follow formatting instructions from a text prompt, and it will occasionally add a stray comment, wrap the JSON in prose, or drop a field. With schema-constrained output, that class of failure mostly disappears at generation time, and what remains is caught by [validation on the way out](/learn/structured-outputs/validation-and-auto-repair).
+
+## The pipeline payoff
+
+The real win compounds. One inconsistent field breaks a downstream join. One malformed key breaks a UI render. Structured output turns "probably works" into "matches the contract or throws a clear error you can catch" — which is the difference between a demo and something you can put in production.
+
+**Related:** [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair)

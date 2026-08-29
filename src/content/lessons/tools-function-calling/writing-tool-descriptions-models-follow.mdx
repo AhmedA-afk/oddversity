@@ -1,0 +1,47 @@
+---
+title: "Writing Tool Descriptions Models Actually Follow"
+track: "tools-function-calling"
+status: live
+summary: "The tool's description field is a prompt, not a comment — write it to tell the model when and how to call the tool."
+duration: "6 min read"
+---
+
+A model doesn't read your code. When it decides whether to call `search_orders` or `refund_order`, the only thing it sees is the name, the description, and the parameter docs you wrote — everything else about the tool is invisible to it.
+
+## Treat the description as a prompt
+
+Most tool-calling failures aren't the model being dumb — they're descriptions written for a human skimming an API reference instead of a model deciding, mid-conversation, whether this tool applies right now. A description like "Searches orders" tells the model almost nothing about *when* to reach for it. Compare that to something written for the actual reader:
+
+> Search the customer's order history by date range, status, or product name. Use this before issuing a refund, to confirm the order exists and check its current status. Do not use this for orders placed in the last 5 minutes — they may not be indexed yet; tell the user to wait.
+
+That second version answers the three questions a model is silently asking: what does this do, when should I reach for it instead of another tool, and when should I *not*. The when-not-to clause is easy to skip and often the highest-leverage sentence in the whole description — it's what stops a model from calling `refund_order` when `search_orders` was what the user actually needed.
+
+## Describe every parameter, not just the tool
+
+The same discipline applies one level down. A parameter named `status` with no description leaves the model guessing whether valid values are `"shipped"` or `"SHIPPED"` or `"3"`. Spell out the format, the units, and the allowed values directly in the parameter description:
+
+```json
+{
+  "name": "status",
+  "type": "string",
+  "description": "Order status filter. One of: pending, shipped, delivered, cancelled. Omit to search all statuses."
+}
+```
+
+This is the same instinct behind [designing a tool schema](/learn/tools-function-calling/designing-a-tool-schema) in the first place — a schema only constrains the *shape* of the call; the description is what constrains the model's *judgment* about making it.
+
+## Write for the failure case, not just the happy path
+
+Read your own description and ask: what's the most tempting wrong call a model could make with this tool, given a slightly ambiguous user request? Then write the sentence that heads that off. Common patterns worth stating explicitly:
+
+- **Overlapping tools.** If you have both `search_orders` and `get_order_by_id`, say which one wins when the user gives an order number versus a vague description.
+- **Side effects.** If a tool mutates state (sends an email, issues a refund, deletes a record), say so plainly — "this action is irreversible" changes how cautiously a model uses it.
+- **Units and defaults.** "Amount in cents, not dollars" or "defaults to the last 30 days if omitted" prevents an entire category of silent bugs.
+
+None of this requires more tokens than a vague description does — it just requires spending them on the model's actual decision points instead of restating the function name in prose.
+
+## Iterate like you would a prompt
+
+Because the description *is* a prompt, treat it the same way: when a tool gets called wrong, don't just patch the downstream code — read the description again and ask what a model, seeing only that text, would reasonably have concluded. Small wording changes ("use this only when…") routinely fix mis-routing that no amount of extra parameter validation will catch, because the problem was never the shape of the call — it was the model not knowing which tool to reach for.
+
+**Related:** [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling), [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema)

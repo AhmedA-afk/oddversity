@@ -1,0 +1,27 @@
+---
+title: "AI vs. Machine Learning vs. Deep Learning"
+track: "ai-foundations"
+status: live
+summary: "AI, machine learning, and deep learning are nested fields, not synonyms — see exactly where each boundary sits."
+duration: "4 min read"
+---
+
+You'll hear these three terms used interchangeably in marketing copy, but they name three nested circles, not three synonyms. Getting the boundaries straight matters because it tells you what kind of system you're actually building or evaluating.
+
+## Artificial intelligence: the outer circle
+
+AI is the broadest term: any system that performs a task we'd normally say requires human-like intelligence. That includes a chess program built from hand-written rules in 1997, a spam filter built from hard-coded keyword lists, and a modern chatbot. None of those approaches need to involve learning from data at all — a rules engine that says "if the email contains 'wire transfer' and 'urgent,' flag it" is AI by this definition, even though it never trains on anything.
+
+## Machine learning: systems that learn from data
+
+Machine learning (ML) is the subset of AI where, instead of a person writing the rules, the system learns the rules from examples. You give it labeled data — emails marked spam or not-spam — and an algorithm (logistic regression, decision trees, support vector machines) finds the pattern that separates them. The output is still a fairly simple mathematical function, and a person can often inspect it and explain why it made a given decision. This is most of "data science" as practiced from the 1990s through the 2010s: predicting churn, scoring credit risk, recommending products.
+
+## Deep learning: ML with neural networks
+
+Deep learning is the subset of ML that uses neural networks with many stacked layers (hence "deep") to learn the pattern. Instead of you deciding which features matter — "email length," "sender domain" — the network learns its own internal representations directly from raw input: pixels, audio waveforms, or raw text. This is what makes deep learning good at messy, unstructured data where hand-designing features is impractical. It's also why deep models are much harder to explain than a decision tree: the "reasoning" is spread across millions or billions of weighted connections, not a readable rule.
+
+## Where LLMs fit
+
+Large language models sit at the innermost point of this nesting: they're a specific deep learning architecture (the transformer, covered in [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture)) trained on enormous amounts of text to do one thing well — predict the next token — and that turns out to be enough to produce translation, coding, and conversation. So when someone says "the AI wrote this," what they usually mean, precisely, is: a deep learning model, trained via machine learning, is one instance of the broader field of AI. Knowing which layer you're actually talking about helps you reason correctly about what's learned versus hand-coded, and what's explainable versus not — see [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network) for the mechanics underneath deep learning itself.
+
+**Related:** [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network), [How LLMs Work](/learn/ai-foundations/how-llms-work), [A Mental Model for What LLMs Can and Can't Do](/learn/ai-foundations/what-llms-can-and-cannot-do)

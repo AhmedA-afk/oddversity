@@ -1,0 +1,19 @@
+{
+  "name": "fieldguide",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fieldguide — a free, hands-on learning platform for the agentic-AI era.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.6.1",
+    "@astrojs/mdx": "^4.2.3",
+    "@astrojs/sitemap": "^3.3.0"
+  }
+}

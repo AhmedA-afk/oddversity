@@ -1,0 +1,34 @@
+---
+title: How LLMs actually work
+track: ai-foundations
+order: 1
+status: live
+summary: A working mental model of a large language model — enough to reason about what it can and can't do, without the mysticism.
+duration: 12 min read
+---
+
+A large language model is a function. You hand it some text, it returns a probability distribution over the next token, you sample one, append it, and repeat. Everything else — chat, tools, agents, "reasoning" — is built on that one loop.
+
+## The one-sentence model
+
+An LLM predicts the next token given all the tokens so far. That's it. It was trained by being shown enormous amounts of text and nudged, billions of times, to make its guesses match what actually came next.
+
+Hold onto that, because it explains almost every surprising behaviour you'll hit:
+
+- It's fluent because predicting the next word *is* fluency.
+- It hallucinates because a plausible-sounding token is often more probable than an "I don't know."
+- It's steerable because your prompt is just more context conditioning that distribution.
+
+## Tokens, not words
+
+Models don't see words or letters — they see **tokens**, chunks of text that are often a word, sometimes a fragment. `"agentic"` might split into `agent` + `ic`. This matters more than it sounds: token boundaries are why models miscount letters, and why cost and context limits are measured in tokens, not words.
+
+> Rule of thumb: ~4 characters per token in English, or ~0.75 words. A 1,000-word essay is roughly 1,300 tokens.
+
+## It predicts, it doesn't look up
+
+There's no database inside the model. Facts are baked into billions of weights as statistical tendencies, which is why a model can be confidently wrong and can't tell you its training cutoff with certainty. When you need real facts, you give them to the model in the prompt — that's what retrieval (RAG) and tools are for. We build exactly that later in the map.
+
+## What this buys you
+
+Once you internalise "it predicts the next token," you stop being surprised. You start asking the right question: *what context makes the right continuation the most probable one?* That question is the whole craft, and it's where the next track — [Prompt Engineering](/learn/prompt-engineering) — begins.

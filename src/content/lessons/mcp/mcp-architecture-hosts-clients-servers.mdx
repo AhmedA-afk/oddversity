@@ -1,0 +1,45 @@
+---
+title: "MCP Architecture: Hosts, Clients, Servers"
+track: "mcp"
+status: live
+summary: "Map the host, client, and server roles in MCP and trace how a single tool call travels between them."
+duration: "5 min read"
+---
+
+MCP has three moving parts with confusingly similar names. Once you can point at each one in a running app, the rest of the protocol stops feeling mysterious.
+
+## The three roles
+
+**Host** is the application the user actually opens — Claude Desktop, Claude Code, an IDE, your own agent app. The host owns the UI, holds the conversation, and decides when to call a tool.
+
+**Client** lives inside the host and manages exactly one connection to exactly one server. If a host is talking to three MCP servers, it's running three clients internally, each pinned to its server, each with its own session state. You never build a client yourself — the host's MCP library creates and drives them for you.
+
+**Server** is the thing you actually write. It's a small, focused process (or hosted endpoint) that exposes capabilities — tools, resources, prompts — over the protocol. A server doesn't know or care what host is talking to it. That's the whole point: write the server once, and Claude Desktop, an IDE, and a custom agent can all use it unmodified.
+
+The one-client-per-server rule matters in practice: it's why a host can sandbox each connection, and why one misbehaving server can't see traffic meant for another.
+
+## Following one request
+
+Say you ask a host "what's in my GitHub inbox?" and it has a GitHub MCP server connected:
+
+1. The host's model decides a tool call is needed and picks `list_notifications` from the tools that client advertised.
+2. The **client** for that server sends the call as a JSON-RPC 2.0 request over whatever transport that connection uses.
+3. The **server** executes it — hits the GitHub API, formats a result — and sends back a JSON-RPC response.
+4. The client hands the result to the host, which feeds it back into the model's context so it can write the answer.
+
+Every arrow in that chain is JSON-RPC. Nothing host-specific leaks into the server, and nothing server-specific leaks into the host — the client is the seam that keeps them decoupled. This is the same shape covered in [Your First MCP Server](/learn/mcp/first-mcp-server), just named explicitly here.
+
+## Transports: how the wire actually looks
+
+The roles above don't say how bytes move — that's the transport, chosen per connection:
+
+- **stdio** — the host spawns the server as a local subprocess and talks over its stdin/stdout. Simplest option, used for local tools running on the same machine as the host.
+- **Streamable HTTP** — the server runs as its own long-lived process (local or remote), and the client talks to it over HTTP, with the server able to stream multiple messages back on a request. This is how a hosted, shared, or remote server is reached.
+
+Same JSON-RPC messages either way — the transport just decides whether "the server" is a subprocess you launched or a URL you point at.
+
+## Why the split earns its complexity
+
+Splitting host, client, and server isn't accidental layering. It means a server author never touches host code, a host author never touches server internals, and a single host can juggle many servers with isolated failure domains — one server hanging or erroring doesn't take down the others. Once a server exposes something, the next question is what shape that something takes — covered in [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts).
+
+**Related:** [What Is MCP](/learn/mcp/what-is-mcp), [Your First MCP Server](/learn/mcp/first-mcp-server), [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts)

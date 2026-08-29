@@ -1,0 +1,35 @@
+---
+title: "MCP Tools, Resources, and Prompts"
+track: "mcp"
+status: live
+summary: "Distinguish MCP's three primitives - tools to call, resources to read, and prompts to reuse - and when a server should expose each."
+duration: "5 min read"
+---
+
+Every MCP server exposes capability through three distinct primitives, and mixing them up is the most common design mistake when building a [first MCP server](/learn/mcp/first-mcp-server). Get the primitive right and the [host, client, and server roles](/learn/mcp/mcp-architecture-hosts-clients-servers) each know exactly who is supposed to act on what.
+
+## Tools: things the model decides to call
+
+A tool is an action with side effects, or at least a computation the model chooses to invoke on its own. `search_issues`, `send_email`, `run_query` - these are tools. The model sees each tool's name, description, and input schema, and decides mid-conversation whether calling it helps answer the user. That decision-making is the whole point: tools are model-controlled. If you want the AI to reason about *whether* and *when* to do something, it belongs behind a tool.
+
+## Resources: things the app decides to load
+
+A resource is data the host application attaches to context - a file, a database row, a page of documentation - identified by a URI like `file:///project/notes.md` or `db://customers/142`. Unlike tools, resources aren't something the model calls in the middle of reasoning. The host (or the user, picking from a list) decides which resources to attach, then the content just sits in context like any other input. This is why resources fit read-heavy, low-judgment access: you don't need the model to reason about *whether* to read a file, you just want the file there.
+
+The practical test: if fetching the data has no side effects and the decision to include it can be made ahead of time by the app or the user, expose it as a resource, not a tool. Bundling read access into tools instead just burns [context window](/learn/mcp/mcp-context-window) on calls that didn't need to be reasoned about.
+
+## Prompts: templates the user picks
+
+A prompt in MCP is a reusable, parameterized instruction template the server exposes - think `/fix-failing-tests` or `/summarize-thread {channel}`. These show up as user-controlled shortcuts, often as slash commands or a menu in the host UI. The user picks a prompt, fills in its arguments, and the server returns a fully-formed message (or sequence of messages) that gets injected into the conversation. The model doesn't decide to use a prompt the way it decides to call a tool - a human does, deliberately, because they want a known-good starting point for a task the server author has already thought through.
+
+## Picking the right primitive
+
+A quick server-design checklist:
+
+- Does the model need to **decide** whether and when this happens, possibly with side effects? Use a **tool**.
+- Is this just **data** that should be available, with no decision-making required? Use a **resource**.
+- Is this a **workflow shortcut** a human explicitly invokes? Use a **prompt**.
+
+Most servers lean heavily on tools because that's what makes an agent capable of taking action. But a server that also exposes its stable, high-value read paths as resources - rather than wrapping everything in a tool call - gives the host more control over what lands in context, and gives the model one less irrelevant decision to make on every turn.
+
+**Related:** [Your First MCP Server](/learn/mcp/first-mcp-server), [MCP Architecture: Hosts, Clients, Servers](/learn/mcp/mcp-architecture-hosts-clients-servers), [MCP and the Context Window](/learn/mcp/mcp-context-window)

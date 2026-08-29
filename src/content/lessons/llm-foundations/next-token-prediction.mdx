@@ -1,0 +1,35 @@
+---
+title: "Next-Token Prediction: The One Objective"
+track: "llm-foundations"
+status: live
+summary: "Every LLM is trained to do one thing — predict the next token given everything before it — and that single objective is enough to produce reasoning, code, and conversation."
+duration: "6 min read"
+---
+
+For all their apparent variety, large language models are trained on a single, almost absurdly simple objective: given a sequence of tokens, predict the next one. Everything else — answering questions, writing code, holding a conversation — falls out of doing that one thing extremely well.
+
+## How the objective works
+
+During training the model reads enormous amounts of text. At every position it makes a prediction — a probability for each token in the vocabulary of what comes next — and is corrected toward the token that actually followed. Repeat across trillions of tokens and the model is pushed to internalise grammar, facts, style, and reasoning patterns, because all of them help it guess the next token more accurately.
+
+The output is not a single word; it's a **distribution** over every possible next token, turned into probabilities by [the softmax function](/learn/maths-foundations/the-softmax-function).
+
+## Generation is prediction in a loop
+
+At inference time the same machinery generates text:
+
+```text
+1. feed in the prompt (as tokens)
+2. predict a distribution over the next token
+3. sample one token from it
+4. append it to the sequence
+5. go back to step 2
+```
+
+That loop is the whole of "the model is typing." A chat reply is just this running until the model predicts a stop token.
+
+## Why one objective is enough
+
+It feels too simple to explain reasoning — but predicting the next token in *hard* text (a proof, a working function, a coherent argument) requires actually modelling the structure underneath it. Push that far enough, at scale, and useful capabilities emerge. It also explains the failure modes: a fluent, probable-sounding continuation can be confidently wrong, which is exactly where [hallucinations](/learn/hallucinations/why-models-hallucinate) come from.
+
+**Related:** [Tokenization](/learn/llm-foundations/tokenization-explained), [How LLMs Work](/learn/ai-foundations/how-llms-work)

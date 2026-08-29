@@ -1,0 +1,36 @@
+---
+title: "Chain-of-Thought: Getting the Model to Show Its Work"
+track: "prompt-engineering"
+status: live
+summary: "Ask a model to reason step by step before answering, and multi-step problems get noticeably more accurate."
+duration: "5 min read"
+---
+
+Ask a model "What's 17% of 340, minus half of 58?" and tell it to answer with just a number, and it will sometimes guess wrong on the arithmetic. Ask it to work through the steps first, and it gets it right far more often. That's chain-of-thought (CoT) prompting: asking the model to lay out its reasoning before committing to a final answer.
+
+## Why it works
+
+A language model produces its answer one token at a time, and each token is conditioned on everything that came before it, including its own prior output. If you demand the final number immediately, the model has to get the whole calculation right inside a single forward pass, with no scratch space. If you let it write "First, 17% of 340 is 57.8. Half of 58 is 29. 57.8 minus 29 is 28.8," each intermediate token becomes part of the context the next token is generated from. The model is effectively using its own output as working memory. This is the same mechanism behind [next-token prediction](/learn/llm-foundations/next-token-prediction): give the model more of the right tokens to condition on, and the next one gets easier to get right.
+
+## What it looks like in practice
+
+The simplest version is a single instruction: "Think step by step before answering." A more reliable version gives the model an explicit structure to fill in:
+
+```
+Solve this problem. Show your reasoning in numbered
+steps, then give the final answer on its own line
+prefixed with "Answer:".
+
+Problem: A store marks up a $40 item by 25%, then
+takes 10% off the marked-up price. What's the final price?
+```
+
+For harder or higher-stakes tasks, [few-shot prompting](/learn/prompt-engineering/few-shot-prompting) combines well with this: show one or two worked examples that include the reasoning, not just the answer, so the model has a concrete pattern to imitate rather than a bare instruction to interpret.
+
+## Where it helps and where it doesn't
+
+CoT earns its keep on tasks with real intermediate structure: arithmetic, multi-step logic, planning, and anything where an error early on compounds. It does little for tasks that are basically lookups or single-step judgments — classifying a sentence's sentiment, extracting a name from text, answering a fact the model already knows outright. On those, forcing a reasoning chain mostly adds latency and token cost without moving accuracy.
+
+It's also worth knowing that reasoning isn't free of its own failure mode: a chain of steps that looks orderly can still arrive at a wrong or fabricated conclusion, and a plausible-sounding derivation makes a bad answer more persuasive, not more correct. Treat CoT as a way to get better answers on structured problems, not as a guarantee of one. Modern reasoning-tuned models often generate an internal chain of thought automatically, without needing to be asked — but for a standard chat model handling a genuinely multi-step problem, explicitly prompting for it still pays off, and pairing it with clear [delimiters](/learn/prompt-engineering/delimiters-and-formatting) around the final answer makes the output easy to parse back out.
+
+**Related:** [Few-Shot Prompting](/learn/prompt-engineering/few-shot-prompting), [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Next-Token Prediction](/learn/llm-foundations/next-token-prediction)

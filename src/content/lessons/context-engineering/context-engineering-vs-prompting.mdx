@@ -1,0 +1,35 @@
+---
+title: "Context Engineering vs Prompt Engineering"
+track: "context-engineering"
+status: live
+summary: "Why what you put in the context window is a separate discipline from how you phrase the instruction."
+duration: "5 min read"
+---
+
+Prompt engineering asks "how do I word this instruction so the model understands what I want?" Context engineering asks a different question entirely: "what does the model need to see, in what order, to do this well?" Both matter, but they're not the same job, and conflating them is why a lot of "prompting" advice stops working once you're building a real agent instead of chatting in a text box.
+
+## The instruction is a small part of the input
+
+A single-turn chat prompt is mostly instruction: a question, maybe a style note. But an agent call is rarely that simple. By the time the model actually generates a response, its input might include a system prompt, tool definitions, retrieved documents, prior conversation turns, tool call results, and file contents pulled in along the way. The instruction you wrote is often a few hundred tokens sitting inside tens of thousands of tokens of everything else.
+
+Prompt engineering optimizes that few hundred tokens: clearer phrasing, better examples, explicit output format. Context engineering optimizes everything else: which documents get retrieved, how tool results get summarized before they're appended, what gets dropped when the window fills up, whether stale information from three tool calls ago is still sitting in there contradicting the newest data.
+
+## A good prompt fails on bad context
+
+You can write a flawless instruction and still get a wrong answer, because the model is reasoning over a context window that's cluttered, stale, or missing the one fact it actually needed. Common failure shapes:
+
+- **Wrong information present.** An outdated file version got pulled in, and the model answers from that instead of the current state.
+- **Right information absent.** The instruction references "the config" but the actual config file was never loaded into context — the model guesses.
+- **Right information, buried.** The relevant fact is in there, but it's paragraph 40 of a wall of retrieved text, competing with 39 paragraphs of noise.
+
+None of these are fixable by rewording the instruction. They're fixable by changing what gets loaded, when, and how it's presented — which is context engineering's territory, not prompt engineering's.
+
+## Why this split matters more as systems get bigger
+
+For a single chat message, the distinction barely shows up — you control the whole input by typing it. It becomes unavoidable the moment you're building anything with tool calls, retrieval, or multi-step agent loops, because now something other than a human is deciding what enters the window on each turn. That's the actual engineering problem: designing the *system* that assembles context, not just the sentence that kicks it off. It's also why the discipline overlaps heavily with [retrieval strategy](/learn/context-engineering/retrieval-vs-context-stuffing) — deciding whether to fetch information just-in-time or load it all upfront is a context engineering decision, not a prompting one.
+
+## The practical takeaway
+
+When an agent misbehaves, don't reach for prompt tweaks first. Ask what the model actually saw at generation time. Print the full context window if you have to. Half the time the instruction was fine and the input around it was the problem — and past a certain size, more context isn't even free: see [context rot](/learn/context-engineering/context-rot) for what happens to model performance as the window fills up.
+
+**Related:** [Retrieval vs Stuffing: Fetch Just-in-Time or Load It All](/learn/context-engineering/retrieval-vs-context-stuffing), [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot)

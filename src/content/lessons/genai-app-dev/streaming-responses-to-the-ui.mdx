@@ -1,0 +1,38 @@
+---
+title: "Streaming Responses to the UI"
+track: "genai-app-dev"
+status: live
+summary: "Stream tokens from the provider straight to the browser so users watch words appear instead of staring at a spinner."
+duration: "5 min read"
+---
+
+An LLM call to answer a long question can take ten or twenty seconds. Wait for the whole thing and your UI feels frozen; stream it token by token and the same twenty seconds feels instant, because the user is reading the first sentence while the last one is still being generated.
+
+## Why streaming changes the feel, not the speed
+
+Streaming doesn't make the model faster. Total generation time is basically the same either way. What changes is time-to-first-token — the gap before *anything* shows up. A blocking call makes the user watch a spinner for the full duration. A streamed call shows the first words in a few hundred milliseconds, and the rest arrives while they're reading. Perceived latency, which is what users actually judge you on, drops enormously even though the backend did the same amount of work.
+
+## How the plumbing actually works
+
+Every major provider API — Anthropic, OpenAI, and others — supports a streaming mode where, instead of one JSON blob at the end, the response comes back as a sequence of incremental events over a single open HTTP connection. Each event carries a small delta: a few tokens of text, sometimes a tool-call fragment, and eventually a "done" event with final metadata like stop reason and token usage.
+
+The usual transport for this is Server-Sent Events (SSE): a long-lived `text/event-stream` response where each chunk is a `data: {...}` line your client reads incrementally instead of waiting for the connection to close. A minimal server-side loop looks like this:
+
+```ts
+for await (const event of stream) {
+  if (event.type === "content_block_delta") {
+    res.write(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`);
+  }
+}
+res.end();
+```
+
+On the frontend, you read that stream and append each delta to whatever text node is currently rendering the response, which is what produces the familiar "typing" effect.
+
+## Where this gets tricky
+
+Streaming isn't free of complexity. If you need [structured output](/learn/structured-outputs/why-structured-output) — JSON matching a schema — you can't safely parse a partial JSON blob mid-stream; you either buffer until it's complete or use a streaming-aware partial-JSON parser built for that purpose. You also have to design for the connection dropping mid-stream: does the user lose the partial answer, or do you keep what arrived and mark it as an interrupted response? And if your model is also making [tool calls](/learn/tools-function-calling/what-is-tool-calling), you're now streaming interleaved text and tool-call fragments, which means your UI has to branch on event type, not just append blindly.
+
+Finally, streaming complicates your backend accounting: retries, [rate-limit handling](/learn/genai-app-dev/rate-limits-and-retry-strategies), and cost logging all need to account for a request that might fail halfway through emitting tokens rather than failing cleanly before any work is done.
+
+**Related:** [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies), [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling), [Why Structured Output](/learn/structured-outputs/why-structured-output)

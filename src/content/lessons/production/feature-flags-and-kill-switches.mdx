@@ -1,0 +1,44 @@
+---
+title: "Put a Kill Switch on Every AI Feature"
+track: "production"
+status: live
+summary: "Wrap AI features behind flags you can disable instantly, and design a safe fallback for when you do."
+duration: "5 min read"
+---
+
+AI features fail differently than normal code. A provider has an outage, a prompt regression makes the model start refusing valid requests, a cost spike shows up on your bill at 2am — and none of it trips a normal error boundary, because the code is running fine. The model is just behaving badly. The fix isn't better error handling. It's the ability to turn the feature off in seconds, without a deploy.
+
+## Why normal error handling isn't enough
+
+A crashed API call is easy to catch: try/catch, log it, show an error. But a "working" LLM call that returns hallucinated data, empty responses, or a runaway loop of tool calls doesn't crash — it just does the wrong thing, successfully. By the time someone notices in the logs or a user complains, it's already cost money and possibly shipped bad output to customers. A kill switch turns "notice, diagnose, write a fix, review, deploy" into "flip a flag," compressing an incident from hours to seconds.
+
+## What a kill switch actually is
+
+At minimum, it's a flag your code checks before it calls the model:
+
+```ts
+if (!flags.isEnabled("ai-summary-feature")) {
+  return fallbackSummary(document);
+}
+const summary = await callModel(prompt);
+```
+
+That's it conceptually — the mechanics can be a hardcoded env var for a side project, or a real flagging service (LaunchDarkly, Unleash, a database row you check on each request) once more than one person needs to flip it under pressure. What matters is where the check lives: as close to the model call as possible, so disabling it doesn't require touching the rest of the feature's code, and checked on every request rather than cached at boot, so the flip takes effect immediately rather than on next deploy.
+
+Layer the granularity to match how failures actually happen. A single global flag stops everything, which is sometimes too blunt — you don't want to kill your whole product because one feature's prompt is misbehaving. Useful splits include per-feature flags (summarization vs. chat vs. classification), per-model flags (roll back to a previous model version without touching the feature), and percentage rollouts (10% of traffic on the new prompt, ready to snap back to 0%).
+
+## Design the fallback before you need it
+
+A kill switch that just returns an error isn't much better than no kill switch — it moves the outage from "bad AI output" to "broken feature," which users still notice. Decide the fallback for each feature in advance:
+
+- **Cached or previous output** — show the last good summary instead of a fresh one
+- **Simpler non-AI path** — keyword search instead of semantic search, a template instead of a generated reply
+- **Graceful degradation** — hide the AI-powered panel entirely rather than show an error state
+
+This is the same instinct behind [rate limit and retry handling](/learn/genai-app-dev/rate-limits-and-retry-strategies) — you're planning for the request to fail before it does, not improvising when it does.
+
+## Practice the flip
+
+A kill switch nobody has tested is a kill switch nobody trusts under pressure. Treat flipping it like you'd treat a database rollback: know who has permission, know it takes effect without a deploy, and run it once in a non-emergency so the first time isn't during an incident. Pair it with the [structured logs](/learn/production/structured-logging-for-llm-calls) and [cost tracking](/learn/production/token-and-cost-tracking) that tell you *when* to flip it — a kill switch is only useful if something is watching closely enough to reach for it in time.
+
+**Related:** [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies)

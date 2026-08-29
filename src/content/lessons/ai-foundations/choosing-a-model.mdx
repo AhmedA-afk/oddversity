@@ -1,0 +1,31 @@
+---
+title: Choosing a model in 2026
+track: ai-foundations
+order: 3
+status: live
+summary: A decision process for picking a model that survives contact with reality — capability, cost, latency, and the boring constraints that actually decide it.
+duration: 9 min read
+---
+
+There is no "best model," only the best model *for this task at this budget and latency*. Here's a process that gets you to a defensible choice without a week of vibes.
+
+## Start from the task, not the leaderboard
+
+Write down what the model must do, concretely: input shape, output shape, how you'll know it's right. A benchmark score is a weak proxy for *your* task. Your own 20-example eval set beats any leaderboard — we build one in [Evals & Red-teaming](/learn/evals-red-teaming).
+
+## The four axes
+
+1. **Capability** — can it do the task at acceptable quality? Test the hardest cases first.
+2. **Cost** — per the previous lesson, estimate the real monthly bill, not the sticker price.
+3. **Latency** — a smarter model that's 3× slower may be the wrong call for anything interactive.
+4. **Constraints** — data residency, on-prem, licensing, provider risk. These quietly decide more choices than capability does.
+
+## A cheap tiering strategy
+
+Most production systems don't use one model. They **route**: a small, fast, cheap model handles the easy 80%, and a bigger one handles the hard 20%.
+
+> Ship the small model first. You'll learn what actually fails, and you'll only pay for the big model where it earns its keep.
+
+## Don't marry a model
+
+Models change monthly and prices fall. Keep the model name behind one config value and one adapter, so switching is an afternoon, not a rewrite. That single habit will save you repeatedly over the next year.

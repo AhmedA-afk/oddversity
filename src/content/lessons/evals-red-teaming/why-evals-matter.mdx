@@ -1,0 +1,39 @@
+---
+title: "Why Vibes-Based Iteration Breaks Down"
+track: "evals-red-teaming"
+status: live
+summary: "What evals buy you over eyeballing outputs: reproducibility, regression detection, and a number you can argue about."
+duration: "4 min read"
+---
+
+You change a prompt, run it three times, the outputs look better, you ship. That's vibes-based iteration, and it works fine right up until it doesn't — usually the moment your app has more than a handful of inputs that matter, or more than one person touching the prompt.
+
+## The problem with eyeballing
+
+Reading outputs is a great way to build intuition and a terrible way to make decisions. A few reasons it breaks down as a system grows:
+
+- **You can't hold enough examples in your head.** Ten test cases is manageable. A hundred edge cases across real user inputs is not — you'll remember the three that stood out and forget the rest.
+- **You can't tell if you made things worse somewhere else.** A prompt tweak that fixes the case you were staring at can silently regress five cases you weren't. Without a fixed test set, you never see the regression happen.
+- **"Better" is not a shared unit.** You think the new version sounds more confident. Your teammate thinks it's now overconfident on ambiguous questions. Neither of you is wrong — you're both reading tea leaves, and the conversation goes nowhere because there's no number to argue about.
+- **It doesn't scale past you.** Vibes live in one person's head. The moment someone else needs to change the prompt, or you need to compare two models, or a stakeholder asks "did this actually get better," there's nothing to hand them.
+
+This isn't a hypothetical failure mode — it's the default one. Most people ship an LLM feature by eyeballing a handful of runs, and it holds up right until the first real regression nobody notices for two weeks.
+
+## What an eval actually buys you
+
+An eval, in the simple sense used throughout this track, is just: a fixed set of inputs, a way to score the outputs, and a number (or set of numbers) you track over time. That's it — no need to overbuild this to get value.
+
+What that structure gives you that eyeballing can't:
+
+- **Reproducibility.** Run the same test set against the same version and get the same score. Now "better" or "worse" is measurable, not remembered.
+- **Regression detection.** Change the prompt, rerun the eval, see immediately if a case that used to pass now fails — even one you weren't specifically looking at.
+- **A number you can argue about.** Not a perfect number, and not the end of the conversation — but a shared reference point that turns "I feel like it's worse" into "case 14 dropped from pass to fail, here's why."
+- **A record over time.** Once you're tracking scores per version, you can see drift, catch a bad model update, and justify (or veto) a change with something more than a shrug.
+
+None of this requires a fancy framework. The smallest useful eval is a spreadsheet: inputs in one column, expected behavior in another, pass/fail in a third. The next lesson, [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), covers how to pick the inputs that actually earn a place in that set — which matters more than the scoring mechanism itself.
+
+## When vibes are still fine
+
+Evals aren't free — building and maintaining a test set costs time, and for a prototype you're throwing away next week, that cost isn't worth paying. Vibes-based iteration is the right tool during early exploration, when you're still figuring out what "good" even looks like. The shift to evals should happen right around when you'd otherwise start saying "wait, did I break this" — that instinct is the signal it's time to write the test set down instead of trusting your memory of it.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Prompt Injection: When Content Becomes Instructions](/learn/evals-red-teaming/prompt-injection-basics)

@@ -1,0 +1,37 @@
+---
+import Layout from '../../components/Layout.astro';
+import { roles } from '../../data/roles.ts';
+---
+<Layout title="Roles" description="AI for your job — pick your role and follow a curriculum sequenced for what you actually do.">
+  <section class="head container">
+    <span class="eyebrow">AI for your job</span>
+    <h1>Pick your role. Get a path built for it.</h1>
+    <p class="sub">The same curriculum, resequenced for what you actually do. Each path pulls the concepts that matter for your work and puts them in order.</p>
+  </section>
+  <section class="container grid">
+    {roles.map((r) => (
+      <a href={`/roles/${r.id}`} class="rcard">
+        <span class="node-dot" aria-hidden="true"></span>
+        <h3>{r.name}</h3>
+        <p>{r.blurb}</p>
+        <span class="cta mono">{r.path.length}-step path →</span>
+      </a>
+    ))}
+  </section>
+</Layout>
+
+<style>
+  .head { padding: 56px 0 8px; }
+  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; margin-top: 14px; max-width: 20ch; }
+  .sub { margin-top: 16px; color: var(--muted); max-width: 62ch; font-size: 15px; }
+  .grid { padding-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .rcard { display: flex; flex-direction: column; gap: 8px; padding: 22px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); }
+  .rcard:hover { text-decoration: none; border-color: var(--accent); }
+  .rcard .node-dot { margin-bottom: 4px; }
+  .rcard h3 { font-size: 18px; }
+  .rcard:hover h3 { color: var(--accent); }
+  .rcard p { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+  .rcard .cta { margin-top: 6px; font-size: 11.5px; color: var(--accent); }
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+</style>

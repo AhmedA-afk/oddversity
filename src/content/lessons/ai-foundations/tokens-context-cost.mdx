@@ -1,0 +1,40 @@
+---
+title: Tokens, context & cost
+track: ai-foundations
+order: 2
+status: live
+summary: What a token is, what the context window really costs you, and how to reason about the bill before it arrives.
+duration: 10 min read
+---
+
+Three numbers govern almost every practical decision you'll make with an LLM: how many tokens go in, how many come out, and the price of each. Get comfortable with them and most "why is this slow / expensive / truncated?" questions answer themselves.
+
+## The context window is a budget, not a memory
+
+The **context window** is the maximum number of tokens the model can consider at once — prompt plus response. It is not memory. Nothing persists between calls unless *you* send it again. A "conversation" is just the whole transcript re-sent every turn, which is why long chats get slower and pricier as they grow.
+
+## Input tokens and output tokens are priced differently
+
+Providers bill input and output separately, and **output is usually several times more expensive**. That changes how you design:
+
+- Trimming a bloated prompt saves a little; asking for a shorter answer often saves a lot.
+- "Think step by step out loud" burns output tokens — sometimes worth it, sometimes not. Measure.
+
+## A back-of-envelope estimate
+
+```python
+# rough cost of one call
+in_tokens  = 1200      # prompt
+out_tokens = 400       # response
+price_in   = 3.0 / 1_000_000   # $ per input token  (example)
+price_out  = 15.0 / 1_000_000  # $ per output token (example)
+
+cost = in_tokens * price_in + out_tokens * price_out
+print(f"${cost:.5f} per call")   # ~$0.0096
+```
+
+Multiply by requests-per-day and you have your monthly bill within a rounding error. Do this *before* you build, not after.
+
+## Where the tokens hide
+
+The prompt you typed is rarely the whole story. System prompts, tool definitions, retrieved documents, and prior turns all count. A common surprise: tool/function schemas can be hundreds of tokens on *every* call. We tackle that directly in [Stop your MCP tools eating the context window](/learn/mcp/mcp-context-window).

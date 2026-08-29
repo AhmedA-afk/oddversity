@@ -1,0 +1,41 @@
+---
+title: "Embeddings and Semantic Similarity"
+track: "rag"
+status: live
+summary: "Turn text into vectors and understand what similar actually means once meaning becomes geometry."
+duration: "5 min read"
+---
+
+An embedding is a piece of text turned into a list of numbers — a point in a high-dimensional space where meaning determines position. Get this right and retrieval works. Get it wrong and every RAG system built on top inherits the flaw.
+
+## From words to points in space
+
+An embedding model reads a chunk of text and outputs a fixed-length vector, typically a few hundred to a couple thousand numbers. The model is trained so that text with similar meaning ends up at nearby points, and text with different meaning ends up far apart. "How do I reset my password" and "I forgot my login" land close together even though they share almost no words, because the model learned meaning, not vocabulary.
+
+This is the payoff over keyword search: a keyword index matches strings, so a query has to reuse the document's exact terms. An embedding index matches meaning, so paraphrase, synonym, and even cross-lingual queries can still find the right passage.
+
+## Measuring "close"
+
+Once text is a vector, "similar" becomes a geometry question: how close are two points? The standard measure is [cosine similarity](/learn/maths-foundations/cosine-similarity) — it looks at the angle between two vectors rather than their raw distance, so it isn't thrown off by one piece of text simply being longer than another. Two embeddings pointing in nearly the same direction score close to 1; unrelated ones score near 0.
+
+In practice you never compare a query to one document. You embed every chunk in your corpus once, store the vectors in an index, then at query time embed the incoming question and ask the index for the nearest neighbors. That "find the closest points among millions" step is what a vector database is built to do fast.
+
+```python
+# conceptual shape, not a specific library's API
+doc_vectors = [embed(chunk) for chunk in corpus_chunks]
+query_vector = embed(user_question)
+
+top_matches = nearest_neighbors(query_vector, doc_vectors, k=5)
+```
+
+## What embeddings get wrong
+
+Semantic similarity is not the same as relevance, and treating them as identical is the most common RAG bug. "What's the cancellation policy?" and "What's the refund policy?" embed close together because they're topically similar — but if your corpus has separate, different answers for each, the model can retrieve the wrong one with high confidence. Embeddings are also sensitive to chunk size and boundaries: a chunk that mixes two unrelated ideas produces a vector that represents neither one well. That's why [chunking strategy](/learn/rag/chunking-strategies-for-documents) is a real design decision, not busywork before the "real" step.
+
+Embedding models also differ meaningfully from each other — dimension count, training data, and cost per token all vary — and swapping models means re-embedding your entire corpus, since vectors from two different models aren't comparable to each other at all.
+
+## Where this fits
+
+Embeddings are the retrieval half of RAG: they decide what gets pulled into context before the model ever sees your question. How well that retrieval performs — precision, recall, whether the right chunk actually surfaces — is a measurable, separate concern from generation quality.
+
+**Related:** [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it), [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

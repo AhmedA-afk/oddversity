@@ -1,0 +1,66 @@
+---
+title: Build your first MCP server in Python (20 min)
+track: mcp
+order: 1
+status: live
+summary: Stand up a working Model Context Protocol server that exposes a tool an AI client can call — the smallest thing that actually works.
+duration: 20 min
+---
+
+The Model Context Protocol (MCP) is a standard way to give an AI client — Claude, an IDE, your own agent — a set of tools it can call. Instead of hand-wiring each integration, you expose tools once over MCP and any MCP-speaking client can use them. In twenty minutes you'll have a server that works.
+
+## What you'll build
+
+A tiny server exposing one tool, `word_count`, that a client can invoke. Small on purpose: the point is the wiring, which is identical whether the tool counts words or books a flight.
+
+## Setup
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install "mcp[cli]"
+```
+
+## The whole server
+
+```python
+# server.py
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("wordtools")
+
+@mcp.tool()
+def word_count(text: str) -> int:
+    """Count the words in a piece of text."""
+    return len(text.split())
+
+if __name__ == "__main__":
+    mcp.run()   # speaks MCP over stdio
+```
+
+That's a complete server. `FastMCP` handles the protocol; the `@mcp.tool()` decorator turns a plain function into a tool, and — this is the part people miss — **the docstring and type hints become the tool's schema the model reads.** Vague docstring, worse tool calls.
+
+## Run and inspect it
+
+```bash
+mcp dev server.py
+```
+
+This launches the MCP Inspector, where you can see your tool listed and call it by hand. Calling a tool before wiring a model saves you from debugging two things at once.
+
+## Connect it to a client
+
+Point an MCP client at the command that starts your server:
+
+```json
+{
+  "mcpServers": {
+    "wordtools": { "command": "python", "args": ["server.py"] }
+  }
+}
+```
+
+The client launches your server, lists its tools, and the model can now call `word_count`. You've built the same thing the big integrations are — just smaller.
+
+## Where this goes wrong in production
+
+Two failures bite almost everyone once real work starts: auth that silently expires, and tool schemas that quietly eat your context budget. Those are the next two lessons — [Why your agent dies overnight](/learn/mcp/agent-dies-overnight-oauth) and [Stop your MCP tools eating the context window](/learn/mcp/mcp-context-window).

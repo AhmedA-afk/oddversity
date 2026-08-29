@@ -1,0 +1,157 @@
+/* ==========================================================================
+   Fieldguide — design tokens + base
+   Refined neutral ramp: light stays a clean warm paper; dark is a deep,
+   near-neutral ink (the olive/brown cast removed) so the indigo accent reads
+   clean. Light default; dark via [data-theme="dark"] and the system preference.
+   ========================================================================== */
+
+:root {
+  /* surfaces */
+  --bg: #FBFAF8;          /* page + top bar — clean warm white */
+  --paper: #F4F3EF;       /* raised surface / mega / lane */
+  --paper-2: #EEEDE8;     /* input fields */
+  --rule: #E4E2DC;        /* hairline borders */
+  --chip-bg: #ECEAE4;
+  /* ink */
+  --text: #1B1A18;        /* near-black, faint warmth */
+  --muted: #5D5A52;
+  --faint: #8C877E;
+  /* accent */
+  --accent: #3B54A3;      /* ink indigo */
+  --accent-contrast: #FBFAF8;
+  --accent-wash: rgba(59, 84, 163, .11);
+  /* skill tree */
+  --spine: #D9D5CB;
+  --spine-arrow: #ABA393;
+  --node-curated-stroke: #BEB7A9;
+  --node-curated-label: #565149;
+  --node-coming: #E7E3D9;
+  --node-coming-label: #948E82;
+  /* code */
+  --code-bg: #F4F2EC;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #18181A;
+  --paper: #202024;
+  --paper-2: #26262B;
+  --rule: #313136;
+  --chip-bg: #2A2A2F;
+  --text: #ECEBE6;
+  --muted: #A2A09A;
+  --faint: #736F69;
+  --accent: #90A4EA;
+  --accent-contrast: #16151A;
+  --accent-wash: rgba(144, 164, 234, .18);
+  --spine: #3B3B40;
+  --spine-arrow: #64636A;
+  --node-curated-stroke: #56555C;
+  --node-curated-label: #ABA9A3;
+  --node-coming: #2E2E33;
+  --node-coming-label: #736F69;
+  --code-bg: #1C1C20;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18181A;
+    --paper: #202024;
+    --paper-2: #26262B;
+    --rule: #313136;
+    --chip-bg: #2A2A2F;
+    --text: #ECEBE6;
+    --muted: #A2A09A;
+    --faint: #736F69;
+    --accent: #90A4EA;
+    --accent-contrast: #16151A;
+    --accent-wash: rgba(144, 164, 234, .18);
+    --spine: #3B3B40;
+    --spine-arrow: #64636A;
+    --node-curated-stroke: #56555C;
+    --node-curated-label: #ABA9A3;
+    --node-coming: #2E2E33;
+    --node-coming-label: #736F69;
+    --code-bg: #1C1C20;
+    color-scheme: dark;
+  }
+}
+
+/* --- reset / base --------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 400 15px/1.6 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+img, svg, video { display: block; max-width: 100%; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3, h4 {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  color: var(--text);
+  line-height: 1.15;
+  letter-spacing: -.01em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.mono { font-family: 'IBM Plex Mono', Menlo, monospace; }
+.serif { font-family: 'Source Serif 4', Georgia, serif; }
+
+/* --- layout helpers ------------------------------------------------------- */
+.container { max-width: 1200px; margin-inline: auto; padding-inline: 32px; }
+.rule { border: 0; border-top: 1px solid var(--rule); }
+.eyebrow {
+  font: 500 10.5px/1 'IBM Plex Mono', Menlo, monospace;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--faint);
+}
+
+/* --- buttons / pills ------------------------------------------------------ */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 18px; border-radius: 8px;
+  font: 500 13.5px/1 'IBM Plex Sans', sans-serif;
+  border: 1px solid transparent; cursor: pointer; text-decoration: none;
+}
+.btn:hover { text-decoration: none; }
+.btn-primary { background: var(--accent); color: var(--accent-contrast); }
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-ghost { background: transparent; color: var(--text); border-color: var(--rule); }
+.btn-ghost:hover { background: var(--paper); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 14px 0 11px; border-radius: 999px;
+  background: var(--accent); color: var(--accent-contrast);
+  font: 500 12.5px/1 'IBM Plex Sans', sans-serif; text-decoration: none;
+}
+.pill:hover { filter: brightness(1.06); text-decoration: none; }
+
+/* --- node dots (curriculum availability, not "still-works") --------------- */
+.node-dot { flex: none; width: 11px; height: 11px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--accent); background: var(--accent); }
+.node-dot.is-curated { background: transparent; border-color: var(--node-curated-stroke); }
+.node-dot.is-coming { background: var(--node-coming); border-color: var(--node-coming); }
+
+.status-chip {
+  font: 400 9.5px/1 'IBM Plex Mono', Menlo, monospace;
+  color: var(--faint); background: var(--chip-bg);
+  border: 1px solid var(--rule); border-radius: 3px; padding: 3px 5px;
+}
+
+/* --- focus ---------------------------------------------------------------- */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* --- reduced motion ------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}

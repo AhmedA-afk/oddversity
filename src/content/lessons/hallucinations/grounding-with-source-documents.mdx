@@ -1,0 +1,56 @@
+---
+title: "Grounding: Constraining Answers to Supplied Sources"
+track: "hallucinations"
+status: live
+summary: "Constraining an answer to only what's actually present in supplied source material."
+duration: "5 min read"
+---
+
+Grounding means giving a model the actual text it needs to answer, then instructing it to answer only from that text. It's the single most reliable way to cut hallucination for factual questions, because it turns "recall a fact from training" into "read and report a fact that's right in front of you" — a much easier task for the model to get right.
+
+## Why this works
+
+Left alone, a model answers from its parameters — a compressed, lossy memory of everything it read during training. Ask it something specific (a clause in your contract, a number from last quarter's report, a setting in your codebase) and it will often produce something plausible-sounding rather than admit it doesn't know. See [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate) for the mechanics behind that.
+
+Grounding sidesteps the problem instead of fixing it at the source. You retrieve or paste the relevant passages into the prompt, then tell the model its job is extraction and synthesis from that material — not recall. This is the core idea behind retrieval-augmented generation (RAG), but you don't need a vector database to use it. Pasting a document into the context window and asking a question about it is grounding too.
+
+## Writing a grounded prompt
+
+The instruction matters as much as the source text. A weak version just appends documents and hopes:
+
+```
+Here are some documents. Answer the question: [question]
+```
+
+A grounded version constrains the model explicitly:
+
+```
+Using ONLY the information in the documents below, answer the question.
+If the answer is not present in the documents, say "I don't have
+enough information to answer that" — do not use outside knowledge.
+
+Documents:
+[source text]
+
+Question: [question]
+```
+
+Three things are doing the work: the explicit scope ("ONLY the information below"), the ban on outside knowledge, and an escape hatch for when the answer genuinely isn't there. Drop the escape hatch and models will often still reach outside the sources rather than say nothing — see [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know) for why that instruction needs to be explicit rather than assumed.
+
+## Citations make grounding checkable
+
+Asking the model to cite which passage or document each claim came from turns a black-box answer into something a human can verify in seconds. A simple pattern:
+
+```
+For each claim, add a citation like [Doc 2] pointing to the source
+document it came from. If a sentence has no supporting citation,
+remove it rather than leave it unsupported.
+```
+
+This doesn't eliminate hallucination — a model can still cite a passage that doesn't actually say what it claims, so spot-checking citations against the source stays worthwhile for anything high-stakes. But it shrinks the failure mode from "confident fabrication anywhere" to "a checkable claim next to its source," which is a much smaller problem to catch.
+
+## Where grounding falls short
+
+Grounding only helps if the answer is actually in the supplied text. If your retrieval step pulls the wrong passages, or the document simply doesn't cover the question, a well-grounded prompt should say so — not fill the gap from parametric memory. That's also why grounding and "I don't know" instructions are usually paired: grounding narrows what the model is allowed to use, and the refusal instruction covers the case where even the narrowed source comes up empty.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know)

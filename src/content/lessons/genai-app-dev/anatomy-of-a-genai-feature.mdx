@@ -1,0 +1,33 @@
+---
+title: "Anatomy of a GenAI Feature"
+track: "genai-app-dev"
+status: live
+summary: "Map the five pieces every real LLM feature is built from before you write a single line of it."
+duration: "5 min read"
+---
+
+A working prompt in a playground and a shipped GenAI feature are not the same thing. Between them sits a small stack of plumbing that every production feature needs, whether it's a support-ticket summarizer or a coding agent.
+
+## The five pieces
+
+**Client.** The UI the user actually touches — a chat box, a "Summarize" button, an inline suggestion. It captures intent and renders output, often incrementally as tokens arrive rather than all at once.
+
+**Backend.** Your server sits between the client and the model provider. It never lets the client call the provider directly — that would leak your API key and give users a blank check on your bill. The backend authenticates the request, applies rate limits, and decides which model and prompt to use.
+
+**Prompt.** The actual instructions sent to the model: a system prompt that sets standing behavior (tone, format, constraints) plus the per-request user content, often with retrieved context or few-shot examples assembled in. This assembly step is where most of the real engineering work lives, not in the model call itself.
+
+**Provider call.** The HTTP request to the model API — with the model name, parameters like temperature and max tokens, and increasingly a tool schema if the feature needs the model to take actions rather than just produce text.
+
+**Guardrails.** Everything that keeps the raw model output from reaching the user unchecked: output validation against a schema, content filtering, a timeout, a fallback response for when the call fails, and logging so you can see what actually happened after the fact.
+
+## Why the shape matters
+
+Skip the backend and call the provider from the browser, and you've shipped an API key to every visitor. Skip guardrails and a malformed or off-policy response goes straight to a customer. Skip the prompt-assembly step and treat "prompt" as just a string you hardcode, and you can't adapt to what the user is actually asking — you can't do [retrieval](/learn/rag/what-is-rag-and-when-to-use-it) or inject the right examples in the right order.
+
+None of these pieces is exotic. A basic version of each can be built in an afternoon. The skill is knowing they're five separate concerns, not one blob called "the AI part" — because when a feature breaks in production, it's almost always in the seam between two of them: a prompt that works alone but breaks once real user input hits it, a provider timeout with no fallback, or a validator that's too strict for what the model actually returns.
+
+## Building on this
+
+Once these five pieces exist, the next problems are about making them feel instant and stay up: streaming partial output to the client instead of waiting for the full response, and handling the rate limits and transient failures every provider throws at you eventually.
+
+**Related:** [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies), [System Prompts vs User Prompts](/learn/prompt-engineering/system-vs-user-prompts)

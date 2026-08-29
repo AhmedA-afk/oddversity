@@ -1,0 +1,39 @@
+---
+title: "The Agent Loop: Sense, Think, Act"
+track: "agentic-ai"
+status: live
+summary: "The observe-reason-act cycle agents run through repeatedly, and the stop conditions that decide when the loop ends."
+duration: "4 min read"
+---
+
+A single prompt gets you one response. An agent gets you a *loop*: it looks at the current state, decides what to do, does it, and looks again — repeating until the task is actually finished.
+
+## The three steps
+
+Every agent loop, no matter the framework, boils down to the same cycle:
+
+- **Sense** — read the current state. This might be a user's question, a tool's output, a file's contents, or an error message from the last action.
+- **Think** — the model reasons about what it's looking at and decides on the next move: call a tool, ask a clarifying question, or declare the task done.
+- **Act** — the decision gets executed. Usually that means calling a tool (search the web, run code, edit a file, hit an API) and getting a result back.
+
+That result becomes the next "sense" step, and the cycle repeats. A coding agent fixing a bug senses the failing test output, thinks about which line is likely wrong, acts by editing the file and rerunning the test, then senses the new output — pass or fail — and goes again. This is the same shape as the [ReAct pattern](/learn/agentic-ai/react-pattern), which made the loop explicit by having the model write out its reasoning between actions instead of jumping straight to a tool call.
+
+## Why the loop matters more than the prompt
+
+A workflow runs a fixed sequence of steps you wrote in advance — step 2 always follows step 1, regardless of what happened. An agent loop is different: the *number* of iterations and *which* tools get called are decided at runtime, by the model, based on what actually comes back from each step. That's what lets an agent recover from a failed search by trying a different query, or notice a test still fails and try a different fix, without you having hand-coded that branch.
+
+This adaptability is also the loop's main cost: more iterations mean more tokens, more latency, and more chances for the model to wander off course. A loop with no way to end is just an expensive way to spin.
+
+## Stop conditions
+
+Every real agent loop needs an explicit way to end, or it either stops too early (declaring victory prematurely) or never stops (burning tokens on an unsolvable task). The common stop conditions:
+
+- **Goal reached** — the model itself judges the task complete (tests pass, the file is written, the answer is confirmed) and returns a final response instead of another tool call.
+- **Max iterations** — a hard cap set by the developer, e.g. 25 steps, so a confused loop can't run forever.
+- **Max tool calls / budget** — a limit on cost or token spend rather than step count.
+- **No progress detected** — the harness notices the same error repeating and halts rather than retrying identically forever.
+- **Human handoff** — the agent decides it's stuck or the stakes are too high, and asks a person to take over.
+
+Designing an agent well means designing these exits as carefully as the loop itself — a good stop condition is the difference between an agent that fails loudly and cheaply versus one that fails silently after burning your budget. If the task genuinely doesn't need this back-and-forth — no uncertain intermediate steps, no tool output to react to — a fixed sequence will do the job more predictably; see [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent).
+
+**Related:** [What Makes Something an Agent](/learn/agentic-ai/what-is-an-agent), [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent)

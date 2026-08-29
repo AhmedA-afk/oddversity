@@ -1,0 +1,54 @@
+---
+title: "Build a Fine-Tuning Dataset That Works"
+track: "fine-tuning"
+status: live
+summary: "How to collect, format, and clean instruction/output or preference pairs into a dataset that actually moves the model."
+duration: "5 min read"
+---
+
+A fine-tuning job is only as good as the data you feed it. Most failed fine-tunes aren't a hyperparameter problem — they're a dataset problem: too few examples, inconsistent formatting, or labels that quietly teach the model the wrong lesson.
+
+## The two shapes of fine-tuning data
+
+Almost every fine-tuning dataset is one of two shapes.
+
+**Instruction pairs** are the default: an input and the exact output you want for it. For supervised fine-tuning (SFT), each row is typically a small conversation object — a system message, a user message, and the assistant reply you want reinforced:
+
+```json
+{
+  "messages": [
+    {"role": "system", "content": "You are a support agent for Acme."},
+    {"role": "user", "content": "My order hasn't shipped in 5 days."},
+    {"role": "assistant", "content": "I'm sorry for the delay — let me check your order status..."}
+  ]
+}
+```
+
+**Preference pairs** are for alignment methods like DPO (Direct Preference Optimization) or RLHF-style training: the same prompt with a "chosen" and a "rejected" response, so the model learns a direction rather than a single fixed target. These are how you fine-tune for tone, safety, or style rather than for a specific factual answer — see [Decide: Fine-Tune, Prompt, or RAG](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag) for when this is even the right tool.
+
+Pick the shape based on what you're teaching: instruction pairs for "do this specific task," preference pairs for "prefer this kind of answer over that kind."
+
+## Where the data actually comes from
+
+Three sources, roughly in order of how much you'll lean on each:
+
+- **Real production logs.** Your existing prompt-response pairs, filtered to the ones that worked. This is the highest-signal source because it reflects your actual traffic distribution, not a guess at it.
+- **Human-written or human-edited examples.** Domain experts write or correct outputs directly. Slower, but necessary for anything where "good" is subjective or high-stakes.
+- **Model-generated data, reviewed by a human.** A strong model drafts candidate outputs, a person edits or approves them. Fast to scale, but it inherits that model's biases and blind spots unless review is genuinely rigorous.
+
+Whatever the source, diversity matters more than raw count. A thousand near-duplicate examples teach the model to overfit one pattern; a few hundred that cover your actual range of inputs — edge cases, ambiguous phrasing, different lengths — generalize far better.
+
+## Cleaning: the unglamorous part that decides the outcome
+
+Before training, run every example through the same checks:
+
+- **Format consistency.** Same schema, same roles, same delimiters throughout. A model trained on inconsistently formatted data learns the inconsistency too.
+- **Deduplication.** Near-duplicate rows overweight whatever pattern they share, at the expense of everything else in the set.
+- **Label correctness.** Wrong "chosen" outputs or subtly bad instruction answers are the single most common cause of a fine-tune that quietly gets worse. Spot-check a random sample by hand — don't just trust the pipeline that generated it.
+- **Length and token budget.** Outrageously long examples can dominate gradient updates; trim or split them so no single row eats a disproportionate share of training signal.
+
+## How much data is enough
+
+There's no universal number — it depends on the base model, the task's difficulty, and how far the target behavior is from what the base model already does. Narrow-format tasks (a fixed output schema, a consistent tone) can shift meaningfully with a few hundred well-chosen examples. Broad behavioral changes need thousands. The practical approach: start with a few hundred clean, diverse examples, evaluate against a held-out set, and add more only where the errors show a pattern — see [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset) for how to build that evaluation set in the first place.
+
+**Related:** [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag), [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)

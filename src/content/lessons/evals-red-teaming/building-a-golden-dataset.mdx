@@ -1,0 +1,48 @@
+---
+title: "Building a Golden Dataset"
+track: "evals-red-teaming"
+status: live
+summary: "Curate a small, labeled set of real inputs and expected outputs so you can measure a prompt or agent instead of eyeballing it."
+duration: "5 min read"
+---
+
+A golden dataset is the fixed set of test cases you run every time you change a prompt, a tool, or a model. Without one, you're stuck doing what the last lesson called [vibes-based iteration](/learn/evals-red-teaming/why-evals-matter): you change something, skim a few outputs, and decide it "feels better." A golden dataset turns that feeling into a number.
+
+## What goes in it
+
+Each row needs three things: an input, an expected output (or a rubric for judging one), and a label for what it's testing. For a support-ticket triage agent, that might look like:
+
+```json
+{
+  "input": "My payment failed twice but I was charged both times",
+  "expected": {
+    "category": "billing_dispute",
+    "priority": "high",
+    "must_mention": ["refund", "duplicate charge"]
+  },
+  "tag": "billing"
+}
+```
+
+"Expected output" doesn't have to mean exact string match. For open-ended generation, it's often a rubric an LLM judge checks against, or a short list of facts that must appear. What matters is that grading is repeatable — you or a script can run it and get the same verdict twice.
+
+## Where the examples come from
+
+Don't invent cases from your head first. Pull them from reality, in this order:
+
+- **Real usage logs.** Actual user inputs surface the phrasing, typos, and edge cases you'd never think to write yourself.
+- **Known failures.** Every bug report or bad output you've seen becomes a regression test — once fixed, it must never silently break again.
+- **Deliberate edge cases.** Empty input, contradictory instructions, a request in the wrong language, an adversarial prompt. These are also where [prompt injection](/learn/evals-red-teaming/prompt-injection-basics) attempts belong.
+- **The boring middle.** Most real traffic is mundane, not exotic. If your set is all edge cases, you'll optimize for rare inputs at the expense of the common ones.
+
+Aim for coverage over volume at first. Twenty to fifty well-chosen, labeled examples that span your real distribution beat five hundred near-duplicates. You can grow the set later; you can't fix a biased one by adding more of the same bias.
+
+## Keep it labeled and versioned
+
+Tag each example with what it's checking (tone, factual accuracy, refusal behavior, format) so a regression shows up as "we broke billing-category cases," not just "the score dropped." Store the dataset in version control alongside the prompt it tests — when you change the prompt, you want a diff of both, and when a score moves, you want to know whether the prompt changed, the dataset changed, or the model did.
+
+## What it buys you
+
+Once the dataset exists, "did this change help?" becomes a rerun, not a debate. You can compare two prompt versions, two models, or two tool configurations on the exact same inputs and get a pass rate instead of an impression. It's also the foundation everything else in evals builds on — an LLM-as-judge setup is only as trustworthy as the golden examples you calibrate it against.
+
+**Related:** [Why Vibes-Based Iteration Breaks Down](/learn/evals-red-teaming/why-evals-matter), [Prompt Injection: When Content Becomes Instructions](/learn/evals-red-teaming/prompt-injection-basics)

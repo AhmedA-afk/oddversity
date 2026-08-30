@@ -1,0 +1,50 @@
+---
+title: "Converting an OpenAPI Spec into Tool Schemas"
+track: "tools-function-calling"
+status: live
+summary: "Auto-generate tool definitions from an existing REST API instead of hand-writing every schema."
+duration: "6 min read"
+---
+
+If your product already has a REST API with an OpenAPI (Swagger) spec, you don't need to hand-write tool schemas for a model — you need a converter. The spec already contains almost everything a tool schema needs: an operation ID, a description, and a parameter shape. The work is mapping one format onto the other, not re-designing your API for an LLM.
+
+## The mapping is mostly mechanical
+
+Each OpenAPI operation becomes one tool. The pieces line up directly:
+
+- `operationId` (or a slugified `method + path`) becomes the tool `name`.
+- `summary` / `description` becomes the tool `description` — this is the field worth editing by hand, since OpenAPI descriptions are usually written for human developers reading docs, not for a model deciding whether to call this function right now.
+- `parameters` (path, query, header) and the `requestBody` schema become the tool's `input_schema`, translated from OpenAPI's schema dialect into plain JSON Schema. They're close cousins but not identical — OpenAPI 3.0 uses `nullable: true` instead of a `type` array, puts `example` where JSON Schema expects `examples`, and scatters parameters across `in: query` / `in: path` / `in: body` instead of one flat `properties` object. A converter has to flatten and translate these, not just copy them.
+- `required` arrays carry over field for field.
+
+A typical pipeline: parse the spec (`openapi-typescript`, `openapi-schema-to-json-schema`, or a small custom walker), filter to the endpoints you actually want exposed, translate each operation's schema, and emit one tool definition per operation plus a dispatcher that turns a tool call back into an HTTP request against the real path.
+
+```json
+{
+  "name": "get_order_status",
+  "description": "Look up the current status of an order by its ID.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "order_id": { "type": "string", "description": "The order's unique ID, e.g. ORD-4821." }
+    },
+    "required": ["order_id"]
+  }
+}
+```
+
+## Where the auto-generated version falls short
+
+A raw conversion runs, but it usually isn't good. Three problems show up every time:
+
+**Too many tools.** A spec with 80 endpoints becomes 80 tools in the model's context on every single turn, most of which are irrelevant to the current task — see [Tool Selection at Scale](/learn/tools-function-calling/tool-selection-at-scale) for filtering and dynamic-loading strategies once you're past a handful.
+
+**Descriptions written for humans, not models.** "Retrieves the resource" tells a developer skimming docs enough, because they already know what a "resource" is in this API. It tells a model nothing about *when* to call this tool versus a similar one. Plan to rewrite descriptions for the tools you keep — see [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow).
+
+**Every field, every parameter, whether or not it matters.** Internal fields, pagination cursors, and deprecated parameters all make it into the schema by default because the converter doesn't know which ones a model should touch. Prune aggressively — extra optional fields cost tokens on every call (see [The Token Cost of Tool Schemas](/learn/tools-function-calling/token-cost-of-tool-schemas)) and give the model more surface area to fill in wrong.
+
+## Treat conversion as a starting draft, not the finished tool
+
+The practical workflow is: generate the full set from the spec, then hand-curate. Pick the endpoints that actually serve the agent's task, tighten descriptions, drop or default fields the model shouldn't set, and re-run the conversion whenever the spec changes so the two don't drift apart. Some teams check the generated schemas into version control and diff them on every API change — cheap insurance against a silently broken tool call after a backend deploy.
+
+**Related:** [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow), [Tool Selection at Scale: When You Have Hundreds of Tools](/learn/tools-function-calling/tool-selection-at-scale)

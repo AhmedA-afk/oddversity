@@ -1,0 +1,33 @@
+---
+title: "Cache Prompts and Responses to Cut Cost"
+track: "production"
+status: live
+summary: "Use exact-match and semantic caching to skip redundant model calls, cutting both latency and spend."
+duration: "6 min read"
+---
+
+Every LLM call you don't make is free and instant. Two different caching layers get you there: one skips re-processing a prompt the model has seen before, the other skips the call entirely when a new question means the same thing as an old one.
+
+## Prompt caching: skip re-reading the same context
+
+Most production prompts repeat a large, stable chunk — a system prompt, a tool schema, a document you're grounding answers in — and append a small, changing user question on top. Without caching, the model reprocesses that entire stable prefix on every single request, which is most of your latency and cost.
+
+Prompt caching (sometimes called context caching) stores the model's internal representation of that fixed prefix after the first call, so later calls that reuse the identical prefix skip straight to processing just the new part. Anthropic, OpenAI, and Google all offer versions of this, and the win is large: cached input tokens typically cost a fraction of fresh ones, and time-to-first-token drops sharply since the model isn't re-reading thousands of tokens of boilerplate.
+
+The catch is that it's exact-match on the cached span. Reorder your system prompt, change one word in a shared instruction block, or insert a variable in the middle of the cached region and the cache misses. That's why the pattern is to structure prompts with the stable, reusable material first (system instructions, tool definitions, retrieved documents) and the variable, per-request material last — see [Prompt Templates](/learn/prompt-engineering/prompt-templates-and-variables) for how to structure that split cleanly.
+
+## Semantic caching: skip the call entirely
+
+Prompt caching still calls the model. Semantic caching goes further: it recognizes that a new request is asking essentially the same thing as a past one, and returns the stored answer without calling the model at all.
+
+The mechanism is embedding-based. You embed the incoming query, compare it against embeddings of past queries in a vector store using [cosine similarity](/learn/maths-foundations/cosine-similarity), and if a past query is close enough — above some similarity threshold — you serve its cached response directly. "What's your refund policy?" and "How do refunds work?" aren't the same string, but they land near each other in embedding space, so a well-tuned semantic cache catches both.
+
+This works best for high-traffic, low-personalization surfaces: FAQ bots, support deflection, documentation Q&A, anything where many users ask variations of the same handful of questions. It works poorly where answers must be precise per-user or time-sensitive — a stale cached answer served with high confidence is worse than a slow correct one.
+
+## Where each one earns its keep
+
+Use prompt caching almost everywhere you have a repeated, sizeable static prefix — it's nearly free to add and has no correctness downside since the model still generates a fresh answer. Use semantic caching more carefully: pick a similarity threshold deliberately (too loose and you serve wrong answers with confidence; too tight and you rarely hit), invalidate the cache when underlying facts change, and track your hit rate as a real metric — see [Track Cost Per Request](/learn/production/token-and-cost-tracking) for how to instrument that alongside the savings it's supposed to produce.
+
+The two layers stack. A support bot might semantic-cache the full response for common questions, and prompt-cache the system prompt and tool schema for the requests that do reach the model — so you're saving cost on the calls you skip and the calls you don't.
+
+**Related:** [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Prompt Templates: Building Reusable, Parameterized Prompts](/learn/prompt-engineering/prompt-templates-and-variables), [Cosine Similarity: Measuring How Alike Two Things Are](/learn/maths-foundations/cosine-similarity)

@@ -1,0 +1,40 @@
+---
+title: "Chain-of-Density: Iteratively Tightening a Draft"
+track: "prompt-engineering"
+status: live
+summary: "Rewrite a summary in fixed-length passes, forcing each version to pack in more entities without getting longer."
+duration: "5 min read"
+---
+
+Ask a model for "a dense summary" and you usually get something vague or something bloated. Chain-of-density sidesteps both by making density a process, not an instruction: generate a summary, then rewrite it several times at the same length, each pass required to fold in new information the last one missed.
+
+## The core loop
+
+The technique (from the 2023 "From Sparse to Dense" paper on GPT-4 summarization) runs in fixed iterations, usually four or five:
+
+1. Write an initial summary of the source text — deliberately generic, at a fixed length (say, 80 words).
+2. Identify 1-3 entities from the source that are missing from the summary — specific names, numbers, or claims, not vague topics.
+3. Rewrite the summary at the *same length*, fusing in those entities. Something has to go to make room.
+4. Repeat steps 2-3 for a set number of rounds.
+
+The length cap is what makes this work. Without it, a model just appends detail until the "summary" is as long as the source. With it, every new fact displaces a filler phrase or a redundant clause, and by round four or five what's left is almost pure signal.
+
+## Why not just ask for one dense pass
+
+A single-shot request for a "dense, information-rich summary" gives the model no way to know what "denser" means relative to its own first attempt — it has nothing to compare against, so it defaults to its normal register: readable, moderately generic, safely padded. Chain-of-density gives it an artifact to interrogate each round. "What's missing from *this specific draft*" is a concrete, checkable task; "be dense" is not. It's the same reason [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting) outperforms "think carefully" — a process beats an adjective.
+
+## A worked shape
+
+Round 0 (generic): "The article discusses a company's product launch and its market reception."
+
+Round 2, after pulling in two missing entities: "Acme's Q3 launch of its analytics tool drew 40,000 signups in the first week, beating internal projections by 3x."
+
+Round 4, after more rounds of the same length: "Acme's analytics tool launched Sept 12, hit 40,000 signups in week one (3x internal projections), and pushed the stock up 8%."
+
+Same word budget throughout, strictly more claims per sentence. Notice each round is also more compressed syntactically — dense summaries lean on appositives and parentheticals because full clauses are too expensive.
+
+## Where this breaks
+
+Push past 4-5 rounds and density crosses into unreadability — summaries become entity lists wearing sentence punctuation, which is what the original paper flags as the human-preference ceiling: raters preferred round-3-ish outputs over the maximally dense final round. Density is also not the same as faithfulness — a model under length pressure to add entities can quietly invent one to fit the space, so treat this as a compression technique that still needs the checks you'd run against [summarization hallucination](/learn/hallucinations/summarization-hallucination). And it costs 4-5x the tokens of a single summary call, so it's worth it for a pull-quote or an abstract, not for every summary in a high-volume pipeline.
+
+**Related:** [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Summarization Hallucination: Facts the Source Never Said](/learn/hallucinations/summarization-hallucination), [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics)

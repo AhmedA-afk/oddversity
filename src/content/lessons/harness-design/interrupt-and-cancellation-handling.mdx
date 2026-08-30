@@ -1,0 +1,42 @@
+---
+title: "Handling Ctrl-C: Clean Interruption Mid-Tool-Call"
+track: "harness-design"
+status: live
+summary: "Design cancellation so an interrupted tool call leaves state consistent instead of half-applied."
+duration: "5 min read"
+---
+
+A user hits Ctrl-C while your agent is three seconds into a file write or a database migration. The wrong response is killing the process outright — you get a half-written file, a lock nobody releases, or a model that "thinks" a tool call succeeded when it never finished. Cancellation is a design problem, not just an event to catch.
+
+## Why the naive approach breaks state
+
+The instinct is to treat Ctrl-C as `process.exit()`. That works for a chat loop with no side effects, but a harness's tools touch the filesystem, subprocesses, and APIs — things with state that outlives the process. If you kill mid-write, the file is truncated. If you kill mid-`git commit`, you can leave a lock file that blocks every future commit. If you kill a subprocess without waiting for it, you get an orphaned child process still writing to disk after your harness has already reported "cancelled" back to the model.
+
+The fix is to treat interruption as a signal you *propagate and wait on*, not an event you act on immediately. This is the same shape as cooperative cancellation in any concurrent system: a token gets set, in-flight work observes it at safe checkpoints, and the caller doesn't declare victory until cleanup confirms.
+
+## Building a cancellation token, not a kill switch
+
+Give every tool call an `AbortSignal` (or your language's equivalent — a cancellation token, a context with a `Done()` channel). The control loop creates one signal per turn, passes it into whatever tool is running, and Ctrl-C fires `abort()` on it rather than touching the process:
+
+```
+const controller = new AbortController();
+runningToolCall = controller.signal;
+
+process.on("SIGINT", () => controller.abort("user-interrupt"));
+
+await tool.execute(args, { signal: controller.signal });
+```
+
+Well-behaved tools check `signal.aborted` at natural boundaries — before each chunk of a stream, before each retry, before starting an irreversible sub-step — and unwind cleanly rather than being torn down externally. A subprocess-backed tool (shelling out to `git`, a linter, a build) should forward the abort as `SIGTERM` to the child, then escalate to `SIGKILL` only after a grace period, so the child gets a chance to flush buffers or release locks. See [Sandboxing Tool Execution in a Harness](/learn/harness-design/subprocess-isolation-and-sandboxing) for how that boundary is usually drawn.
+
+## Making interruption safe to resume from
+
+The part that actually protects state isn't the abort signal — it's what the tool does *when* it observes one. Three patterns cover most cases:
+
+- **Idempotent writes**: write to a temp file, then atomically rename over the target. An interrupted write leaves the temp file orphaned and the real file untouched.
+- **Explicit undo**: for operations with no atomic equivalent (a multi-file refactor, a series of shell commands), track what has been applied so far and roll it back on abort rather than leaving it partial.
+- **Truthful reporting**: when a tool call is cancelled mid-flight, the result returned to the model must say so plainly — `"status": "cancelled", "partial": true` — never a success payload for work that didn't finish. An agent that thinks a cancelled edit succeeded will build its next several turns on a false premise, which is a state problem as much as a data problem; see [Checkpointing Long-Running Agent State](/learn/harness-design/state-and-checkpointing) for how that turn boundary gets persisted.
+
+The general rule: a tool call has three outcomes, not two — succeeded, failed, and cancelled — and only the harness that models all three lets the agent recover honestly instead of hallucinating a fourth.
+
+**Related:** [Sandboxing Tool Execution in a Harness](/learn/harness-design/subprocess-isolation-and-sandboxing), [Checkpointing Long-Running Agent State](/learn/harness-design/state-and-checkpointing), [Scheduling Parallel Tool Calls Without Races](/learn/harness-design/parallel-tool-scheduling)

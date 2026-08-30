@@ -1,0 +1,125 @@
+---
+import Layout from '../components/Layout.astro';
+import { getCollection } from 'astro:content';
+import { tracks, roleTracks } from '../data/curriculum.ts';
+
+const lessons = await getCollection('lessons');
+const guides = await getCollection('guides');
+---
+<Layout
+  title="About Oddversity"
+  description="What Oddversity is, who it's for, how it's built, and what it deliberately doesn't do. A free, open AI engineering curriculum with no paywall and no account requirement."
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'About', url: '/about' }]}
+>
+  <article class="wrap">
+    <header>
+      <span class="eyebrow">About</span>
+      <h1>A free, complete curriculum for building with AI.</h1>
+      <p class="lede">
+        Oddversity is {lessons.length} lessons, {guides.length} guides, and a set of quizzes,
+        scenarios and interview questions covering the path from your first prompt to running
+        agents in production. All of it is open, none of it is gated, and you never need an
+        account to read a page.
+      </p>
+    </header>
+
+    <div class="prose">
+      <h2>The name</h2>
+      <p>
+        A university it isn't. There is no accreditation here, no admission, no
+        fee and no certificate — that last one deliberately, and there's
+        <a href="/blog/why-there-is-no-certificate">a whole page on why</a>.
+      </p>
+      <p>
+        The odd half is the more honest one. Most courses teach the path where
+        everything works, then leave you at the edge of it. The material here is
+        organised the other way round, around the cases that don't fit: the
+        table that lost its headers during chunking, the agent that goes quiet
+        at 3am because a token expired and nothing refreshed it, the eval score
+        that climbed while quality fell. Those are the odd ones, and they are
+        where the learning actually is.
+      </p>
+
+      <h2>Who it's for</h2>
+      <p>
+        Someone who can already get a model to do something interesting in a chat window and
+        now wants to know what happens when that becomes a feature with real users, real data,
+        real permissions and a real budget. That gap — between the demo and the system — is
+        where almost all the difficulty lives, and it's where most material stops.
+      </p>
+      <p>
+        It's also for people arriving from a role rather than a syllabus. There are {roleTracks.length}
+        role paths that pick the relevant lessons for one job and skip the rest.
+      </p>
+
+      <h2>How it's organised</h2>
+      <p>
+        {tracks.length} technical tracks, sequenced by dependency rather than by topic
+        popularity. A page tells you what it assumes and what it unlocks, so you can start in
+        the middle if you already know the start. Alongside the concept lessons there are four
+        other page types that do different jobs: worked examples that push one concrete input
+        to one concrete output, comparisons that put every named approach side by side,
+        cheatsheets for looking things up mid-build, and common-mistakes pages that state the
+        plausible-but-wrong model before correcting it.
+      </p>
+
+      <h2>What it tries to be</h2>
+      <p>
+        <strong>Complete.</strong> A path, not a pile of disconnected posts. If a lesson
+        depends on an idea, that idea has its own page and a link to it.
+      </p>
+      <p>
+        <strong>Hands-on.</strong> Runnable code rather than pseudocode, and the boring
+        operational details — timeouts, retries, permissions, cost — that decide whether
+        something survives contact with users.
+      </p>
+      <p>
+        <strong>Honest about limits.</strong> Every technique gets its failure modes, not just
+        its happy path. Where the evidence is thin or contested, the page says so rather than
+        rounding to a confident claim. There are no invented statistics here; where a number
+        would need a source we don't have, the number isn't used.
+      </p>
+
+      <h2>What it deliberately isn't</h2>
+      <p>
+        It isn't a certification business, and completing something here doesn't produce a
+        credential anyone should treat as one. It isn't a news feed — model releases are
+        covered where they change how you should build, not as announcements. And it isn't
+        vendor-aligned: where providers differ, the difference is the content.
+      </p>
+
+      <h2>How it's built</h2>
+      <p>
+        Astro and MDX, statically rendered, no client-side framework. Content lives as plain
+        Markdown files in a repository, which means the whole curriculum is greppable,
+        diffable and reviewable. The site ships almost no JavaScript — search, code copying and
+        local progress tracking are the whole of it, and everything still works without them.
+      </p>
+      <p>
+        Progress is stored in your browser, not on a server. There's no account, so there's
+        nothing to sign into and nothing of yours being kept.
+      </p>
+
+      <h2>Corrections</h2>
+      <p>
+        Technical material goes stale, and some of it was wrong to begin with. If you find an
+        error, the useful report names the page and the specific claim. Corrections are the
+        highest-value contribution anyone can make here.
+      </p>
+    </div>
+
+    <div class="cta">
+      <a href="/learn" class="btn btn-primary">Browse the curriculum</a>
+      <a href="/guides" class="btn btn-ghost">Start with a guide</a>
+    </div>
+  </article>
+</Layout>
+
+<style>
+  .wrap { max-width: 760px; margin-inline: auto; padding: 56px 32px 8px; }
+  h1 { font-size: clamp(30px, 4.6vw, 44px); letter-spacing: -.022em; margin-top: 14px; }
+  .lede { margin-top: 20px; font-size: 17px; line-height: 1.65; color: var(--muted); }
+  .prose { margin-top: 36px; }
+  .cta { margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 640px) { .wrap { padding: 36px 20px 8px; } }
+</style>

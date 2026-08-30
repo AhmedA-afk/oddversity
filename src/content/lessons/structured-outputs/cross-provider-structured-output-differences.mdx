@@ -1,0 +1,32 @@
+---
+title: "Cross-Provider Structured Output: Why 'JSON Mode' Isn't One Thing"
+track: "structured-outputs"
+status: live
+summary: "OpenAI, Anthropic, and Gemini all promise schema-valid JSON, but they get there differently — and the gaps show up when you switch."
+duration: "6 min read"
+---
+
+"Just turn on structured output" sounds like a single switch. It isn't. Each provider bolts schema enforcement onto a different underlying mechanism, and the seams show up exactly when you port a working prompt from one provider to another.
+
+## Three different roads to the same JSON
+
+OpenAI's structured outputs mode constrains the model's own text-generation path directly: you pass a JSON Schema, the API sets `strict: true`, and the sampler is restricted so it can only emit tokens that keep the output schema-valid as it goes. The tradeoff is a narrower schema dialect — every property has to be listed as required (you fake "optional" fields with a nullable type instead), `additionalProperties` must be `false`, and some JSON Schema keywords like string-length or numeric-range constraints are accepted but not actually enforced.
+
+Anthropic's Claude models take a different route: structured output rides on the same tool-calling machinery used for function calls. You define your schema as a tool, force the model to call it with `tool_choice`, and the "structured output" is really the tool-call arguments. This means the model reasons about the schema the same way it reasons about any tool, which tends to produce better field-level accuracy on nested and conditional shapes — see [Thinking Then Structuring](/learn/structured-outputs/thinking-then-structuring) — but it also inherits tool-calling's failure modes rather than JSON-generation's.
+
+Gemini's `response_schema` takes a third path, built on a restricted subset of the OpenAPI schema format rather than full JSON Schema. It's stricter about which keywords it recognizes at all, and historically has had shakier support for schema features like `anyOf` unions — the exact thing you'd reach for to model [Discriminated Unions](/learn/structured-outputs/discriminated-unions-in-schemas). If you migrate a schema that leans on unions, check the current docs before assuming it transfers unchanged; this is an area providers actively iterate on.
+
+## What silently breaks on a swap
+
+The failures that bite hardest aren't rejected requests — they're requests that succeed but produce a subtly different shape:
+
+- **Field requiredness.** Code written against Anthropic's tool schemas (where a field can just be absent) can produce different results against OpenAI's strict mode, which wants every field present with `null` standing in for "missing." A schema that validates on one provider can fail to validate on the other unless you rewrite it around each provider's optionality convention — see [Optional and Nullable Fields](/learn/structured-outputs/optional-and-nullable-fields).
+- **Constraint enforcement.** A `pattern` or `minimum` in your schema might be silently ignored by one provider's constrained decoder while another treats it as a hard rail. Don't trust a schema constraint until you've verified — with your own eval, not the docs — that the provider you're on actually enforces it.
+- **Refusal and error shape.** When a request can't be satisfied, providers disagree on whether you get a normal-looking JSON error object, a refusal field alongside the (empty) structured content, or an API-level error. Code that only checks "did I get valid JSON" can miss a refusal wearing a JSON costume.
+- **Schema complexity limits.** Deep nesting, large enums, and long property lists hit different ceilings on different platforms — one provider may quietly flatten or truncate a schema that's too complex rather than erroring.
+
+## Building for portability
+
+Don't assume "structured output" is a drop-in interface across providers. If you need to support more than one, isolate the schema-to-request translation in one place — see [Building a Provider Abstraction Layer](/learn/genai-app-dev/provider-abstraction-layers) — and keep your own validation and repair step downstream of the API response regardless of provider, because a schema-valid response is not the same guarantee everywhere. Treat "works on Claude" and "works on GPT" as two different claims until you've tested both, especially anywhere the schema uses unions, strict optionality, or constraints beyond basic types.
+
+**Related:** [Discriminated Unions: One Field Deciding the Shape of the Rest](/learn/structured-outputs/discriminated-unions-in-schemas), [Building a Provider Abstraction Layer](/learn/genai-app-dev/provider-abstraction-layers), [Structured Output vs. Tool Calls](/learn/tools-function-calling/structured-output-vs-tool-calls)

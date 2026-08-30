@@ -1,0 +1,45 @@
+---
+title: "Handling Tool Errors and Retries"
+track: "tools-function-calling"
+status: live
+summary: "Surface a failed tool call back to the model as data, not a crash, so it can recover instead of looping."
+duration: "5 min read"
+---
+
+A tool call fails constantly in production — a timeout, a 404, a malformed argument, a rate limit. The question isn't whether to handle failure, it's whether the model ever finds out it happened.
+
+## Errors are messages, not exceptions
+
+The instinct from normal software is to catch the exception and stop. In an agent loop, that's the wrong move: if your code swallows the error and returns nothing, or crashes the whole turn, the model never learns anything went wrong. Instead, catch the failure and return it as a normal tool result — a string or JSON object describing what broke, in the same message slot a successful result would occupy (see [Returning Tool Results to the Model](/learn/tools-function-calling/returning-tool-results-to-the-model)). The model reads it like any other observation and decides what to do next: retry with different arguments, try a different tool, or tell the user it's stuck.
+
+A useful error result names the failure type and gives an actionable detail, not a raw stack trace:
+
+```json
+{
+  "error": "invalid_argument",
+  "message": "date must be in the future, got 2024-01-01"
+}
+```
+
+That's enough for the model to correct the call itself. A bare `"Traceback (most recent call last)..."` gives it nothing to act on.
+
+## Retry the call, not just the request
+
+Not every failure deserves the same response. Split them into two buckets:
+
+- **Transient** — timeouts, 429s, momentary network errors. Retry automatically, outside the model's turn, with backoff. The model shouldn't have to reason about exponential backoff; that's plumbing.
+- **Semantic** — bad arguments, a resource that doesn't exist, a permission denial. Retrying the identical call just fails again. These need to go back to the model so it can change something — different arguments, a different tool, or asking the user for missing information.
+
+Conflating the two is the classic bug: a permission error gets silently retried three times by infrastructure code, burning latency, when the model could have recognized it instantly and stopped. Decide the bucket at the point the error is caught, before it ever reaches the model.
+
+## Cap the loop
+
+Even with good error messages, a model can get stuck retrying a call that will never succeed — rephrasing the same broken request five different ways. Put a hard ceiling on retries per tool call (two or three is typical) and on total tool calls per turn. When the ceiling is hit, stop calling the tool and force a response: return control to the model with an explicit note that the limit was reached, so it can tell the user what happened instead of silently repeating itself. This is the same failure mode covered in [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes), and the fix is the same one that shows up at the agent-loop level in [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries).
+
+## Distinguish "failed" from "no results"
+
+One subtle trap: an empty result is not an error. A search that legitimately found nothing should return `{"results": []}`, not an error object — otherwise the model treats a correct empty answer as a broken tool and starts retrying pointlessly. Reserve error results for cases where the tool genuinely couldn't do its job.
+
+Handled this way, tool failure becomes routine input the model reasons over, not a special case your code has to hide from it.
+
+**Related:** [Returning Tool Results to the Model](/learn/tools-function-calling/returning-tool-results-to-the-model), [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes), [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries)

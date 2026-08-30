@@ -1,0 +1,35 @@
+---
+title: "Orchestrating Multiple MCP Servers in One Client Session"
+track: "mcp"
+status: live
+summary: "Handling name collisions, priority, and context budget when a client connects to many MCP servers at once."
+duration: "6 min read"
+---
+
+One server is easy. The moment a client connects to five or ten at once — filesystem, GitHub, a database, Slack, a couple of internal company servers — three problems show up that never appear in a single-server demo: names collide, tools compete for attention, and every server's schema eats context whether the model ever calls it or not.
+
+## Name collisions
+
+MCP servers don't know about each other. Two servers can both register a tool called `search`, or `create_issue`, or `query`, with no coordination between them. A client has to disambiguate before the model ever sees a tool list.
+
+The common fix is namespacing: the client prefixes each tool with its server's name at connection time, so `github.search` and `notion.search` sit side by side instead of clobbering one another. Some hosts expose the raw name to the model and only use the prefix internally for routing; others show the prefixed name directly so the model's own choice signals which server it means. Either way, the collision has to be resolved by the client — the protocol itself has no shared namespace, so two servers can legally define identical tool names and both be technically correct.
+
+## Priority and which server answers
+
+When two connected servers can plausibly handle the same request — two search tools, two ways to read a file — the client can't leave that to chance. Most orchestration layers give servers an explicit priority or a routing hint: project-local servers before general ones, read-only servers preferred when a request is ambiguous, or a config that pins certain intents to a specific server. Without this, the model is left guessing between look-alike tools purely from their descriptions, which is exactly the kind of decision that degrades as tool count grows — see [Tool Selection at Scale](/learn/tools-function-calling/tool-selection-at-scale) for why that failure mode gets worse, not better, as you add more choices.
+
+A related decision is what to do when a server is slow or unreachable. A session with ten servers connected is a session with ten independent points of failure — one hung stdio process or one stalled HTTP handshake shouldn't block tool discovery for the other nine. Production clients connect to servers concurrently with per-server timeouts, and degrade gracefully — dropping a dead server's tools from the list rather than freezing the whole session.
+
+## Context budget across servers
+
+Every connected server contributes its full tool list — names, descriptions, and JSON schemas — to the context window before the model does anything. Ten servers averaging eight tools each is eighty tool definitions loaded up front, and that cost lands on every single turn, not just the ones that use them. This is the same tradeoff covered in [MCP and the Context Window](/learn/mcp/mcp-context-window), just multiplied by server count.
+
+The mitigations line up with what token-constrained agents already do elsewhere:
+
+- **Connect lazily.** Only attach servers relevant to the current task or project instead of every server the user has configured globally.
+- **Disclose progressively.** Some clients keep most servers' tools hidden until the model asks to search or expand them, rather than dumping every schema into the system prompt — the same idea covered in [Progressive Tool Disclosure](/learn/context-engineering/progressive-tool-disclosure).
+- **Prune descriptions.** A verbose, over-explained tool description costs the same tokens on turn one hundred as it did on turn one; trimming it once pays off every turn after.
+
+None of this is exotic — it's the ordinary discipline of budgeting a shared resource across tenants, applied to a context window instead of a server's CPU. The servers themselves stay unaware of each other; all of the coordination — naming, priority, and budget — is work the client has to do, which is exactly what pushes larger deployments toward a single gateway process that owns these decisions instead of leaving every client to solve them independently.
+
+**Related:** [MCP and the Context Window](/learn/mcp/mcp-context-window), [The Gateway Pattern: Proxying Many MCP Servers Behind One](/learn/mcp/mcp-gateway-pattern), [Tool Selection at Scale: When You Have Hundreds of Tools](/learn/tools-function-calling/tool-selection-at-scale)

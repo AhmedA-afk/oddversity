@@ -1,0 +1,44 @@
+---
+title: "MCP Auth Fundamentals"
+track: "mcp"
+status: live
+summary: "How MCP servers authenticate clients and users, so only permitted callers can invoke tools or touch data."
+duration: "9 min read"
+---
+
+A local MCP server launched over stdio inherits your OS user's permissions — there's no separate login. The moment a server moves to HTTP and other people can reach it, that assumption breaks, and MCP needs a real answer to "who is calling, and what are they allowed to do."
+
+## The model: OAuth 2.1, not a custom scheme
+
+MCP's spec doesn't invent its own auth protocol. It leans on **OAuth 2.1**, the same flow behind "Sign in with Google" — because reinventing token issuance, refresh, and revocation per-server is how you get security bugs. A remote MCP server acts as an OAuth **resource server**: it doesn't hand out tokens itself, it validates them.
+
+The pieces:
+
+- **Authorization server** — issues tokens after the user logs in and grants consent (could be the same company as the MCP server, or a separate identity provider).
+- **Resource server** — your MCP server. Checks every request for a valid token before running a tool.
+- **Client** — the MCP host (Claude, an IDE, a custom agent) that obtained the token on the user's behalf.
+
+## How a client finds out where to authenticate
+
+A client shouldn't need to be hardcoded with your auth server's URL. MCP servers publish this via **protected resource metadata** — a well-known endpoint the server exposes that points to its authorization server. When a client calls a tool without a token, the server responds `401` with a `WWW-Authenticate` header pointing at that metadata:
+
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer resource_metadata="https://api.example.com/.well-known/oauth-protected-resource"
+```
+
+The client follows that link, discovers the authorization server, and kicks off the OAuth flow — often with **dynamic client registration**, so a brand-new MCP client doesn't need a developer to manually register it first.
+
+## Scopes: tools aren't all equal
+
+Once a client has a token, the token should carry **scopes** — narrow, specific permissions, not "full account access." A tool that reads calendar events and a tool that deletes files should require different scopes, so a user (or an admin) can grant one without the other. Design your tool set with this in mind from the start: bundling a destructive tool into the same scope as a read-only one means every client that needs to read also gets to delete.
+
+## What this isn't
+
+Auth answers *who is calling*. It doesn't answer *is this request safe to execute* — a fully authenticated user can still trigger a tool call shaped by a prompt-injected instruction. That's a separate problem, covered in [Securing MCP Servers Against Prompt Injection](/learn/mcp/securing-mcp-servers-against-prompt-injection). Auth also doesn't keep working tokens working forever — once you've got authentication in place, the next failure mode is a token that silently expires; see [The Agent That Dies Overnight: OAuth](/learn/mcp/agent-dies-overnight-oauth).
+
+## The takeaway
+
+Treat any MCP server reachable over the network as a resource server: require a bearer token on every call, publish where clients get one, and scope tokens to the narrowest permission each tool actually needs.
+
+**Related:** [Securing MCP Servers Against Prompt Injection](/learn/mcp/securing-mcp-servers-against-prompt-injection), [The Agent That Dies Overnight: OAuth](/learn/mcp/agent-dies-overnight-oauth), [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http)

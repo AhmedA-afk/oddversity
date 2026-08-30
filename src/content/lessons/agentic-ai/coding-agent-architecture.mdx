@@ -1,0 +1,38 @@
+---
+title: "Inside a Coding Agent: How Claude Code and SWE-Agent Work"
+track: "agentic-ai"
+status: live
+summary: "The read-edit-test-verify loop and repo-aware context tricks that let coding agents like Claude Code and SWE-agent actually ship working diffs."
+duration: "6 min read"
+---
+
+A coding agent isn't a chatbot that writes code once and hopes — it's a loop that reads, edits, runs, and checks its own work until the tests pass or it runs out of budget. What makes one effective is almost entirely in the loop design and the tools it's given, not the underlying model.
+
+## The read-edit-test-verify loop
+
+Strip away the branding and Claude Code, SWE-agent, and similar tools all run the same cycle:
+
+1. **Read** — locate the relevant files. Not "load the repo," but targeted search: grep for a symbol, list a directory, open the one file that matters.
+2. **Edit** — make a small, scoped change, usually as a diff or a find-and-replace against exact file content, not a full-file rewrite.
+3. **Test** — run the project's own test suite, linter, or a reproduction script.
+4. **Verify** — read the output and decide: done, or loop back to step 1 with new information.
+
+The loop only works if each step feeds the next with real signal. A model that edits blind, without ever running the tests it just touched, is just guessing with extra steps. This is the same read-think-act shape covered in [the agent loop](/learn/agentic-ai/the-agent-loop), specialized for a domain where "act" has a verifiable outcome: the code either compiles and passes, or it doesn't.
+
+## Repo-aware context: search over stuffing
+
+Early coding assistants tried to fit relevant code into the prompt by embedding-based retrieval, like RAG. That works for Q&A over docs; it works poorly for codebases, because the right context for "fix this bug" is rarely the top-k semantically similar chunks — it's the caller of this function, the test that's failing, the config three directories over.
+
+Claude Code and SWE-agent instead give the model **tools that navigate the repo like a person would**: grep, glob, targeted file reads, and the ability to run arbitrary shell commands. The agent decides what to look at, one step at a time, based on what it just learned — pulling context just-in-time instead of front-loading a guess at relevance. This keeps the context window full of things that are actually load-bearing for the current step, rather than a pile of plausibly-related code the model has to sift through.
+
+The tradeoff is turns: navigating by search costs more round-trips than a single big retrieval call. That's a fine trade when each turn is cheap and the loop can course-correct — see [just-in-time context loading](/learn/context-engineering/just-in-time-context-loading) for the general pattern.
+
+## The agent-computer interface
+
+SWE-agent's authors coined a useful term for this: the ACI, or agent-computer interface — the specific shape of the tools the model is given, distinct from the raw shell a human would use. A raw `sed` command is powerful but easy for a model to get subtly wrong (off-by-one line numbers, unescaped regex). SWE-agent and Claude Code both wrap file editing in a narrower, more constrained tool — replace this exact string with that one — that fails loudly instead of silently corrupting a file. The narrower the tool, the fewer ways the loop breaks on step two.
+
+## Why verification is the load-bearing step
+
+The single biggest predictor of whether a coding agent finishes correctly isn't planning quality, it's whether "test" and "verify" are real. An agent that can only guess whether its patch worked degrades into the same one-shot generation as a plain prompt. An agent with a runnable test suite in the loop can fail, notice, and retry — which is the actual capability gap between a coding agent and autocomplete with extra steps. This is also why coding agents are one of the strongest evals for agent capability generally: [SWE-bench](/learn/agentic-ai/agent-benchmarks) measures exactly this loop against real GitHub issues.
+
+**Related:** [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [Just-in-Time Context: Letting the Agent Fetch Instead of Preload](/learn/context-engineering/just-in-time-context-loading), [Benchmarking Agents: SWE-bench, WebArena, and GAIA](/learn/agentic-ai/agent-benchmarks)

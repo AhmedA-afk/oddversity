@@ -1,0 +1,59 @@
+---
+title: "Your First LLM API Call"
+track: "genai-app-dev"
+status: live
+summary: "Make a raw API call to a model provider and read the response object end to end."
+duration: "6 min read"
+---
+
+Every GenAI feature, no matter how polished the final UI, starts as an HTTP request. Before you touch a chat window or a streaming spinner, make one plain call to a provider's API and look at exactly what comes back.
+
+## The request
+
+Providers differ in field names, but the shape is the same everywhere: an endpoint, an API key, a model name, and a list of messages. Here's a call to Anthropic's Messages API:
+
+```bash
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-5",
+    "max_tokens": 1024,
+    "messages": [
+      {"role": "user", "content": "Say hello in one sentence."}
+    ]
+  }'
+```
+
+Note the fields you're forced to specify: `model` (there's no default — see [Choosing a Model](/learn/ai-foundations/choosing-a-model)), and `max_tokens`, a hard ceiling on the reply, not a target. Skip it and most providers reject the request outright.
+
+## Reading the response
+
+The response is a JSON object, not just a string of text:
+
+```json
+{
+  "id": "msg_01XYZ",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-5",
+  "content": [
+    {"type": "text", "text": "Hello! Hope your day is going well."}
+  ],
+  "stop_reason": "end_turn",
+  "usage": {"input_tokens": 12, "output_tokens": 11}
+}
+```
+
+Three fields matter more than the text itself once you're building a real feature:
+
+- **`content`** is an array, not a string — a model can return multiple blocks (text, tool calls, thinking), so your code has to walk the array rather than assume `content` is a single string.
+- **`stop_reason`** tells you *why* generation stopped: `end_turn` (done naturally), `max_tokens` (truncated — your reply is incomplete), or `tool_use` (the model wants to call a tool). Code that ignores this field will silently ship cut-off answers.
+- **`usage`** gives you token counts for both sides of the exchange — the raw input for every cost and budget decision you'll make later (see [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking)).
+
+## Why do this before reaching for an SDK
+
+SDKs wrap this same request in a friendlier method call, but they don't remove the underlying shape — they just hide it. Making the raw call first means that when an SDK method throws an unfamiliar error, or a `stop_reason` shows up that your code doesn't handle, you already know what's actually crossing the wire. It's the same reason it's worth reading raw model output before layering on [streaming](/learn/genai-app-dev/streaming-responses-to-the-ui) or a full [GenAI feature](/learn/genai-app-dev/anatomy-of-a-genai-feature) — every abstraction on top of this call is optional; the call itself is not.
+
+**Related:** [Anatomy of a GenAI Feature](/learn/genai-app-dev/anatomy-of-a-genai-feature), [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking)

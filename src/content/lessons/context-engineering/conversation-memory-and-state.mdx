@@ -1,0 +1,33 @@
+---
+title: "Memory vs State: What Persists Across Turns and Sessions"
+track: "context-engineering"
+status: live
+summary: "Why 'the model remembers' is the wrong mental model, and what actually carries information forward."
+duration: "5 min read"
+---
+
+An LLM API call is stateless. Nothing persists inside the model between requests — every "memory" you see in a chat product is something outside the model, reassembled and handed back in on the next call. Understanding what that something is, and where it lives, is the difference between an app that feels continuous and one that quietly forgets or leaks.
+
+## Turn-level: the conversation array
+
+Within a single session, "memory" is just the message history you resend every time. Turn 10 works because turns 1 through 9 are still sitting in the array you pass to the API. This is cheap to reason about but not free — it's the same token budget covered in `token budgeting` and it's why long chats eventually need `trimming conversation history` or `compaction`. Nothing here is magic: delete a message from the array and the model has no idea it ever happened.
+
+## Session-level: state that outlives the array
+
+Some things need to survive even when the conversation array gets trimmed or the chat is closed and reopened: a user's name, a project's file structure, a running total in a multi-step task. This is application *state*, not model memory — a database row, a session object, a cache key — and your code decides what gets read back into context on the next turn. A coding agent's sense of "the current plan" or "files already edited" works this way: it's not recalled, it's re-fetched and re-injected, following the same `structured context injection` patterns you'd use for any other external source.
+
+## Cross-session: durable memory
+
+The harder case is remembering across sessions that share no conversation array at all — "remember I prefer TypeScript" showing up three weeks later in an unrelated chat. This requires an explicit memory store: something extracts candidate facts, writes them somewhere durable (a file, a vector store, a key-value table), and a *retrieval* step decides which facts are relevant enough to inject into the next session's context. That retrieval step matters as much as the storage — see `retrieval vs stuffing` — because a memory store that dumps everything back in every time just recreates the token-budget problem you built the store to avoid, and stale or wrong memories are their own hallucination risk.
+
+## The design questions
+
+For anything you build, three questions replace "does it remember":
+
+- **Where does this fact live** between the moment it's produced and the moment it's needed again — array, database, vector store?
+- **What decides it gets pulled back in** — always included, retrieved by relevance, or explicitly requested?
+- **What happens when it's wrong or stale** — can it be corrected, expired, or overridden?
+
+Answer those and "memory" stops being a vague feature and becomes a pipeline you can debug, cost out, and get right — which matters more as sessions get longer, a problem `context rot` covers directly.
+
+**Related:** [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction), [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing), [Short-Term vs Long-Term Memory](/learn/agentic-ai/agent-memory-short-vs-long-term)

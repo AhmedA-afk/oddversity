@@ -1,0 +1,29 @@
+---
+title: "Activation Functions: Why Networks Aren't Just Linear Algebra"
+track: "ai-foundations"
+status: live
+summary: "Why stacking linear layers alone can't learn anything interesting, and what ReLU, GELU, and their relatives fix."
+duration: "5 min read"
+---
+
+Stack a hundred linear layers on top of each other and you still only have a linear function — a straight line dressed up in a hundred coats. Activation functions are the small nonlinear twist inserted after each layer that turns "a very tall stack of matrix multiplications" into a network that can actually represent curves, boundaries, and everything else that isn't a straight line.
+
+## The collapse problem
+
+A linear layer computes `y = Wx + b`. Chain two of them together and the result is still just another linear function of `x` — you can always find a single combined `W'` and `b'` that does the same job. No matter how many layers you stack, without something nonlinear in between, the whole network mathematically collapses into one layer. This is why [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network) always shows an activation between the matrix multiply and the next layer — it's not decoration, it's the thing that makes depth mean anything at all.
+
+An activation function applies a simple, fixed, nonlinear transformation to each number coming out of a layer, independently. That tiny bend, repeated across millions of neurons and dozens of layers, is what lets a network approximate wiggly, curved, real-world functions instead of only flat ones.
+
+## The lineage: sigmoid to ReLU to GELU
+
+Early networks used sigmoid or tanh, which squash any input into a fixed range. The problem: for large positive or negative inputs, the curve goes almost flat, so its slope is near zero. During [Backpropagation](/learn/maths-foundations/backpropagation-intuition), that near-zero slope gets multiplied through the chain rule at every layer, and the gradient shrinks toward nothing before it reaches the early layers — the vanishing gradient problem that made deep networks hard to train for years.
+
+ReLU (`max(0, x)`) fixed most of that. It's just a hinge: zero for negative inputs, identity for positive ones. The slope is either 0 or 1, so gradients that do flow, flow at full strength — no shrinking. It's also nearly free to compute, which matters a lot at scale. Its one flaw is the "dead ReLU" failure mode: if a neuron's weights push it to always output a negative value, its gradient is permanently zero and it stops learning entirely.
+
+Modern LLMs mostly use smoother variants — GELU and SwiGLU, used in the [feed-forward block](/learn/llm-foundations/the-feed-forward-block) of a transformer. Instead of a hard corner at zero, they curve smoothly through it, weighting inputs by roughly how likely they are to be "useful" rather than cutting them off sharply. In practice this trains a bit more reliably than plain ReLU and slightly outperforms it, which is why it became the default in transformer architectures rather than any dramatic theoretical leap.
+
+## What this buys you
+
+None of this is about picking the "smartest" curve. It's about picking a nonlinearity that: breaks the linear collapse, keeps gradients flowing during training, and is cheap enough to run at the scale of billions of parameters. That's the entire job description — everything else is a way to tune those three trade-offs.
+
+**Related:** [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network), [Backpropagation: How Networks Assign Blame](/learn/maths-foundations/backpropagation-intuition), [The Feed-Forward Block: The Transformer's Other Half](/learn/llm-foundations/the-feed-forward-block)

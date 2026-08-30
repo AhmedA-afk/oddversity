@@ -1,0 +1,18 @@
+---
+interface Props {
+  label?: string;
+}
+
+const { label = 'Sponsored' } = Astro.props;
+---
+<!-- Placement note: keep this below the primary content on blog posts and stats only. -->
+<aside class="ad-slot" aria-label={label}>
+  <span class="eyebrow">{label}</span>
+  <p>A quiet space for a relevant tool or learning partner.</p>
+</aside>
+
+<style>
+  .ad-slot { margin-top: 58px; min-height: 96px; border: 1px dashed var(--rule); background: var(--paper); padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .ad-slot p { color: var(--faint); font-size: 12.5px; }
+  @media (max-width: 560px) { .ad-slot { align-items: flex-start; flex-direction: column; gap: 8px; } }
+</style>

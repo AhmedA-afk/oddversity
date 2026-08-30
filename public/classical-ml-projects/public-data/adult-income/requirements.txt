@@ -1,0 +1,2 @@
+# Python 3.10+ standard library only. Add pinned packages for your extended solution.
+

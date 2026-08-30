@@ -1,0 +1,34 @@
+---
+title: "Multi-Turn Prompt Design: Steering a Conversation, Not a Single Shot"
+track: "prompt-engineering"
+status: live
+summary: "Instructions decay over a conversation unless you design for the arc, not just the opening prompt."
+duration: "6 min read"
+---
+
+A great system prompt on turn one doesn't guarantee great behavior on turn eight. As a conversation grows, the model is reasoning over everything that came before it, and early instructions compete with a pile of accumulated turns, tool outputs, and small course-corrections. Multi-turn design treats the whole conversation as the unit of prompting, not just the first message.
+
+## Why instructions decay
+
+A system prompt sits at a fixed position in context, but the model attends to the *whole* transcript when generating the next turn, and it weighs recent tokens more heavily. Ten turns in, "always respond in bullet points" is competing against nine user messages and nine model replies that may not reinforce it. Nothing enforces the original instruction; it just becomes proportionally smaller. This is the same effect behind [Lost in the Middle](/learn/context-engineering/lost-in-the-middle) and [Context Rot](/learn/context-engineering/context-rot) — more turns without reinforcement means the model is less reliably steered by what you said first.
+
+The fix isn't to write a longer system prompt. It's to treat instruction-following as something you actively maintain across turns, not something you set once.
+
+## Designing the arc
+
+A few patterns keep instructions live deep into a conversation:
+
+- **Re-anchor periodically.** For a long or high-stakes conversation, restate the constraint that matters most every few turns, or right before the turn where it's most likely to be violated (e.g., just before the model produces final output).
+- **Turn structure follows task structure.** If a task naturally has phases — gather requirements, draft, critique, finalize — design turns around those phases explicitly rather than letting a single freeform back-and-forth wander. This is multi-turn's version of [task decomposition](/learn/prompt-engineering/task-decomposition): instead of splitting one prompt into a pipeline of calls, you split one conversation into a pipeline of turns.
+- **Summarize state, don't just accumulate it.** If earlier turns established facts or decisions the model needs later, restate them compactly in a later user turn rather than trusting the model to re-derive them from scrollback. This is cheap insurance against drift.
+- **Watch for instruction collisions.** A constraint given in turn 2 can be silently contradicted by an example or correction in turn 6. Multi-turn design means auditing the transcript for conflicting signals, not just the opening prompt.
+
+## An example
+
+Say you're building a coding assistant with a system prompt that says "never modify files outside `/src`." Turn one, that holds. By turn fifteen, the user has asked for a fix that touches a config file at the root, the model has done it because the request was concrete and immediate while the boundary was distant and abstract. The rule didn't disappear — it just lost the recency battle. A multi-turn-aware design re-states the boundary in a tool-use wrapper or a periodic system reminder, rather than relying on turn-one framing to hold for the rest of the session.
+
+## Multi-turn vs. session state
+
+Multi-turn prompt design is about *what you say and when* across turns. It's a distinct concern from [session and state management](/learn/genai-app-dev/session-state-multi-turn), which is about the engineering of storing, trimming, and passing that history between requests. You can have flawless state management and still lose the model's attention to your instructions if you never designed for the arc.
+
+**Related:** [Lost in the Middle](/learn/context-engineering/lost-in-the-middle), [Context Rot](/learn/context-engineering/context-rot), [Session and State Management for Multi-Turn Features](/learn/genai-app-dev/session-state-multi-turn)

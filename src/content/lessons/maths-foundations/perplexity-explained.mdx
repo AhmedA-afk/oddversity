@@ -1,0 +1,35 @@
+---
+title: "Perplexity: How Language Models Are Scored"
+track: "maths-foundations"
+status: live
+summary: "Perplexity measures how surprised a model is by real text - the standard yardstick for language model quality."
+duration: "5 min read"
+---
+
+A language model is really just a machine for assigning probabilities to the next token. Perplexity turns that stream of probabilities into a single number that tells you how well the model saw the actual text coming.
+
+## The intuition
+
+Feed a model a real sentence and check, at each step, what probability it assigned to the token that actually came next. A good model isn't surprised much - it puts high probability on the real continuation. A bad model spreads its bets thin and gets caught off guard.
+
+Perplexity is a way of averaging that surprise across a whole sequence and expressing it as an effective number of choices. A perplexity of 1 means the model was never surprised - it assigned probability 1 to every correct next token. A perplexity of 20 means that, on average, the model was about as uncertain as if it were guessing uniformly among 20 equally likely options at each step. Lower is always better.
+
+## From probability to a score
+
+The mechanics run through two ideas covered elsewhere in this track. First, take the [log](/learn/maths-foundations/logarithms-for-ml) of the probability the model assigned to each true next token - logs turn a chain of multiplied probabilities into a sum, which is far easier to work with and avoids the numbers shrinking to nothing. Average those log-probabilities across the sequence, flip the sign (since log-probabilities of numbers below 1 are negative, and we want a positive score), and that average is the cross-entropy loss - the same quantity a model is trained to minimize.
+
+Perplexity is just that loss exponentiated:
+
+```
+perplexity = exp(average negative log-probability of the true tokens)
+```
+
+Exponentiating undoes the log and converts an abstract loss value back into something with an intuitive reading: an effective branching factor, the number of roughly-equally-likely next tokens the model was choosing among. Under the hood, those per-token probabilities come straight out of the same [softmax](/learn/maths-foundations/the-softmax-function) distribution the model uses to pick outputs at inference time.
+
+## What it does and doesn't tell you
+
+Perplexity is cheap to compute, needs no human labels, and is the backbone metric for comparing base models during pretraining or measuring how well a model fits a specific domain of text (medical notes, legal contracts, a codebase). Two models trained on the same data and evaluated on the same held-out set can be ranked directly by this number.
+
+But perplexity only measures how well a model predicts existing text - it says nothing about whether the model is helpful, honest, or good at following instructions. A model tuned heavily for chat or reasoning can have worse raw perplexity than a base model while being far more useful, because instruction-tuning reshapes the output distribution away from pure next-token imitation. It's also not comparable across different tokenizers, since the "number of tokens" the average is taken over changes the scale. Treat it as one signal about raw language modeling fit, not a general quality score - for that, you want task-specific [benchmarks](/learn/ai-foundations/benchmarks-and-what-they-miss).
+
+**Related:** [Logarithms for Machine Learning](/learn/maths-foundations/logarithms-for-ml), [The Softmax Function](/learn/maths-foundations/the-softmax-function), [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss)

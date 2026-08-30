@@ -1,0 +1,41 @@
+---
+title: "Building a Provider Abstraction Layer"
+track: "genai-app-dev"
+status: live
+summary: "Write one interface over multiple model providers so you can swap or fall back without rewriting call sites."
+duration: "6 min read"
+---
+
+Every LLM provider has its own SDK, its own request shape, and its own way of streaming tokens. If your app calls those SDKs directly from every feature, switching models — or adding a fallback when one provider is down — means touching code everywhere. A provider abstraction layer fixes that by putting one interface between your app and the providers.
+
+## The shape of the interface
+
+The idea is small: define a function like `complete(messages, options)` that returns a normalized response, and implement it once per provider behind that same signature. Your app code calls the interface, never the SDK.
+
+```
+interface ChatProvider {
+  complete(messages: Message[], options: CallOptions): Promise<ChatResponse>
+  stream(messages: Message[], options: CallOptions): AsyncIterable<Chunk>
+}
+```
+
+Each provider's adapter translates your normalized `messages` and `options` into that vendor's request format, and translates the response back into your `ChatResponse` shape — same fields, same error types, regardless of who answered. This is the same instinct behind [error handling for LLM calls](/learn/genai-app-dev/error-handling-for-llm-calls): normalize the messy, provider-specific reality into something the rest of your app can treat uniformly.
+
+## What actually varies between providers
+
+The abstraction only earns its keep if you know what it's hiding. A few things differ enough to bite you:
+
+- **Message formats.** System prompts are a top-level field for some providers, a message role for others. Multi-turn tool-call history is encoded differently across vendors.
+- **Streaming events.** Token deltas, tool-call deltas, and completion signals arrive as different event types with different field names. Your `stream()` adapter has to fold all of them into one chunk shape before it reaches your [streaming UI code](/learn/genai-app-dev/streaming-responses-to-the-ui).
+- **Token limits and pricing.** Context windows, output caps, and cost per token vary by model, not just by provider. If you're tracking spend, this has to feed into the same layer as your [cost budgets and usage tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking).
+- **Feature support.** Not every model supports structured output, vision input, or forced tool use the same way. An abstraction that pretends otherwise will fail silently on the providers that can't do what you asked.
+
+Don't try to abstract away things that are genuinely different — a model's reasoning behavior or its tool-calling reliability isn't something an interface should paper over. Abstract the plumbing, not the model's actual capabilities.
+
+## Why this pays off
+
+Two use cases justify the extra layer almost immediately. First, **fallback**: when your primary provider rate-limits or errors out, your [retry logic](/learn/genai-app-dev/rate-limits-and-retry-strategies) can reach for a second adapter without the caller knowing anything changed. Second, **evaluation**: you can run the same prompt through three providers and compare outputs, because they all speak the same interface.
+
+The cost is real too — you're maintaining N adapters instead of using one SDK directly, and each new provider feature has to be threaded through the common interface before your app can use it. For a single-provider prototype, skip this. Build it once you're actually maintaining more than one, or once "what if this provider goes down" becomes a real production question rather than a hypothetical.
+
+**Related:** [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies), [Error Handling for LLM Calls](/learn/genai-app-dev/error-handling-for-llm-calls), [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking)

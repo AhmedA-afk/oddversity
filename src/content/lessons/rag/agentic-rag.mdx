@@ -1,0 +1,39 @@
+---
+title: "Agentic RAG: Iterative, Multi-Hop Retrieval"
+track: "rag"
+status: live
+summary: "Lets the model decide when to retrieve again, reformulate a query, or stop — instead of one fixed retrieve-then-generate pass."
+duration: "6 min read"
+---
+
+Classic RAG retrieves once, stuffs the results into the prompt, and generates. That works for single-fact lookups but falls apart on questions that need several pieces of evidence gathered in sequence. Agentic RAG turns retrieval into a tool the model calls in a loop, deciding after each result whether it has enough to answer or needs to search again.
+
+## Why one retrieval pass isn't enough
+
+Take "did the vendor we onboarded in Q2 pass the security review that our Q3 policy update now requires?" A single vector search over that whole question returns chunks that are semantically close to the *sentence*, not chunks that answer the two separate sub-questions buried inside it: who was onboarded in Q2, and what does the Q3 policy say. Standard RAG has no mechanism to notice the gap — it retrieves once and generates from whatever came back, confidently wrong or vague either way.
+
+Agentic RAG treats the retriever as a callable tool, similar to how you'd expose a search API in [tool calling](/learn/tools-function-calling/what-is-tool-calling). The model reads the question, issues a first query, reads what comes back, and — using the same [ReAct](/learn/agentic-ai/react-pattern)-style reasoning loop that drives any agent — decides whether the retrieved chunks actually answer the question or whether it needs another hop: rewrite the query, search a different filter, or pull a linked document.
+
+## The loop in practice
+
+A minimal agentic RAG loop looks like this:
+
+```
+question → retrieve(query) → model reads chunks
+  → "enough evidence?" 
+      yes → generate answer with citations
+      no  → reformulate query (based on what's missing) → retrieve again
+  → repeat until enough evidence, or a hop/step limit is hit
+```
+
+The reformulation step is where this earns the name "agentic" rather than just "retrieval." The model isn't running the same query twice — it's using the gap it just noticed to write a *better* query, the same way you'd revise a search after a bad first result. This overlaps heavily with plain [query rewriting and expansion](/learn/rag/query-rewriting-and-expansion), except here the rewrite is conditioned on retrieved content rather than done once upfront.
+
+Two things keep this from spiraling: a hard cap on hops (three to five is typical — more and latency and cost balloon for diminishing returns), and a stopping condition the model can actually evaluate, not just "keep going until you feel done." Framing it as "can I cite a specific chunk for every claim in my draft answer" gives the model something concrete to check, which connects directly to how you'd design [stopping conditions for agents](/learn/agentic-ai/stopping-conditions-for-agents) in general.
+
+## Where it beats — and loses to — standard RAG
+
+Agentic RAG wins on multi-hop, comparative, and follow-up-style questions: "compare X and Y," "what changed between the old and new version," "find the exception to this rule." It also recovers gracefully from a bad first retrieval, since the model can notice low-relevance results and try a different angle instead of generating from noise.
+
+It loses on cost and latency — every extra hop is another retrieval call plus another model turn, so a question answerable in one lookup gets needlessly slower and more expensive if you route it through an agent loop by default. It's also harder to evaluate and debug than fixed-pipeline RAG, since the query path differs per question — treat each hop as a step to inspect the way you'd read any [agent's trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev). In production, most systems route: simple lookups go through a single-pass pipeline, and only queries that look multi-part or that fail a first-pass relevance check escalate to the agentic loop. That routing judgment is itself worth revisiting against [when RAG is the wrong tool](/learn/rag/when-rag-is-the-wrong-tool) entirely — sometimes the extra hops are chasing an answer that isn't in the corpus at all.
+
+**Related:** [Query Rewriting and Expansion](/learn/rag/query-rewriting-and-expansion), [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern), [Corrective and Self-RAG: Grading Retrieval Before Answering](/learn/rag/corrective-self-rag)

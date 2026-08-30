@@ -1,0 +1,31 @@
+---
+title: "Vector Norms: Measuring Length and Distance"
+track: "maths-foundations"
+status: live
+summary: "L1, L2, and L∞ norms explain how big a vector is — and the choice quietly shapes regularization, distance, and embedding search."
+duration: "5 min read"
+---
+
+A norm is just a rule for turning a vector into a single non-negative number: "how big is this thing?" There's more than one reasonable answer, and which one you pick changes how your model behaves.
+
+## The three you'll actually see
+
+Take a vector like `[3, -4]`. Three common norms give three different answers:
+
+- **L1 (Manhattan norm):** sum of absolute values. `|3| + |-4| = 7`. Think of walking city blocks — you can't cut diagonally.
+- **L2 (Euclidean norm):** square root of the sum of squares. `sqrt(9 + 16) = 5`. This is the "as the crow flies" distance you learned in geometry, and it's what most people mean by "the length of a vector" by default.
+- **L∞ (max norm):** the single largest absolute value. `max(3, 4) = 4`. It only cares about the worst-case coordinate.
+
+The general pattern is the **p-norm**: raise each component to the power `p`, sum them, take the `1/p` root. L1 is p=1, L2 is p=2, and L∞ is the limit as p goes to infinity.
+
+## Why L2 dominates by default
+
+L2 norm is smooth and differentiable everywhere, which matters enormously for anything trained with gradient descent — see [gradient descent, intuitively](/learn/maths-foundations/gradient-descent-intuition). It also has a clean geometric meaning: it's the distance formula, generalized to any number of dimensions. When you normalize an embedding vector to unit length before comparing it with [cosine similarity](/learn/maths-foundations/cosine-similarity), you're dividing by its L2 norm.
+
+L1, by contrast, has a corner at zero — it isn't differentiable there. That sounds like a bug, but it's actually the whole reason L1 regularization pushes model weights to exactly zero (sparsity), while L2 regularization only shrinks them toward zero without ever quite reaching it. If you've seen a model "select features" by zeroing out most of its weights, that's L1's kink doing the work — see [L1 vs. L2 regularization](/learn/maths-foundations/l1-vs-l2-regularization) for the full mechanism.
+
+## Norms as distance, not just size
+
+Any norm doubles as a distance metric: the distance between two vectors is just the norm of their difference. `distance(a, b) = norm(a - b)`. This is why norm choice matters for anything doing nearest-neighbor search over embeddings — L2 distance and cosine similarity often rank results similarly for normalized vectors, but L1 distance can behave very differently, especially in the [high-dimensional spaces](/learn/maths-foundations/high-dimensional-spaces) where embeddings actually live, since L1 is less sensitive to a few large outlier coordinates than L2 is.
+
+**Related:** [L1 vs. L2 Regularization](/learn/maths-foundations/l1-vs-l2-regularization), [Cosine Similarity: Measuring How Alike Two Things Are](/learn/maths-foundations/cosine-similarity), [Why High-Dimensional Space Feels Weird](/learn/maths-foundations/high-dimensional-spaces)

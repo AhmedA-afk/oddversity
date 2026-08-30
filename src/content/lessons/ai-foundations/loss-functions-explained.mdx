@@ -1,0 +1,25 @@
+---
+title: "Loss Functions: How a Model Knows It's Wrong"
+track: "ai-foundations"
+status: live
+summary: "How 'being wrong' becomes a single number a model can optimize, and why the choice of loss shapes what it learns to do."
+duration: "5 min read"
+---
+
+A model doesn't know it made a bad prediction unless you tell it, in a number it can act on. That number is the loss: a single score that goes up the worse the prediction, and down the better it gets. Training is nothing more than nudging the model's parameters to make that number smaller.
+
+## Turning "wrong" into a number
+
+Say a model predicts a house costs $310,000 and it actually sold for $340,000. The error is $30,000. Square it and you get a loss of 900,000,000 — that's mean squared error (MSE), the standard loss for regression. Squaring does two things: it makes every error positive (so a $30k overestimate and a $30k underestimate don't cancel out), and it punishes big misses far more than small ones. A $100k error costs 100x more than a $10k error, not 10x — which pushes the model hard to avoid rare, huge mistakes.
+
+Classification needs a different loss, because "wrong" isn't a distance — it's a probability mismatch. If a model says an email is 90% spam and it's actually spam, that's a small loss. If it says 90% spam and the email is legitimate, that's a large one. This is cross-entropy loss: it penalizes confident wrong answers far more harshly than a correct answer or an honest "I'm not sure." It's built from the same math that makes softmax work, and it's the loss behind nearly every classifier and every LLM's next-token prediction (see [entropy and cross-entropy](/learn/maths-foundations/entropy-and-cross-entropy)).
+
+## Why the choice of loss matters
+
+The loss function is not a neutral scorekeeper — it defines what "good" means to the model, and the model will optimize exactly that, nothing else. MSE's squaring means a model trained on it will go out of its way to avoid one catastrophic error even if that means being slightly worse on average elsewhere — useful when big misses are dangerous, wasteful when they aren't. Swap in mean absolute error and outliers stop dominating; every unit of error counts the same. Pick the wrong loss and you can train a technically-improving model that's optimizing for something you don't actually care about.
+
+## From loss to learning
+
+The loss itself doesn't change anything — it's just a measurement. What makes it useful is that it's differentiable: you can compute how the loss would change if each parameter nudged slightly, then move every parameter in the direction that lowers it. That process is [gradient descent](/learn/maths-foundations/gradient-descent-intuition), and the shape of the loss across all possible parameter values — smooth and bowl-shaped, or jagged and full of false valleys — determines how easily that descent finds a good answer, a question covered in [convexity and loss landscapes](/learn/maths-foundations/convexity-and-loss-landscapes).
+
+**Related:** [Convexity and Loss Landscapes](/learn/maths-foundations/convexity-and-loss-landscapes), [Entropy and Cross-Entropy](/learn/maths-foundations/entropy-and-cross-entropy), [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition)

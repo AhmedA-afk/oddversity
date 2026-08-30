@@ -1,0 +1,35 @@
+---
+title: "Guardrails for High-Stakes Output"
+track: "hallucinations"
+status: live
+summary: "Layer programmatic checks around generation so a hallucination gets caught before it reaches a user, a record, or a decision."
+duration: "5 min read"
+---
+
+A model that's 98% accurate is still wrong often enough to hurt someone in medical, legal, financial, or safety-critical use cases. Guardrails don't make the model more accurate — they catch the wrong answers before they ship.
+
+## What a guardrail actually is
+
+A guardrail is a check that runs outside the model, on its output, before that output reaches a user or a downstream system. It doesn't matter whether the underlying generation used [RAG](/learn/hallucinations/retrieval-augmented-mitigation) or [self-verification](/learn/hallucinations/self-verification-techniques) — the guardrail is a separate, independent layer that assumes the model can still be wrong and checks anyway. That separation matters: a check baked into the same prompt that produced the error shares its blind spots. A check running in different code, against different logic, doesn't.
+
+Guardrails compose. A single deployment usually stacks several:
+
+- **Blocklists and pattern matchers** — reject output containing banned terms, malformed identifiers (a drug dosage that doesn't parse, a case citation in the wrong format), or PII that shouldn't have surfaced.
+- **Schema and type validators** — if the output is structured, a field that's the wrong type or out of range fails closed. See structured-output validation for the mechanics.
+- **Consistency checks** — does a cited number in the answer actually match the source document? Does a generated total add up? These catch fabrication even when nothing looks obviously wrong.
+- **Secondary model checks** — a second pass, often a smaller or cheaper model, scoring the output against a rubric before it's released. This is a narrow, targeted cousin of [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge), scoped to one risk rather than general quality.
+- **Human review** — for the highest-stakes cases, nothing ships without a person signing off. Guardrails don't replace this; they reduce how much of the volume needs it, by routing only flagged or low-confidence cases to a human.
+
+## Fail closed, not open
+
+The core design decision is what happens when a check fails or a check itself errors out. High-stakes systems fail closed: if a validator can't confirm the output is safe, the output doesn't go out — it gets held for review, retried, or replaced with a safe fallback ("I don't have enough information to answer that confidently"). A system that fails open on a broken validator quietly ships whatever the model produced, which defeats the point of having the guardrail. This is the same logic behind [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know) — refusal is a feature, not a failure mode, when the alternative is a confident wrong answer.
+
+## Match the guardrail to the risk
+
+Not every task needs the same stack. [Risk factors](/learn/hallucinations/hallucination-risk-factors) — does the task involve numbers, citations, or claims that can be checked against a source — should drive how heavy the guardrail layer gets. A summarization feature for internal notes can tolerate a lighter touch than a system generating dosage instructions or contract language. Building the checks proportional to the blast radius of being wrong keeps the system usable without over-engineering the low-stakes paths.
+
+## Guardrails are not a substitute for grounding
+
+It's tempting to treat a thick guardrail layer as permission to skip grounding the model in real sources. It isn't. A guardrail catches specific, checkable failure patterns — it can't catch a plausible-sounding fabrication that happens to pass every pattern match. The strongest systems still ground answers in [supplied sources](/learn/hallucinations/grounding-with-source-documents) and cite claims so a human or a downstream check has something concrete to verify against. Guardrails are the last line of defense, not the first.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know), [Fact-Checking Pipelines Before Output Ships](/learn/hallucinations/fact-checking-pipelines)

@@ -1,0 +1,39 @@
+---
+title: "Logging Every Step for Debuggability"
+track: "harness-design"
+status: live
+summary: "Structured, per-iteration logs of every prompt, tool call, and result so an agent's failures can be diagnosed, not guessed at."
+duration: "5 min read"
+---
+
+When an agent does the wrong thing three tool calls into a ten-call run, "it seemed confused" is not a diagnosis. The only way to find out what actually happened is to have written it down as it happened — every model call, every tool invocation, every result, in order, with enough structure to query later.
+
+## What "every step" actually means
+
+A harness runs [the control loop](/learn/harness-design/the-control-loop) many times per task, and each iteration produces the same handful of events: the prompt sent to the model, the raw response, which tool was chosen and with what arguments, what the tool actually returned (or the error it threw), and how long each of those took. Logging "every step" means capturing all of that per iteration, not just the final answer. A log line that says `task completed` tells you nothing when the task didn't actually complete correctly — you need the trail that led there: which tool call routed where via [tool routing](/learn/harness-design/tool-routing-and-registries), what the [system prompt](/learn/harness-design/prompt-composition) looked like at that moment, and what the model saw as input on the next turn.
+
+Structure matters more than volume. A wall of unstructured print statements is nearly as useless as no logs at all once a session runs long. The practical baseline is one structured record per event — JSON, not prose — with a shared session or trace ID linking every event in a run:
+
+```json
+{
+  "session_id": "run_8f2a",
+  "step": 4,
+  "type": "tool_call",
+  "tool": "edit_file",
+  "input": { "path": "src/api.py", "old": "...", "new": "..." },
+  "result": { "ok": true, "duration_ms": 142 },
+  "timestamp": "2026-08-29T10:14:02Z"
+}
+```
+
+That shape lets you filter by session, replay a run step by step, or grep across thousands of runs for "every time `edit_file` failed" — none of which is possible from free-text logs.
+
+## Log the failure path, not just the happy path
+
+The steps worth logging most carefully are the ones that go wrong: a tool that threw, a model response the harness rejected, a permission check that denied a call. These are exactly the events a developer reaches for when a user reports "the agent got stuck," and they're the ones most often silently swallowed because the happy path was the only path anyone tested. If a tool call is denied by a [deny-floor](/learn/harness-design/deny-floors-and-policy-layers) or an [approval gate](/learn/harness-design/permission-and-approval-systems), log the denial and the reason — otherwise a legitimate policy decision looks identical to an unexplained failure in the trace.
+
+## Logs are not the same thing as a trace
+
+Individual log lines answer "what happened at step 4." A trace — the full ordered sequence of steps for one session, often visualized as a timeline or tree — answers "how did the agent get from the user's request to this outcome." Building traceable logs from the start (consistent session IDs, step numbers, parent/child links for [delegated subagent work](/learn/harness-design/subagent-and-task-delegation)) is what makes that reconstruction possible later without re-running anything. It's also the foundation production systems build on when they move from "can I debug one run" to [tracing multi-step pipelines](/learn/production/tracing-multi-step-ai-pipelines) across many users and sessions at once.
+
+**Related:** [Building the Control Loop](/learn/harness-design/the-control-loop), [Trace Multi-Step Agent and RAG Pipelines](/learn/production/tracing-multi-step-ai-pipelines), [Delegating Work to Subagents](/learn/harness-design/subagent-and-task-delegation)

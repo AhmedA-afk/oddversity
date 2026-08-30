@@ -1,0 +1,39 @@
+---
+title: "Inspecting and Testing MCP Servers"
+track: "mcp"
+status: live
+summary: "Use the MCP Inspector and manual probes to verify a server's tools, resources, and prompts before shipping it."
+duration: "6 min read"
+---
+
+You just wrote an MCP server. Before you wire it into Claude or any other host, you want to see exactly what it advertises and confirm it actually works — without debugging through a chat UI that hides the raw protocol traffic.
+
+## The MCP Inspector
+
+The [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is the standard tool for this. It's a small web UI that speaks the protocol directly to your server, so you see every request and response instead of guessing what a client is doing under the hood. Run it against a local stdio server without installing anything:
+
+```bash
+npx @modelcontextprotocol/inspector node server.js
+```
+
+For an HTTP server, point it at the URL instead of a launch command. Either way, it opens a browser tab with tabs for each MCP primitive — Tools, Resources, Prompts — plus a raw JSON-RPC log of everything sent and received.
+
+## What to check in each tab
+
+Start with **Tools**. The Inspector lists every tool your server exposes from `tools/list`, showing its name, description, and input schema. Read the descriptions as if you were the model deciding whether to call this tool — vague or jargon-heavy text here is exactly what causes a model to skip a tool it should have used, or misuse one it shouldn't have. This is the same discovery step covered in [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas).
+
+Then actually call each tool with sample inputs, including edge cases: empty strings, missing optional fields, huge inputs. Confirm the response comes back in the shape you expect and that errors surface as proper MCP error objects rather than a stack trace leaking through.
+
+Do the same for **Resources** (can the client list and read them? do URIs resolve correctly?) and **Prompts** (do templated arguments get substituted, and does the returned message list match what you'd hand to a model). If your server only implements tools, the other tabs will simply be empty — that's fine, but confirm it's a deliberate choice and not a wiring bug.
+
+## Watching the transport, not just the result
+
+The Inspector's log panel is the most useful part for debugging: it shows the exact JSON-RPC messages, including the initial handshake. If a tool call fails silently in a real client, reproduce it here first — you'll see whether the server returned a malformed response, whether the schema validation rejected the call before it even reached your code, or whether the transport itself dropped the connection. This matters more on [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http), where stdio failures often look like the process just hanging with no error at all.
+
+## Testing beyond the Inspector
+
+The Inspector is a manual, human-driven tool — good for exploration, not for catching regressions automatically. Once a server is stable enough to matter, write a small script (or a test suite in whatever language your server is in) that opens a client connection, calls `tools/list`, and asserts the schema is what you expect, then calls each tool with fixed inputs and checks the output shape. That catches the case where a refactor silently changes a tool's name or parameter type and breaks every client depending on it — a problem covered further in [Versioning MCP Servers Without Breaking Clients](/learn/mcp/versioning-mcp-servers-without-breaking-clients).
+
+If you're troubleshooting an existing integration rather than a server you're writing, the failure is usually one of a short list of causes worth checking systematically.
+
+**Related:** [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas), [Debugging Common MCP Failures](/learn/mcp/debugging-common-mcp-failures), [Versioning MCP Servers Without Breaking Clients](/learn/mcp/versioning-mcp-servers-without-breaking-clients)

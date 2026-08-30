@@ -1,0 +1,31 @@
+---
+title: "The Geometry of Embeddings"
+track: "maths-foundations"
+status: live
+summary: "Embedding spaces turn meaning into geometry, where distance is similarity and direction can encode relationships."
+duration: "6 min read"
+---
+
+An embedding model doesn't store what a word or sentence "means" the way a dictionary does. It places it at a point in a high-dimensional space, and arranges that space so that things which mean similar things end up near each other. Once meaning becomes position, you can compute with it.
+
+## Distance is similarity
+
+Take the words "dog," "puppy," and "spreadsheet." Embed all three, and "dog" and "puppy" land close together, while "spreadsheet" sits far off in another part of the space. Nothing about the model was told these words are related — this clustering falls out of training on how the words get used across billions of sentences. Words appearing in similar contexts get pushed toward similar vectors.
+
+This is why semantic search works at all: you embed a query, embed a corpus of documents, and ask for the closest points. "Nearest neighbor" in vector space becomes "most relevant result" in practice. The math behind "closest" is usually [cosine similarity](/learn/maths-foundations/cosine-similarity), a way of comparing angle rather than raw distance so that a short document and a long one about the same topic can still land near each other.
+
+## Directions can mean something too
+
+The famous example is analogy arithmetic: take the vector for "king," subtract "man," add "woman," and the nearest point to the result is often close to "queen." That's a striking claim — it says the *direction* from "man" to "woman" (something like "gender") is roughly consistent no matter where in the space you start from, and the same holds for other relationships like tense or country-to-capital.
+
+Don't take this further than it goes. It's a real, reproducible property of many embedding spaces, not a universal law — it degrades on rarer word pairs and depends heavily on how the model was trained. But the underlying idea is genuinely useful: an embedding space isn't just a scattering of points, it can have consistent linear structure, and that structure is what a [dot product](/learn/maths-foundations/dot-product-explained) or a [matrix transformation](/learn/maths-foundations/matrices-as-transformations) can act on.
+
+## Why hundreds of dimensions, not two or three
+
+You can't actually draw this space — production embeddings commonly have hundreds or thousands of dimensions. Each dimension doesn't correspond to something human-readable like "furriness" or "size"; the space is a jumble of directions that the model found jointly useful for distinguishing meaning. Cutting it to 2D for a chart (with a method like PCA or t-SNE) is a lossy projection, useful for intuition but not a claim about how the model "really" organizes things. That's also why [high-dimensional space itself behaves in unintuitive ways](/learn/maths-foundations/high-dimensional-spaces) — points that feel "close" by a 2D projection can be far apart in the real space, and vice versa.
+
+## Why this matters beyond search
+
+This geometric view is the foundation under a lot of modern AI infrastructure. It's what makes a [vector database](/learn/rag/choosing-a-vector-database) a sensible thing to build, what [RAG retrieval](/learn/rag/embeddings-and-semantic-similarity) is actually doing under the hood, and it's the same mechanism, scaled up, that lets a transformer's own [token embeddings](/learn/llm-foundations/what-are-embeddings) carry meaning into every layer that follows. Once you see meaning as position, a lot of "how does the model know that" questions start to have a concrete, geometric answer.
+
+**Related:** [Cosine Similarity](/learn/maths-foundations/cosine-similarity), [Why High-Dimensional Space Feels Weird](/learn/maths-foundations/high-dimensional-spaces), [Embeddings: Turning Tokens Into Geometry](/learn/llm-foundations/what-are-embeddings)

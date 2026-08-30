@@ -1,0 +1,44 @@
+---
+title: "Put an LLM Gateway in Front of Every Provider"
+track: "production"
+status: live
+summary: "Route every model call through a gateway so provider swaps, fallback, and cost tracking never touch application code."
+duration: "5 min read"
+---
+
+The moment you call two different provider SDKs from application code, you've coupled your product to their APIs. An LLM gateway is a thin proxy that sits between your app and every model provider, so your code always talks to one interface — and everything about which provider actually handles the request becomes configuration, not code.
+
+## What the gateway actually does
+
+Without a gateway, "switch from one model to a cheaper one" means finding every call site, changing the SDK, changing the request shape, and redeploying. With a gateway, it means changing a routing rule.
+
+Concretely, the gateway normalizes the request/response format across providers (OpenAI-style chat messages in, OpenAI-style response out, regardless of which vendor actually served it), and it centralizes the cross-cutting concerns that would otherwise get duplicated at every call site:
+
+- **Unified interface** — one request format in, one response format out, whichever provider handled it
+- **Failover** — if a provider errors or times out, retry against a fallback provider automatically
+- **Cost and usage tracking** — every call logged with tokens, latency, and dollar cost, tagged by user or feature
+- **Key management** — provider API keys live in the gateway, not scattered across services
+- **Rate limiting and quotas** — enforced centrally instead of reimplemented per service
+
+Two open-source options dominate here: [LiteLLM](https://github.com/BerriAI/litellm) runs as a lightweight proxy (or an importable Python SDK) that speaks the OpenAI request/response format and translates it to over 100 providers. [Portkey](https://portkey.ai/) offers a hosted or self-hosted gateway with a heavier focus on observability, caching, and guardrails out of the box. Cloud-native options like AWS Bedrock or Azure AI Gateway do a narrower version of the same job, scoped to their own ecosystem.
+
+## Why this matters more as you scale
+
+A single prototype calling one model directly is fine. The gateway earns its cost the moment any of these become true: you want to A/B test two models against real traffic, a provider has an outage and you need automatic failover, finance wants per-team cost attribution, or a new model drops and you want to try it without a code change. All of these become config edits instead of migrations.
+
+```text
+App code
+  → gateway.chat(messages, model="team-default")
+      → gateway config: "team-default" = claude-sonnet, fallback = gpt-4o-mini
+          → provider APIs
+```
+
+The app never names a specific vendor model. It names a logical alias, and the gateway resolves that alias to whatever's currently correct — which is also what makes [canary and shadow-testing model changes](/learn/production/canary-and-shadow-releases) possible without touching a single call site.
+
+## Where it fits with the rest of your stack
+
+A gateway is not a replacement for [structured logging of every call](/learn/production/structured-logging-for-llm-calls) or for [multi-provider failover](/learn/production/multi-provider-failover-and-redundancy) — it's usually the mechanism that implements both. Most teams put logging, cost tracking, and failover *inside* the gateway layer specifically because it's the one place every request already passes through, rather than reimplementing them in each service that calls a model.
+
+The tradeoff is a new piece of infrastructure to run and a new hop of latency (usually single-digit milliseconds for a well-run proxy). For anything beyond a single-provider prototype, that's a small price for never again grepping the codebase for a hardcoded model name.
+
+**Related:** [Fail Over Automatically When a Model Provider Goes Down](/learn/production/multi-provider-failover-and-redundancy), [Building a Provider Abstraction Layer](/learn/genai-app-dev/provider-abstraction-layers), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity)

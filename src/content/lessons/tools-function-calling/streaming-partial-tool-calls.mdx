@@ -1,0 +1,33 @@
+---
+title: "Streaming Partial Tool Calls"
+track: "tools-function-calling"
+status: live
+summary: "Renders a tool call's arguments as they stream in instead of waiting for the full JSON blob."
+duration: "5 min read"
+---
+
+When a model streams a response, tool call arguments don't arrive as one clean JSON object — they arrive as a sequence of text fragments that only become valid JSON once the last one lands. Streaming partial tool calls means consuming those fragments as they come, instead of buffering silently until the call is complete.
+
+## Why the argument JSON arrives in pieces
+
+Providers stream tool use the same way they stream text: token by token. Anthropic's API emits `input_json_delta` events carrying a `partial_json` string for each tool_use content block; OpenAI's streaming tool calls emit incremental `arguments` string chunks keyed by tool call index. Neither delta is valid JSON on its own — only the concatenation is. A call like:
+
+```json
+{"city": "Lisbon", "unit": "celsius", "days": 5}
+```
+
+might arrive as `{"city": "Lis`, then `bon", "un`, then `it": "celsi`, and so on. If you wait for the closing brace before touching the UI, a tool call with a long argument list (a multi-paragraph `content` field for a file-write tool, say) sits frozen for a second or more with no feedback, which reads as a hang.
+
+## Accumulate, then parse incrementally
+
+The simple approach: concatenate every `partial_json` chunk into a buffer as it arrives, and re-run a permissive JSON parser against the buffer after each chunk instead of the standard one. Libraries like `partial-json-parser` (JS) or `json-repair` (Python) close unterminated strings, arrays, and objects so a truncated buffer like `{"city": "Lis` still parses to `{"city": "Lis"}`. That lets you render "city: Lis…" and watch it complete live, the same way ChatGPT-style UIs show text streaming in.
+
+This only works safely for *display*. Never execute a tool against a partially parsed argument object — a truncated string or a number cut mid-digit can silently misrepresent the real value. Wait for the stream's explicit "this content block is done" signal (`content_block_stop` in Anthropic's stream, the `finish_reason` on the tool call in OpenAI's) and parse the final buffer with a strict parser before dispatching the call. If strict parsing fails on a supposedly-complete buffer, that's a real error — see [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries) — not something to paper over with a repair library.
+
+## What streaming buys you beyond UI polish
+
+Partial rendering isn't just cosmetic. In a coding agent, showing `command: "rm -rf /tmp/build-ca` as it streams lets a human spot a dangerous call and hit stop before the arguments finish, rather than only after. For [Approval Gates for Sensitive Tool Calls](/learn/tools-function-calling/approval-gates-for-sensitive-tools), you still gate on the final, validated payload — partial JSON is a preview, not a decision input — but the visibility itself changes what a reviewer can catch in time. It also matters for perceived latency: a tool call with a large payload (say a 2,000-word document being drafted into a `write_file` argument) can take several seconds to fully stream, and a live-updating view is the difference between "it's working" and "did this freeze."
+
+The tradeoff is complexity: your handler now needs a partial-JSON path and a strict-JSON path, plus a per-tool-call-index buffer when the model batches parallel calls in one stream (see [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls)), since each call's deltas interleave by index in the same event stream.
+
+**Related:** [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls), [Streaming Structured Output](/learn/structured-outputs/streaming-structured-output)

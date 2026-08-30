@@ -1,0 +1,38 @@
+---
+title: "Choosing an Orchestration Framework"
+track: "agentic-ai"
+status: live
+summary: "What LangGraph, CrewAI, and a hand-rolled loop actually give you, and how to pick without cargo-culting."
+duration: "6 min read"
+---
+
+You can build an agent with nothing but a while loop, an LLM call, and a switch statement over tool results. Frameworks like LangGraph and CrewAI don't make that loop possible — they make it manageable once it gets complicated. The question isn't "which framework is best," it's "how complicated is my loop, actually."
+
+## What a hand-rolled loop already gives you
+
+The [agent loop](/learn/agentic-ai/the-agent-loop) is just: call the model, check if it wants a tool, run the tool, feed the result back, repeat until it stops. In maybe 80 lines of Python you get full control over prompts, retries, and logging, with zero dependencies to debug. For a single agent with a handful of tools and a linear flow, this is often the right answer — not a stepping stone to "graduate" from, but a legitimate end state. Plenty of production agents never need more.
+
+The pain shows up when you need things the raw loop doesn't hand you for free: pausing a run and resuming it later, branching into parallel sub-tasks, coordinating several agents that hand off work to each other, or replaying a run from a checkpoint after a crash. That's the gap frameworks are built to close.
+
+## What the frameworks actually add
+
+**LangGraph** models your agent as an explicit state graph — nodes are steps, edges are transitions, and state is a typed object that flows between them. What you get: cycles and branches that are easy to draw and reason about, built-in checkpointing so a run can pause and resume (useful for [human-in-the-loop approval](/learn/harness-design/permission-and-approval-systems) gates), and fine-grained control over exactly when the model gets called versus when your own code runs. The cost is upfront structure — you're defining a graph before you write behavior, which is overhead for a simple agent and clarity for a complex one.
+
+**CrewAI** is built around a different mental model: agents as team members with roles, goals, and a manager coordinating them. It's the fastest path to a working multi-agent setup — [orchestrator/worker or pipeline patterns](/learn/agentic-ai/multi-agent-patterns) with minimal boilerplate — but that speed comes from opinionated defaults that are harder to override when your use case doesn't match the "crew of specialists" shape.
+
+**AutoGen** and similar conversation-first frameworks treat multi-agent coordination as agents literally messaging each other, which fits debate-style or reviewer/author patterns naturally but can make simple linear tasks feel over-engineered.
+
+Vendor-native options (the OpenAI Agents SDK, Claude's own agent tooling) trade portability for tight integration — less glue code, but you're coupled to that provider's tool-calling and context conventions.
+
+## How to actually pick
+
+Don't start from "which framework has more stars." Start from what your agent needs to do:
+
+- **One agent, mostly linear, tools are the hard part** — write the loop yourself, or use the thinnest wrapper you can find. A framework buys you little here and costs you a learning curve.
+- **Complex branching, need to pause/resume, want visibility into exact state transitions** — LangGraph's explicit graph earns its keep.
+- **Multiple agents with distinct roles, want to move fast** — CrewAI or a similar high-level framework gets you there quickest, as long as your workflow fits its assumptions.
+- **You're deep in one provider's ecosystem already** — the vendor-native SDK reduces integration surface area, at the cost of portability if you switch providers later.
+
+Whatever you pick, the framework doesn't remove the need to understand [when not to use an agent at all](/learn/agentic-ai/when-not-to-use-an-agent), or how to read a trace when it misbehaves. It just changes how much scaffolding you write versus import — the judgment calls about autonomy, control, and failure handling are yours either way.
+
+**Related:** [Multi-Agent Patterns: Orchestrator, Pipeline, Debate](/learn/agentic-ai/multi-agent-patterns), [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [Setting the Autonomy Dial](/learn/agentic-ai/autonomy-vs-control)

@@ -1,0 +1,36 @@
+---
+title: "The Adam Optimizer: Momentum Meets Adaptive Rates"
+track: "maths-foundations"
+status: live
+summary: "How Adam combines momentum and per-parameter adaptive learning rates to train deep networks fast and reliably."
+duration: "6 min read"
+---
+
+Plain gradient descent takes one learning rate and applies it to every parameter, every step. Adam doesn't. It gives each parameter its own effective step size, and it remembers where it's been. That combination is why Adam has been the default optimizer for training neural networks, including LLMs, for most of the last decade.
+
+## The two things Adam tracks
+
+For every parameter, Adam keeps a running estimate of two quantities from the gradients it's seen:
+
+- **First moment (m)** — an exponentially decaying average of the gradient itself. This is momentum: it smooths out noisy, oscillating gradients and keeps the update moving in a consistent direction, the same way a ball rolling downhill doesn't stop at every small bump.
+- **Second moment (v)** — an exponentially decaying average of the *squared* gradient. This tracks how large and how volatile the gradient has been for that parameter, regardless of its sign.
+
+Both are updated with a decay factor at each step (commonly called beta1 for the first moment, around 0.9, and beta2 for the second, around 0.999), so recent gradients matter more than old ones but nothing is thrown away abruptly.
+
+## Why the second moment matters: adaptive rates
+
+This is Adam's real contribution over plain momentum. It divides the update by the square root of the second moment. A parameter whose gradient has been consistently large gets its effective learning rate shrunk; a parameter whose gradient has been small and gets a relatively larger step. Every parameter effectively gets its own learning rate that adapts as training proceeds.
+
+This matters enormously in a network with millions or billions of parameters. Some, like embedding rows for rare tokens, get sparse, rarely-updated gradients. Others, in heavily-used layers, get gradients constantly. A single global learning rate is a bad fit for both at once. Adam's per-parameter scaling handles this automatically instead of requiring you to hand-tune rates per layer.
+
+## Bias correction: fixing the cold start
+
+Because m and v start at zero and are exponentially decayed averages, they're biased toward zero in the first few steps — the running average hasn't had time to "fill up." Adam corrects for this by dividing each estimate by a factor that shrinks toward 1 as training progresses. Without this correction, the very first updates would be artificially tiny, wasting early training steps. This is a small detail, but it's the difference between Adam working well from step one and needing a warmup phase to compensate.
+
+## Adam in one line
+
+The final update for a parameter looks like [gradient direction] scaled by [1 / typical gradient magnitude for that parameter], both bias-corrected, then multiplied by a global learning rate. It's momentum with a built-in ruler for how big a step should actually be.
+
+In practice, you'll see AdamW more often than plain Adam in modern LLM training — it fixes a subtle interaction between Adam and weight decay ([L1 vs. L2 regularization](/learn/maths-foundations/l1-vs-l2-regularization)), but the core mechanism above is unchanged. Understanding Adam is also the fastest way to make sense of why training curves look the way they do: the smoothing from momentum plus the adaptive scaling is what lets [gradient descent](/learn/maths-foundations/gradient-descent-intuition) navigate a lumpy, uneven [loss landscape](/learn/maths-foundations/convexity-and-loss-landscapes) without constant manual tuning.
+
+**Related:** [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition), [Convexity and Loss Landscapes](/learn/maths-foundations/convexity-and-loss-landscapes), [L1 vs. L2 Regularization](/learn/maths-foundations/l1-vs-l2-regularization)

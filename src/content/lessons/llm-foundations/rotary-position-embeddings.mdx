@@ -1,0 +1,31 @@
+---
+title: "RoPE: Rotary Position Embeddings Explained"
+track: "llm-foundations"
+status: live
+summary: "How rotating query and key vectors by a position-dependent angle became the default way modern LLMs encode token order."
+duration: "6 min read"
+---
+
+[Positional encoding](/learn/llm-foundations/positional-encoding-explained) mentions RoPE as the current default; this lesson is about how the rotation trick actually works, and why "rotate the vectors" turned out to beat "add a position signal."
+
+## The core trick: rotation instead of addition
+
+Sinusoidal encoding adds a position-dependent vector to the token embedding before attention even starts. RoPE does something different: it leaves the embeddings alone and instead rotates the query and key vectors, inside the [attention](/learn/llm-foundations/attention-mechanism-explained) computation, by an angle proportional to their position.
+
+Take a query vector at position `m` and a key vector at position `n`. Pair up their dimensions into 2D planes, and rotate each pair by `m * theta` for the query and `n * theta` for the key, where `theta` is a fixed frequency assigned to that dimension pair (lower dimension pairs rotate fast, higher pairs rotate slowly — the same multi-frequency idea sinusoidal encoding uses, just applied as a rotation rather than an offset).
+
+The payoff shows up when you take the dot product of the rotated query and key. Rotation matrices have a property additive encodings don't: rotating two vectors by `m` and `n` respectively and then taking their dot product gives the same result as rotating one vector by the difference `m - n` and dot-producting with the other, unrotated. So the attention score between position `m` and position `n` ends up depending only on `m - n` — the relative distance between them — not on `m` and `n` individually. Two tokens 5 apart produce the same rotational relationship whether they're at positions 3 and 8 or positions 3000 and 3005.
+
+## Why relative position beats absolute
+
+That property matters for a concrete reason: absolute position is a fact about training data length, but relative position is a fact about language. "The word right before this one" means the same thing whether it happens at token 10 or token 10,000. A model trained with absolute positional signals has genuinely never seen position 50,000 if it only ever trained on 8k-token sequences — the signal at that position is out of distribution. A model using RoPE has seen the *relative offset* of 1, 2, 100 tokens constantly, no matter where in the sequence it occurred, because the rotation only ever depends on the difference between two positions.
+
+This is also why RoPE composes cleanly with context-extension tricks after the fact. Techniques like position interpolation and YaRN work by rescaling the rotation frequencies so a model trained on, say, 8k tokens can be adapted to 128k without retraining from scratch — you're stretching the same rotational geometry rather than inventing new absolute-position embeddings for positions the model never saw. That's covered in more depth in [context length extension with RoPE scaling](/learn/fine-tuning/context-length-extension-rope-scaling).
+
+## Where it actually lives in the model
+
+RoPE isn't applied to the embedding once at the input layer — it's applied fresh, per layer, right before the query-key dot product inside every attention head, to the query and key projections specifically (never to the value vectors, which carry content, not position). This is also why it interacts directly with the [KV cache](/learn/llm-foundations/the-kv-cache): the cached keys already have their rotation baked in for their fixed position, so nothing needs to be recomputed as new tokens are generated — a new query just gets rotated by its own position and compared against keys rotated at theirs.
+
+No extra parameters are learned; the rotation angles are a fixed geometric function of position and dimension index, decided at architecture-design time, not during training. That combination — free extrapolation behavior, no parameter cost, and clean composition with the attention math already in place — is why RoPE displaced sinusoidal and learned absolute encodings as the default across most production LLMs.
+
+**Related:** [Positional Encoding: How Transformers Track Order](/learn/llm-foundations/positional-encoding-explained), [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [The KV Cache: How LLMs Avoid Recomputing the Past](/learn/llm-foundations/the-kv-cache)

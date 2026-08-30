@@ -1,0 +1,40 @@
+---
+title: "Contextual Retrieval: Prepending Context Before Embedding"
+track: "rag"
+status: live
+summary: "Prepend a short explanatory blurb to each chunk before embedding it, so the chunk stays meaningful once it's ripped out of the document."
+duration: "5 min read"
+---
+
+Chunking breaks a document into pieces so it can be embedded and searched, but a chunk out of context is often unreadable to a retrieval system. Contextual retrieval fixes this by rewriting each chunk to explain itself before it ever gets embedded.
+
+## The problem chunking creates
+
+Say a 10-K filing has a chunk that reads: "Revenue grew 3% over the previous quarter." Read in isolation, that sentence is nearly useless — which company, which quarter, which fiscal year? The embedding model has to encode this ambiguous sentence, and a query like "Acme Corp Q2 2026 revenue growth" may never match it, because nothing in the chunk's vector space points to Acme or Q2 2026. The document title and surrounding paragraphs that would have disambiguated it were split off into other chunks and never made it into this one's embedding. See [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents) for why this splitting happens in the first place.
+
+## Prepend context, then embed
+
+Contextual retrieval, popularized by Anthropic's 2024 research, solves this at ingestion time rather than query time. For every chunk, an LLM is given the whole document plus that one chunk and asked to write a short (50–100 token) blurb situating it — something like: "This chunk is from Acme Corp's Q2 2026 10-K, discussing quarterly revenue in the Enterprise Software segment." That blurb is prepended to the chunk's text, and the combined chunk-plus-context is what actually gets embedded and indexed:
+
+```
+context: "This chunk is from Acme Corp's Q2 2026 10-K,
+discussing quarterly revenue in the Enterprise Software segment."
+
+chunk: "Revenue grew 3% over the previous quarter."
+
+→ embed(context + chunk)
+```
+
+Now the embedding vector carries the company, the filing type, the period, and the segment — all the disambiguating information a query needs to find it, even though none of that appeared in the original sentence.
+
+## Apply it to lexical search too
+
+The same trick helps [hybrid search](/learn/rag/hybrid-search-lexical-and-vector): running the contextualized chunk through a BM25 index means keyword search also picks up "Acme," "Q2 2026," and "Enterprise Software" as searchable terms, not just "revenue" and "quarter." Anthropic reported that contextual embeddings plus contextual BM25 together cut retrieval failure rates substantially compared to either alone, and stacking a [reranker](/learn/rag/reranking-retrieved-results) on top compounded the improvement further — a reminder that these techniques are additive, not competing choices.
+
+## The cost tradeoff
+
+The catch is generation cost: producing a context blurb for every chunk means one LLM call per chunk at indexing time, which is expensive if done naively across a large corpus. In practice this is made tractable with [prompt caching](/learn/genai-app-dev/prompt-caching-for-speed-and-cost) — the whole document is cached once, and only the per-chunk prompt varies, so each chunk's context generation reuses the cached document instead of reprocessing it. This is a one-time indexing cost, not a per-query cost, so it's worth paying once and re-paying only when the source document changes — which ties directly into how you handle [incremental indexing](/learn/rag/incremental-indexing-freshness).
+
+Contextual retrieval doesn't replace good chunking; it repairs the information that chunking necessarily throws away, and it's cheap insurance for corpora where chunks read as fragments rather than sentences.
+
+**Related:** [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents), [Hybrid Search: Lexical and Vector Combined](/learn/rag/hybrid-search-lexical-and-vector), [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results)

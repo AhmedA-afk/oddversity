@@ -1,0 +1,31 @@
+---
+title: "Approval Gates for Sensitive Tool Calls"
+track: "tools-function-calling"
+status: live
+summary: "Classify tools by blast radius and force a human checkpoint before the risky ones execute."
+duration: "5 min read"
+---
+
+Not every tool call deserves the same trust. Reading a file and deleting a database row are both "tool calls," but only one of them should ever run without a human looking first. An approval gate is the checkpoint that separates the two.
+
+## Classify tools by blast radius, not by category
+
+The useful axis isn't "read vs. write" — it's what happens if the call is wrong. Ask two questions per tool: is the effect reversible, and how far does it reach beyond the current conversation.
+
+- **Auto-run**: read-only, or reversible and scoped to a sandbox — searching docs, querying a read replica, running code in an isolated container.
+- **Ask first**: irreversible, or reaches outside the sandbox — sending an email, merging a pull request, calling a paid API, writing to a shared database.
+- **Always deny**: destructive at scale or outside the model's remit entirely — dropping a table, wiring money, changing account permissions — routed to a human workflow, not offered to the model as a callable tool at all.
+
+This is the same allow/ask/deny split covered in [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems); this lesson is the tool-calling-side half of that pattern — how you tag a tool schema so the harness knows which bucket it's in.
+
+## Where the gate actually sits
+
+The gate lives in the harness, not the prompt. Telling the model "ask before deleting things" in a system prompt is a suggestion it can forget under pressure or have talked out of it by a crafted input. A real gate intercepts the tool call after the model emits it and before your code executes it: the harness inspects the tool name (and often the arguments — a `run_sql` call with `SELECT` is fine, the same tool with `DROP TABLE` isn't), pauses the agent loop, and waits for an explicit yes from a human before the underlying function runs. This mirrors [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely): validation happens before execution, and approval is really a stricter form of that gate — one where "valid" isn't enough, you also need sign-off.
+
+## Design the pause so it doesn't kill the workflow
+
+A gate that interrupts every third call trains people to click "approve" without reading, which defeats the point. Keep the ask-tier narrow and specific: gate the *mutating* variant of a tool, not the whole tool family (approve `send_email`, not the entire "email" toolset that also includes `list_drafts`). Show the human the actual arguments, not just the tool name — "delete_row(id=4471)" is reviewable; "delete_row(...)" is not. And give the model a path to route around a denial gracefully: log the rejection, tell the model, and let it try an alternative or ask the user for more context, rather than retrying the same blocked call in a loop.
+
+Argument-level classification is what tells you *which* calls need this gate rather than gating every mutation uniformly — see [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes) for the failure patterns approval gates are usually added to catch.
+
+**Related:** [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely), [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes)

@@ -1,0 +1,36 @@
+---
+title: "Reflection: Letting an Agent Grade Itself"
+track: "agentic-ai"
+status: live
+summary: "Add a self-critique step so an agent evaluates its own output before deciding to retry, revise, or ship."
+duration: "5 min read"
+---
+
+Most agent loops stop the moment they produce an answer. Reflection adds one more step: before returning the output, the agent (or a second call) grades it against the original goal and decides whether to revise, retry, or ship as-is.
+
+## Why grading yourself works
+
+A model that writes code and a model that reviews code are doing different jobs, even when it's the same model making both calls. Generation is constrained by "produce something plausible now." Critique is constrained by "does this actually satisfy the requirement." Separating the two into distinct steps — even in the same conversation — gives the model a fresh pass where it isn't defending its first draft, just checking it.
+
+This is the idea behind Reflexion-style loops: generate, critique, and feed the critique back in as context for another attempt. It's the same instinct as asking a human to proofread their own email five minutes later instead of hitting send immediately.
+
+## What a reflection step actually looks like
+
+A minimal version is a second prompt appended after the agent produces output:
+
+```
+Review your last response against the original task.
+List concrete problems, if any. Then say PASS or RETRY.
+```
+
+If the critique says RETRY, the original response and the critique both go back into context, and the agent tries again. This loop typically runs one to three times before diminishing returns kick in — after that, more retries usually just reword the same mistake rather than fix it.
+
+Stronger implementations replace the vague self-review with a checklist tied to the task: "Does the query still compile? Did the summary cite every claim? Are all required fields present?" A checklist gives the model something concrete to fail, which produces sharper critiques than an open-ended "is this good?"
+
+## Where reflection actually helps
+
+Reflection earns its keep on tasks where errors are self-evident once you look — code that doesn't compile, a JSON blob missing a field, a plan that skips a stated constraint. It's much weaker on tasks where the model's blind spots are the *same* blind spot twice: if it doesn't know a fact, asking it to double-check its own answer rarely surfaces the gap. For that class of error, [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) or an external check beats self-critique.
+
+Reflection also costs real latency and tokens — every pass is another full model call. It's worth reserving for outputs where being wrong is expensive, not bolting onto every agent step by default. Pair it with real [error handling](/learn/agentic-ai/error-handling-and-retries) so a stuck RETRY loop doesn't run forever, and consider [evaluating the agent's trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev) in dev to see whether reflection is actually catching anything or just adding delay.
+
+**Related:** [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries), [Reading an Agent's Trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev), [Self-Verification: Having the Model Check Its Own Work](/learn/hallucinations/self-verification-techniques)

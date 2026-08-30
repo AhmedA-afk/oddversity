@@ -1,0 +1,33 @@
+---
+title: "Sliding Windows: Rolling Off Old Turns Without Losing the Thread"
+track: "context-engineering"
+status: live
+summary: "Drop the oldest turns of a long conversation as new ones arrive, without breaking continuity."
+duration: "5 min read"
+---
+
+A context window is fixed size, but a conversation isn't. The simplest fix is a sliding window: keep the most recent N turns, drop the rest as new ones come in. It's cheap, predictable, and it's the default behind most chat apps you've used.
+
+## How the window slides
+
+Picture a fixed-size buffer of turns. Turn 20 arrives, turn 1 falls out the back. The model only ever sees the last N exchanges, so token usage per request stays flat no matter how long the conversation runs. No summarization step, no scoring, no extra API call — just a first-in-first-out queue.
+
+That simplicity is also the limit. A sliding window has no idea what's important. If the user set a constraint in turn 1 ("always respond in formal English") and you're now on turn 25, that instruction is gone, and the model will happily violate it with no signal that anything changed.
+
+## Where it breaks
+
+Three failure patterns show up constantly:
+
+- **Early commitments vanish.** Names, preferences, and constraints stated early silently disappear once they roll off.
+- **Referential breaks.** "Like you said earlier" points at nothing once "earlier" is outside the window.
+- **Silent degradation.** Unlike hitting a hard context-length error, a sliding window never fails loudly — it just quietly forgets, which makes the bug hard to notice in testing and easy to miss until a user complains.
+
+## Making it work in practice
+
+Sliding windows work best when you split what needs to persist from what can be discarded. Pin a small set of durable facts — system instructions, user preferences, key decisions — outside the window entirely, and let only the back-and-forth chatter slide. This is the same instinct behind [Memory vs State](/learn/context-engineering/conversation-memory-and-state): treat durable facts as memory, not as turns competing for window space.
+
+When even pinned turns don't fit, don't just truncate — fold what's about to roll off into a running summary before it's dropped, which is what [Compaction](/learn/context-engineering/summarization-for-compaction) does. And if you're building this for production rather than a demo, size the window against your actual [token budget](/learn/context-engineering/token-budgeting-strategies) rather than an arbitrary turn count — a window sized in turns can blow the budget the moment someone pastes a long message.
+
+The tradeoff to hold onto: a sliding window is the right default when conversations are short-lived or stateless-ish, and the wrong one the moment a user expects the assistant to remember something from twenty minutes ago.
+
+**Related:** [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction), [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies)

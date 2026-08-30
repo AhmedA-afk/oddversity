@@ -1,0 +1,59 @@
+---
+title: "The MCP server mistakes that show up at 3am"
+description: "Six failures that pass every demo and break in production — stdout pollution, token expiry, schema bloat, orphaned processes, and two more."
+published: "2026-08-30"
+tags: ["MCP", "Production", "Debugging"]
+---
+
+MCP servers are easy to write and easy to write badly, and the two look identical for about a week. These are the failures that survive the demo.
+
+## 1. Something printed to stdout
+
+A local MCP server speaks the protocol over stdin and stdout. Any stray `print()`, any library that logs to stdout, any debug statement you forgot, and the stream is corrupted. The client sees a parse error or, worse, silently stops working.
+
+Log to stderr. Set it before you write a single tool:
+
+```python
+import logging, sys
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+```
+
+This is the single most common "my server won't connect" cause, and it looks nothing like a logging problem from the client side.
+
+## 2. The access token expired and nothing refreshed it
+
+Your server calls a third-party API with an OAuth access token. Access tokens are short-lived by design, often an hour. You fetch one at startup, everything works, you ship. An hour later it is dead and the server keeps sending it.
+
+The failure is quiet twice over: the API returns a 401, your tool swallows it and returns nothing, and the model — handed nothing — moves on without complaint. Nobody is watching at 3am.
+
+Refresh proactively, ahead of expiry, and persist a rotated refresh token if the provider issues one. Waiting for a 401 to react is one round trip too late, and some providers do not give you a clean one.
+
+## 3. The tool schemas ate the context window
+
+Every tool's name, description and full input schema is sent to the model on every request. Twenty tools with generous schemas is a standing tax on every single turn — real money, and real crowding of the context you actually wanted to use.
+
+Ship few tools with sharp descriptions rather than many with vague ones. Split unrelated capabilities into separate servers the user can enable independently. If your server exposes thirty tools, the honest question is whether it is one server or three.
+
+## 4. The relative path
+
+Your server works when you run it. It fails when the client launches it, because the client's working directory is not the one you assumed, and neither is its `PATH`.
+
+Absolute paths in the client config, absolute paths inside the server, and no assumptions about the environment. This is the second most common "it won't start" cause and the most annoying to diagnose, because the error surfaces as silence.
+
+## 5. Nothing cleaned up after an abnormal session end
+
+A client can disappear without a graceful shutdown — crash, force quit, a laptop lid closing. If your server spawned subprocesses, opened connections or acquired locks, those can outlive it. Do that a few times a day for a week and you have a machine full of orphans and a user who thinks the tool is slow.
+
+Handle termination signals, close what you opened, and assume the shutdown will not be polite.
+
+## 6. A destructive tool with no human in the loop
+
+The model decides which tool to call based partly on text it read — a document, a page, a ticket. If a write, delete, send or payment tool is reachable without confirmation, an instruction hidden in that content can reach it.
+
+Read tools can be automatic. Anything irreversible needs a confirmation your code enforces, showing the resolved arguments — because the argument is what an attacker would have changed. A note in the system prompt is not this.
+
+## The test that catches most of it
+
+Write one integration test that starts the server, lists the tools, and calls each one with a valid input. Run it in CI. It catches stdout pollution, startup failures, schema regressions and broken handlers — the majority of what actually breaks — and it takes an hour to write.
+
+The [MCP track](/learn/mcp) covers the protocol properly, [running servers in production](/learn/mcp/running-mcp-servers-in-production) covers the operational side, and the [build guide](/guides/build-an-mcp-server-in-python) walks the whole thing end to end.

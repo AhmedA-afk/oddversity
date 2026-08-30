@@ -1,0 +1,33 @@
+---
+title: "Reward Modeling and PPO: What's Inside 'RLHF'"
+track: "fine-tuning"
+status: live
+summary: "RLHF is two models and a loop: a reward model that scores outputs, and PPO that nudges the policy toward higher scores without drifting too far."
+duration: "6 min read"
+---
+
+"RLHF" gets said like it's one step. It's actually a pipeline: first you train a separate model to predict which of two responses a human would prefer, then you use that model's scores as a reward signal to push your policy model's behavior around with reinforcement learning.
+
+## Stage one: the reward model
+
+You can't put a human in the loop for every gradient update, so you train a proxy. Start from your SFT checkpoint, swap the output head for a scalar, and train it on pairs: given a prompt and two candidate responses, humans mark which one they preferred. The model learns to output a single number, higher for the preferred response.
+
+The training objective is the Bradley-Terry pairwise loss — it pushes the score of the chosen response above the rejected one, not toward any absolute value. That matters: the reward model has no idea what "8/10" means, it only knows relative ordering. This is also why reward models are cheap to get wrong — they overfit to shallow correlates of quality (length, hedging language, confident tone) unless the preference data is diverse enough to break those correlations.
+
+## Stage two: PPO against that reward
+
+Now the reward model becomes the environment for a second training loop. The policy (your LLM) generates a response, the reward model scores it, and Proximal Policy Optimization (PPO) updates the policy's weights to make higher-scoring outputs more likely.
+
+Three pieces make this work instead of collapsing:
+
+- **A KL penalty against the original policy.** Every step, the loss subtracts a penalty proportional to how far the new policy has drifted from a frozen reference copy (usually the SFT model). Without this, the policy games the reward model almost immediately — reward hacking, where output gets long, sycophantic, or repetitive because that's what the reward model happens to score highly. See [KL Divergence](/learn/maths-foundations/kl-divergence) for the mechanics of that penalty term.
+- **A value function.** PPO trains a critic alongside the policy to estimate expected future reward from a partial generation, which lowers the variance of the policy gradient. This is standard [reinforcement learning](/learn/ai-foundations/reinforcement-learning-basics) machinery — reward, not labels, driving the update.
+- **The clipped surrogate objective.** PPO's namesake trick: it caps how much a single update can shift the probability ratio for any token, so one batch of noisy reward signal can't blow up the policy. This is what makes it "proximal" — stay close to the old policy each step.
+
+## Why this two-stage design at all
+
+You could skip the reward model and have humans grade generations directly, but that doesn't scale — training needs millions of graded samples, not a few thousand human labels. The reward model amortizes a modest amount of human preference data into a fast, differentiable stand-in you can query as often as PPO needs.
+
+The trade-off is real, though: PPO now optimizes against a model of human preference, not preference itself, and reward models are known to be exploitable. This is a big part of why simpler, reward-model-free methods like DPO exist — they skip stage two's RL loop entirely and optimize directly on preference pairs. See [SFT vs Preference Tuning](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning) for where RLHF fits against those alternatives, and [DPO vs. ORPO vs. KTO](/learn/fine-tuning/dpo-vs-orpo-vs-kto) for what replaced it in most production pipelines.
+
+**Related:** [SFT vs Preference Tuning (DPO/RLHF)](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning), [DPO vs. ORPO vs. KTO](/learn/fine-tuning/dpo-vs-orpo-vs-kto), [Reinforcement Learning: Learning From Reward](/learn/ai-foundations/reinforcement-learning-basics)

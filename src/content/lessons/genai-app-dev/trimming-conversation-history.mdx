@@ -1,0 +1,46 @@
+---
+title: "Trimming Conversation History for Context Limits"
+track: "genai-app-dev"
+status: live
+summary: "Decide what to keep, summarize, or drop as a conversation grows past what fits in one request."
+duration: "6 min read"
+---
+
+Every chat feature has a moment where it stops fitting. Turn one is fine, turn fifty isn't — the whole history gets re-sent on every request, and eventually it blows past the model's context window or your cost budget. Trimming is the decision layer that keeps a conversation usable indefinitely without silently forgetting what mattered.
+
+## Why you can't just send everything
+
+Chat APIs are stateless: there's no server-side memory of turn one by turn fifty, so your app resends the full message array every time. That array grows linearly with conversation length, but your latency and cost don't grow politely with it — a long history means more tokens processed before the model even starts answering, which is why teams pair trimming with [prompt caching](/learn/genai-app-dev/prompt-caching-for-speed-and-cost) and real [cost budgets](/learn/genai-app-dev/cost-budgets-and-usage-tracking). And past a certain length, extra history doesn't just cost more — it can actively hurt answer quality, an effect worth understanding on its own.
+
+## Three trimming strategies
+
+**Sliding window.** Keep only the last N messages (or last N tokens), drop the rest. Simple to implement, cheap to run, and fine for casual chat where old context genuinely stops mattering. The failure mode: a user references something from turn three and the model has no idea what they mean, because it fell off the window.
+
+**Summarization.** Periodically collapse older turns into a compact summary and keep that instead of the raw messages. A support bot might summarize "user reported login bug, tried password reset, still failing" instead of carrying ten verbatim exchanges. This preserves the gist at a fraction of the token cost, but summarization is lossy — specific numbers, exact phrasing, and edge-case details can get flattened out, so don't summarize turns that contain data the model will need to reproduce exactly.
+
+**Selective retention.** Keep the system prompt, the most recent few turns, and anything flagged as important (a decision, a preference, a piece of data the user gave you) — drop everything else. This is more work to build than a sliding window because it requires deciding what counts as important, but it avoids both failure modes above: nothing recent is lost, and nothing critical is silently paraphrased away.
+
+Most production systems combine these: a sliding window for recent turns, a rolling summary for everything older, and a few pinned facts that never get dropped.
+
+## A simple budget-based trim
+
+```python
+def trim_history(messages, system_prompt, max_tokens=6000):
+    budget = max_tokens - count_tokens(system_prompt)
+    kept = []
+    for msg in reversed(messages):
+        cost = count_tokens(msg["content"])
+        if cost > budget:
+            break
+        kept.insert(0, msg)
+        budget -= cost
+    return kept
+```
+
+Walk backward from the newest message, keep what fits, stop when the budget runs out. It's crude — it can cut a conversation mid-topic — but it's a solid default before you invest in summarization. Whatever you build, treat it as one slice of a broader [token budget](/learn/context-engineering/token-budgeting-strategies) that also has to leave room for the model's response and any retrieved context.
+
+## What to actually drop first
+
+Not all history is equal. Tool call results and long pasted documents are usually safe to drop or summarize first — they were inputs, not decisions. The user's stated goals, corrections ("no, I meant the other file"), and explicit preferences are the most expensive to lose, because the model re-asking for them is exactly the "feels broken" experience you're trying to avoid in [chat UX](/learn/genai-app-dev/designing-chat-ux). When in doubt, trim the middle of a conversation before the beginning or the end — the system prompt and recent turns anchor the model, and early turns often set context (who the user is, what they're trying to do) that stays relevant the whole session.
+
+**Related:** [Designing Chat UX That Doesn't Feel Broken](/learn/genai-app-dev/designing-chat-ux), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies), [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction)

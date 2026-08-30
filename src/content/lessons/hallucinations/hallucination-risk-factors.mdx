@@ -1,0 +1,33 @@
+---
+title: "Hallucination Risk Factors: Which Tasks Are Most Dangerous"
+track: "hallucinations"
+status: live
+summary: "Some task types make models fabricate far more often than others - know which ones before you trust the output."
+duration: "5 min read"
+---
+
+Not all prompts carry the same hallucination risk. A model summarizing a document you gave it is fairly safe. The same model asked to recall a journal article's page numbers from memory is not. Knowing which task shapes are dangerous lets you decide where to add verification and where you can relax.
+
+## The long tail is where models fabricate
+
+Models are trained on text, and popular facts appear thousands of times across that text - the model has seen "the capital of France is Paris" so often the pattern is unmistakable. But ask about a mid-sized company's 2019 board members, a niche academic's dissertation topic, or a small town's population in 1987, and the model has seen that fact zero or one times, if at all. When the training signal is thin, the model still has to produce *some* next token, and it falls back on what's statistically plausible for that sentence shape rather than what's true. This is why hallucination rate tracks fame, not difficulty - a model can nail graduate-level physics reasoning and then invent a bibliography entry in the same response.
+
+## Precise, checkable details are the tell
+
+Certain output shapes are hallucination magnets specifically because they demand precision the model doesn't actually have:
+
+- **Citations and references** - exact titles, authors, page numbers, DOIs. The model knows papers on a topic exist; it doesn't reliably know which exact metadata belongs to which paper, so it interpolates.
+- **Dates and version numbers** - "when was X released," "what version added Y." These are arbitrary facts with no semantic pull toward the right answer.
+- **Quotes** - the model knows *someone* said something like that, and often produces a plausible-sounding paraphrase presented as a verbatim quote.
+- **Numbers and statistics** - specific percentages, dollar figures, counts. Language models are not calculators or databases; a confident-sounding number is frequently a guess dressed as a fact.
+- **Multi-hop math and logic chains** - each step compounds the error risk of the last, especially without [chain-of-thought](/learn/prompt-engineering/chain-of-thought-prompting) making the steps explicit and checkable.
+
+Contrast this with tasks like rewriting a paragraph, classifying sentiment, or summarizing a document you provided - the model isn't reaching into memory for ungrounded facts, so there's much less surface for fabrication.
+
+## A rough mental checklist
+
+Before trusting an output, ask two questions. First: is this fact common enough that thousands of sources would agree on it, or is it obscure? Second: does the answer require exact precision (a number, a date, a citation) rather than approximate correctness? The more "obscure and precise" a request is, the more you should either [ground it in supplied source documents](/learn/hallucinations/grounding-with-source-documents) or route it through [retrieval](/learn/hallucinations/retrieval-augmented-mitigation) instead of trusting the model's unaided memory. High-stakes domains - legal, medical, financial - deserve this treatment by default, since a fabricated citation or dosage doesn't just look bad, it can cause real harm.
+
+The practical upshot: don't treat hallucination as a single dial you turn down globally. Treat it as a property of the specific task in front of you, and reserve your verification budget for the requests that actually carry the risk.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [RAG as Hallucination Mitigation](/learn/hallucinations/retrieval-augmented-mitigation)

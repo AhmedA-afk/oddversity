@@ -1,0 +1,33 @@
+---
+title: "Multi-Agent Patterns: Orchestrator, Pipeline, Debate"
+track: "agentic-ai"
+status: live
+summary: "Three ways to split work across agents, and which topology actually fits your task."
+duration: "6 min read"
+---
+
+One agent with a good [loop](/learn/agentic-ai/the-agent-loop) can go a long way. But some tasks are wide (many independent subtasks), some are deep (each step depends heavily on the last), and some are genuinely uncertain (you want more than one opinion before committing). Multi-agent systems exist to match your topology to which of those you actually have — not because "multi-agent" sounds more advanced.
+
+## Orchestrator-Worker
+
+One agent plans and delegates; several worker agents each handle a narrow subtask and report back. The orchestrator does the [decomposition](/learn/agentic-ai/planning-and-task-decomposition), dispatches work, and stitches results together — often running workers in parallel when their subtasks don't depend on each other.
+
+This is the right shape when a task is wide: "research these five competitors," "review each file in this diff," "summarize every chapter." Each worker gets a small, well-scoped context instead of one agent dragging a growing pile of unrelated state through a single session. The cost is coordination overhead — the orchestrator has to write clear instructions for each worker and be able to judge whether what came back is actually usable, which is its own failure point if the workers' output is vague or wrong.
+
+## Pipeline
+
+Agents run in a fixed sequence, each one's output becoming the next one's input: draft, then critique, then edit, then fact-check. Unlike orchestrator-worker, there's no central dispatcher — control just passes down the chain.
+
+Pipelines fit deep tasks, where each stage genuinely needs the previous stage finished before it can start. They're also the easiest multi-agent pattern to debug, because failures are localized to one stage and you can inspect the intermediate handoffs directly. The tradeoff is rigidity: a pipeline assumes the stages are known in advance, so it handles tasks poorly where the right next step depends on what happened three steps ago rather than just the immediately preceding one.
+
+## Debate
+
+Two or more agents argue different positions — or independently attempt the same task — and either a judge agent or a fixed number of rounds decides the output. This is essentially [self-consistency](/learn/prompt-engineering/self-consistency-sampling) at agent scale: instead of sampling one reasoning path multiple times, you get multiple independent (or adversarial) attempts and reconcile them.
+
+Debate earns its cost on judgment calls where a single agent's first answer is unreliable — ambiguous classification, contestable code review, "is this claim actually supported by the source." It is expensive: every round multiplies your token spend, and if the agents share the same blind spot, debate just produces confident, redundant agreement rather than a real check. It's a poor fit for anything with a single correct mechanical answer, where the extra rounds add cost without adding safety.
+
+## Picking a topology
+
+Start from the task's shape, not from what feels rigorous. Wide and independent → orchestrator-worker. Strictly sequential with distinct stages → pipeline. Genuinely uncertain or high-stakes judgment → debate. And before reaching for any of these, check whether you need [multiple agents at all](/learn/agentic-ai/when-not-to-use-an-agent) — a single well-scoped agent, or even a plain [workflow](/learn/agentic-ai/when-not-to-use-an-agent), is often cheaper and more debuggable than a multi-agent system built on habit. When you do run multiple agents, most real systems in 2026 are hybrids — an orchestrator whose workers are themselves small pipelines — rather than a pure instance of any one pattern.
+
+**Related:** [Planning Before Acting](/learn/agentic-ai/planning-and-task-decomposition), [Choosing an Orchestration Framework](/learn/agentic-ai/agent-orchestration-frameworks), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent)

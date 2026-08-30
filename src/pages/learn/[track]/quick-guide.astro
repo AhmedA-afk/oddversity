@@ -1,0 +1,145 @@
+---
+import Layout from '../../../components/Layout.astro';
+import { getCollection } from 'astro:content';
+import { tracks, getTrack } from '../../../data/curriculum.ts';
+import { groupTrack } from '../../../data/modules';
+import { quickGuides } from '../../../data/quick-guides';
+import { ogImage } from '../../../data/og-images';
+
+export function getStaticPaths() {
+  // Only tracks with an authored guide get a page. An auto-assembled one would
+  // be a link dump, which is exactly the thing this page type exists to beat.
+  return tracks.filter((t) => quickGuides[t.id]).map((t) => ({ params: { track: t.id } }));
+}
+
+const { track: trackId } = Astro.params;
+const track = getTrack(trackId!)!;
+const guide = quickGuides[track.id];
+const modules = groupTrack(track);
+
+const lessons = await getCollection('lessons');
+const inTrack = lessons.filter((l) => l.id.startsWith(`${track.id}/`));
+const titleFor = new Map(inTrack.map((l) => [l.id.slice(track.id.length + 1), l.data.title]));
+const summaryFor = new Map(inTrack.map((l) => [l.id.slice(track.id.length + 1), l.data.summary ?? '']));
+
+// Only render a module section when its distillation is still keyed correctly.
+const sections = (modules ?? [])
+  .map((mod) => ({ mod, blurb: guide.modules[mod.name] }))
+  .filter((s) => s.blurb);
+
+const essential = guide.essential.filter((e) => titleFor.has(e.slug));
+
+const minutes = inTrack.reduce((total, l) => {
+  const n = parseInt((l.data.duration ?? '').replace(/\D+/g, ''), 10);
+  return total + (Number.isFinite(n) ? n : 6);
+}, 0);
+const trackHours = Math.max(1, Math.round(minutes / 60));
+---
+<Layout
+  title={`${track.name} in ${guide.minutes} minutes`}
+  description={`${track.name}, condensed: what each module establishes, the three lessons that carry the most weight, and what the track deliberately doesn't cover. ${inTrack.length} lessons summarised in one page.`}
+  breadcrumbs={[
+    { name: 'Home', url: '/' },
+    { name: 'Learn', url: '/learn' },
+    { name: track.name, url: `/learn/${track.id}` },
+    { name: 'Quick guide', url: `/learn/${track.id}/quick-guide` },
+  ]}
+  itemList={essential.map((e) => ({ name: titleFor.get(e.slug)!, url: `/learn/${track.id}/${e.slug}` }))}
+  image={ogImage(`track-${track.id}`)}
+  imageAlt={`${track.name}, condensed to one page`}
+>
+  <article class="wrap">
+    <header>
+      <nav class="crumb mono" aria-label="Breadcrumb">
+        <a href="/learn">Learn</a> <span>/</span> <a href={`/learn/${track.id}`}>{track.name}</a>
+        <span>/</span> Quick guide
+      </nav>
+      <span class="eyebrow">Quick guide</span>
+      <h1>{track.name} in {guide.minutes} minutes</h1>
+      <p class="opening">{guide.opening}</p>
+      <div class="facts">
+        <span class="chip">{guide.minutes} min read</span>
+        <span class="chip">Condenses {inTrack.length} lessons</span>
+        <span class="chip">Full track ~{trackHours}h</span>
+      </div>
+    </header>
+
+    {essential.length > 0 && (
+      <section class="essential">
+        <div class="eyebrow">If you only read three pages</div>
+        <ol>
+          {essential.map((e) => (
+            <li>
+              <a href={`/learn/${track.id}/${e.slug}`}>{titleFor.get(e.slug)}</a>
+              <span>{e.why}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
+
+    <section class="body">
+      {sections.map(({ mod, blurb }, i) => (
+        <section class="mod" id={mod.anchor}>
+          <div class="mod-head">
+            <span class="mod-n mono">{String(i + 1).padStart(2, '0')}</span>
+            <h2>{mod.name}</h2>
+          </div>
+          <p class="blurb">{blurb}</p>
+          <ul class="mod-lessons">
+            {mod.nodes.filter((n) => n.slug).map((n) => (
+              <li>
+                <a href={`/learn/${track.id}/${n.slug}`}>{n.title}</a>
+                {summaryFor.get(n.slug!) && <span>{summaryFor.get(n.slug!)}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </section>
+
+    <section class="limits">
+      <div class="eyebrow">What this track doesn't cover</div>
+      <p>{guide.notCovered}</p>
+    </section>
+
+    <div class="cta">
+      <a href={`/learn/${track.id}`} class="btn btn-primary">Open the full track</a>
+      <button type="button" class="btn btn-ghost" data-search-open>Search this curriculum</button>
+    </div>
+  </article>
+</Layout>
+
+<style>
+  .wrap { max-width: 780px; margin-inline: auto; padding: 40px 32px 8px; }
+  .crumb { font-size: 11.5px; color: var(--muted); margin-bottom: 22px; }
+  .crumb a { color: var(--muted); }
+  .crumb a:hover { color: var(--accent); text-decoration: none; }
+  .crumb span { margin: 0 6px; }
+  h1 { font-size: clamp(30px, 4.6vw, 44px); letter-spacing: -.022em; margin-top: 12px; }
+  .opening { margin-top: 20px; font-size: 17px; line-height: 1.65; color: var(--muted); }
+  .facts { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .essential { margin-top: 38px; padding: 22px 26px; background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 10px; }
+  .essential ol { margin: 14px 0 0; padding-left: 1.15em; display: flex; flex-direction: column; gap: 11px; }
+  .essential li::marker { color: var(--accent); font-family: 'IBM Plex Mono', 'IBM Plex Mono Fallback', monospace; font-size: 12px; }
+  .essential a { font: 500 15px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .essential span { display: block; margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+  .body { margin-top: 12px; }
+  .mod { padding-top: 42px; scroll-margin-top: 84px; }
+  .mod-head { display: flex; align-items: baseline; gap: 12px; }
+  .mod-n { font-size: 11px; color: var(--accent); }
+  .mod-head h2 { font-size: 22px; letter-spacing: -.014em; }
+  .blurb { margin-top: 12px; font-size: 15.5px; line-height: 1.7; color: var(--text); }
+  .mod-lessons { list-style: none; padding: 0; margin: 18px 0 0; border-top: 1px solid var(--rule); }
+  .mod-lessons li { padding: 10px 2px; border-bottom: 1px solid var(--rule); }
+  .mod-lessons a { font: 500 14px/1.4 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .mod-lessons span { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+  .limits { margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--rule); }
+  .limits p { margin-top: 10px; font-size: 14.5px; line-height: 1.7; color: var(--muted); max-width: 66ch; }
+
+  .cta { margin-top: 36px; display: flex; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 640px) { .wrap { padding: 28px 20px 8px; } }
+</style>

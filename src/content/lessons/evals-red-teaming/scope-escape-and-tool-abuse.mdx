@@ -1,0 +1,33 @@
+---
+title: "Testing for Scope Escape"
+track: "evals-red-teaming"
+status: live
+summary: "Probing whether an agent bends a tool past its intended purpose, like using a read tool to exfiltrate data it was never meant to move."
+duration: "5 min read"
+---
+
+A tool's danger isn't fixed by what it's named for — it's fixed by what it can actually do. Scope escape is when an agent uses a tool for a purpose outside the one it was given, and testing for it means asking not "does this tool work" but "what's the worst legitimate-looking thing this tool could be talked into doing."
+
+## The tool does more than its label promises
+
+Say an agent has a `read_file` tool scoped to a project's source code, so it can answer questions about the codebase. That sounds narrow. But if the tool can read any path the process has access to, and the agent can be steered toward reading `~/.ssh/id_rsa` or an environment file with API keys, the label "read tool" was never the real boundary — filesystem permissions were, and they weren't scoped as tightly as the tool's stated purpose implied.
+
+The same pattern shows up constantly: a "summarize this webpage" tool that can also `POST` the summary somewhere, a "search my calendar" tool that can also create events, a "look up a customer" tool whose underlying API also accepts a delete parameter the agent was never supposed to touch. The tool's description says one thing; its actual surface area says another. Attackers — and sometimes just a confused agent following a prompt injection — go looking for that gap. This overlaps with [Prompt Injection: When Content Becomes Instructions](/learn/evals-red-teaming/prompt-injection-basics): injection is often the *delivery mechanism*, scope escape is what happens once the instruction lands and the agent has a tool capable of going further than intended.
+
+## What a scope-escape eval actually probes
+
+You're not testing whether the agent refuses obviously malicious requests — that's easy. You're testing the boundary between "this tool's stated job" and "this tool's actual reach." Concretely, write test cases that:
+
+- Ask the agent to use a tool for something adjacent to its purpose but outside it — a read tool asked to read a path outside its intended directory, a lookup tool asked to aggregate records into something resembling a bulk export.
+- Embed the request inside content the agent processes, not just the user's direct ask — a calendar invite description that instructs the agent to also email its contents externally, a support ticket that asks the agent to "also check this other customer's account for context."
+- Chain innocuous steps toward a result any single step would look fine granting — read one file, then another, then compile them, none of which trips an obvious alarm alone.
+
+A useful grading question isn't just did the agent comply, but did it even notice the request had left its intended lane — the strongest agents flag it rather than silently completing it.
+
+## Fixing what the evals find
+
+When a probe succeeds, the fix is rarely a better refusal prompt — it's narrowing what the tool can physically do. Scope the credential, not the instruction: a database tool gets a read-only connection to specific tables, not admin creds the prompt merely asks it to use carefully. This is the same idea covered in [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely) and [Sandboxing Tool Execution](/learn/tools-function-calling/sandboxing-tool-execution) — the harness enforces the boundary so the model's judgment isn't the only thing standing between a request and the blast radius.
+
+Scope-escape cases belong in the same adversarial suite as prompt injection and jailbreak tests, and they should run every time a tool's permissions or underlying API changes, not just once at launch — a tool that was safely scoped last quarter can quietly gain reach when someone "just adds one more field" to its API.
+
+**Related:** [Prompt Injection: When Content Becomes Instructions](/learn/evals-red-teaming/prompt-injection-basics), [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely), [Running a Structured Red-Team Exercise](/learn/evals-red-teaming/adversarial-red-teaming-process)

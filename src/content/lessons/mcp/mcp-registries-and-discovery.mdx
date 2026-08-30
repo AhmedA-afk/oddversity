@@ -1,0 +1,31 @@
+---
+title: "MCP Registries and Discovery"
+track: "mcp"
+status: live
+summary: "Publish and find MCP servers through a registry so clients discover them by name instead of hardcoded connection details."
+duration: "5 min read"
+---
+
+Once you've built more than one or two MCP servers, hardcoding their connection details into every client config stops scaling. A registry solves this the way a package registry solves it for libraries: publish once, discover by name.
+
+## The problem hardcoding creates
+
+Early MCP setups list servers by hand - a command to spawn a local `stdio` process, or a URL for a remote [HTTP transport](/learn/mcp/mcp-transports-stdio-vs-http), pasted straight into the host's config file. That's fine for a handful of servers you wrote yourself. It breaks down once you want to use servers other teams or companies publish: you need to know the exact endpoint exists, trust that it's still maintained, and manually update the config every time it moves. There's no way to search "what servers can read from Postgres" or "what's the official server for this SaaS product" - you just have to already know.
+
+A registry is a directory: a place servers publish metadata about themselves (name, description, transport, version, capabilities) so clients can look them up instead of being told exactly where to point.
+
+## How discovery actually works
+
+A registry entry typically carries enough for a client to connect without a human copying a URL by hand: a unique server name, a short description of what it does, the transport it speaks, and where to reach it. When a host wants a capability, it can query the registry, list matching servers, and let the user (or an admin policy) pick one to install. This is the same shape as `npm search` or a container registry pull - the registry itself does no work, it just maps a name to a location and some trust signals.
+
+The official [MCP registry](https://registry.modelcontextprotocol.io) that the protocol maintainers stood up plays this role for the ecosystem at large: server authors publish an entry, clients (or aggregator tools sitting in front of the registry) query it to populate an install list. Enterprises and individual teams also run private registries - an internal directory listing only the servers a company has vetted and approved, which matters a lot once you're thinking about [MCP auth](/learn/mcp/mcp-auth-fundamentals) and want to stop users from connecting to servers nobody has reviewed.
+
+## Versioning and trust are the hard part
+
+Discovery is the easy half. The hard half is what a registry entry can promise you once you've found it: is this the version you tested against, or has the author pushed a breaking change since? Registries generally carry version metadata precisely so a client can pin to a known-good release rather than always resolving to "latest" - the same discipline covered in [versioning MCP servers without breaking clients](/learn/mcp/versioning-mcp-servers-without-breaking-clients). And because a registry entry is just metadata someone submitted, a client still has to decide how much to trust an unfamiliar server before connecting it to a model with tool access - registry listing is not a security review. That's why the more consequential discovery decisions - "should this agent be allowed to install servers it finds at runtime" - lean on the same permission thinking as [securing MCP servers against prompt injection](/learn/mcp/securing-mcp-servers-against-prompt-injection).
+
+## When to reach for a registry
+
+If you're building one internal server for your own host, skip it - just point at it directly, the way you did in [your first MCP server](/learn/mcp/first-mcp-server). Reach for registry-based discovery once you're managing several servers across a team, distributing a server for others to install, or building a host that should let users add capabilities without you writing config by hand for each one.
+
+**Related:** [Your First MCP Server](/learn/mcp/first-mcp-server), [Versioning MCP Servers Without Breaking Clients](/learn/mcp/versioning-mcp-servers-without-breaking-clients), [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals)

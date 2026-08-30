@@ -1,0 +1,45 @@
+---
+title: "L1 vs. L2 Regularization"
+track: "maths-foundations"
+status: live
+summary: "Penalizing large weights with L1 (sparsity) versus L2 (shrinkage), and how each choice reshapes what a model learns."
+duration: "5 min read"
+---
+
+Regularization adds a penalty for large weights to a model's loss function, trading a little training accuracy for a model that generalizes better. L1 and L2 penalize weights differently, and that difference changes which weights survive.
+
+## The two penalties
+
+Both start from the same idea: instead of minimizing loss alone, minimize loss plus a term that punishes big weights. They differ in which [vector norm](/learn/maths-foundations/vector-norms) they use to measure "big."
+
+**L2 regularization** (ridge) adds the sum of squared weights, scaled by a coefficient lambda:
+
+```
+loss = original_loss + lambda * sum(w_i^2)
+```
+
+**L1 regularization** (lasso) adds the sum of absolute values instead:
+
+```
+loss = original_loss + lambda * sum(abs(w_i))
+```
+
+That single change, squaring versus taking absolute value, produces very different trained models.
+
+## Why L1 produces sparsity and L2 doesn't
+
+Look at the gradient each penalty contributes. For L2, the derivative of `w^2` is `2w`, so the pressure to shrink a weight is proportional to the weight itself. As a weight gets close to zero, the pushback pulling it toward zero also weakens. Weights get smaller and smaller but rarely hit exactly zero, since the closer they get, the gentler the pull. The result is many small, non-zero weights, spread out rather than concentrated.
+
+For L1, the derivative of `abs(w)` is a constant (plus or minus lambda, regardless of how large `w` is). The pressure toward zero doesn't taper off as the weight shrinks, so once a weight is small, that constant push can carry it the rest of the way to exactly zero. In practice, L1-regularized models end up with many weights that are precisely zero, effectively deleting those features from the model. This is why L1 is used for feature selection: the non-zero weights that remain tell you which inputs mattered.
+
+You can see the same thing geometrically. Picture the loss function's contours in weight space and the penalty's "budget region" (the set of weights with penalty below some value). For L2 that region is a smooth circle; for L1 it's a diamond with sharp corners on the axes. The loss contours are far more likely to first touch the diamond at one of its corners, where one coordinate is exactly zero, than to touch the circle at an axis point. That's the geometric reason L1 favors sparse solutions and L2 favors small-but-dense ones.
+
+## When to use which
+
+Use L2 when you believe most features contribute a little and you want to prevent any single weight from dominating, e.g. most deep learning contexts, where L2 (often called "weight decay") is the default. It plays well with [gradient descent](/learn/maths-foundations/gradient-descent-intuition) since its gradient is smooth everywhere.
+
+Use L1 when you suspect many features are irrelevant and you want the model to tell you which ones matter, or when you need a smaller, more interpretable model. Its gradient has a discontinuity at zero, which makes optimization slightly trickier but is exactly why it can zero weights out.
+
+Many practical systems use both at once (elastic net), combining L2's stability with L1's sparsity.
+
+**Related:** [Vector Norms: Measuring Length and Distance](/learn/maths-foundations/vector-norms), [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition), [The Bias-Variance Tradeoff](/learn/ai-foundations/bias-variance-tradeoff)

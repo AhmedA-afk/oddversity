@@ -1,0 +1,54 @@
+---
+title: "MCP interview questions"
+topic: "Model Context Protocol"
+description: "Eight questions about MCP hosts, clients, servers, tools, resources, prompts, and safe adoption."
+order: 5
+---
+
+## 1. What problem does MCP solve?
+
+Model Context Protocol standardizes how an AI application can connect to external context and capabilities. Instead of writing a bespoke adapter for every host and integration, a server can expose a consistent set of primitives.
+
+MCP does not replace authorization, business logic, or a model provider. It defines a protocol boundary. See [what MCP is](/learn/mcp/what-is-mcp) and the [official specification](https://modelcontextprotocol.io/specification/2025-06-18/).
+
+## 2. What is the host, client, and server in MCP?
+
+The host is the application coordinating the model and user experience. It creates clients, usually one per server connection, and applies permission and lifecycle policies. A server exposes focused tools, resources, or prompts.
+
+Keeping those roles distinct helps with trust boundaries. The [MCP architecture lesson](/learn/mcp/mcp-architecture-hosts-clients-servers) walks through the relationship.
+
+## 3. How are tools, resources, and prompts different?
+
+Tools are executable functions that a model may invoke. Resources are data or content that an application can provide as context. Prompts are reusable templates that a user can select or invoke.
+
+The official MCP overview describes tools as model-controlled, resources as application-controlled, and prompts as user-controlled primitives. That control distinction is useful when designing consent and audit flows.
+
+## 4. Is MCP just function calling?
+
+No. MCP can carry tool definitions and calls, but it also standardizes resources, prompts, capability negotiation, lifecycle messages, and transport behavior. A function-calling API can be one part of an MCP integration without covering the whole protocol.
+
+Use direct provider APIs when a single application needs a narrow integration. MCP becomes more useful when interoperability and reusable servers matter.
+
+## 5. How should an MCP server expose tools safely?
+
+Expose narrow, composable actions with clear descriptions and schemas. Validate every argument, authorize the user and resource, return bounded results, and make destructive actions explicit. Keep secrets and privileged operations behind the server, not in model-visible instructions.
+
+The [MCP tools specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools) defines the protocol shape; application owners still need threat modeling and operational controls.
+
+## 6. What is capability negotiation?
+
+During initialization, clients and servers announce supported protocol features. Each side should only use capabilities that were negotiated and should handle unsupported or partially implemented features clearly.
+
+Capability negotiation lets implementations grow without making every server support every feature. It is part of the base protocol, not an optional convention.
+
+## 7. How do you handle MCP context-window pressure?
+
+Do not expose every resource or tool to every request. Select relevant tools, summarize large resources, paginate results, and keep stable descriptions compact. Measure the tokens added by the integration and the effect on tool selection.
+
+Oddversity's [MCP context window lesson](/learn/mcp/mcp-context-window) covers why a technically connected server can still degrade an application.
+
+## 8. What should an MCP security review ask?
+
+Ask who can connect, what data can leave the system, which actions can change state, how consent is recorded, how server identity and updates are trusted, and how failures are contained. Review local and remote transports separately.
+
+MCP is powerful because it creates data and execution paths. The specification emphasizes user consent and control; treat that as a design requirement, not a checkbox.

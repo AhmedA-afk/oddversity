@@ -1,0 +1,29 @@
+---
+title: "Supervised Learning, Explained"
+track: "ai-foundations"
+status: live
+summary: "Supervised learning trains a model on labeled examples until it can predict the label from the input alone."
+duration: "5 min read"
+---
+
+Show a model ten thousand emails, each tagged "spam" or "not spam," and eventually it can label a new email on its own. That's supervised learning: learning a mapping from inputs to outputs by example, with a teacher (the labels) correcting every guess along the way.
+
+## The recipe
+
+Every supervised system needs three things: labeled examples, a way to measure how wrong a prediction is, and a way to adjust the model based on that error. You feed it an input — a photo, a sentence, a row of spreadsheet data — the model produces a guess, and you compare that guess to the true label you already know. The gap between guess and truth is the error signal. The model nudges its internal parameters to shrink that gap, sees the next example, and repeats. Do this over enough examples and the model stops memorizing individual answers and starts capturing the underlying pattern — the difference between rote recall and actual [generalization](/learn/ai-foundations/generalization-and-overfitting).
+
+That nudging step is where the math lives: something computes a [gradient](/learn/maths-foundations/gradients-and-slopes) telling the model which direction reduces error, and [gradient descent](/learn/maths-foundations/gradient-descent-intuition) walks the parameters that way, one small step per example or batch.
+
+## Classification vs. regression
+
+Supervised learning splits into two flavors depending on what the label looks like. Classification predicts a category — spam or not spam, cat or dog, which of five support-ticket queues an email belongs in. Regression predicts a number — a house price, tomorrow's temperature, how many days until a customer churns. The mechanics are the same (labeled data, error signal, parameter updates); only the shape of the output and the way you score wrongness differ. A classifier is usually judged by how often it picks the right category; a regressor by how far its number lands from the true one.
+
+## Where the labels come from
+
+The label is the expensive part. Someone — or something — has to say "this is spam," and that labeling work doesn't scale itself. Teams buy labeled datasets, pay humans to annotate examples, or bootstrap labels from existing signals (a customer's refund request implicitly labels a support ticket as "billing issue"). This is the practical reason [self-supervised learning](/learn/ai-foundations/self-supervised-learning) exists at all: it manufactures labels out of the data itself — hide a word and predict it — so a model can pretrain on raw text at internet scale before anyone hand-labels a single example. Modern large language models are actually built in two stages: massive self-supervised pretraining to learn general language patterns, followed by smaller supervised (and preference-based) stages to align the model's behavior with what people actually want.
+
+## What it can't do
+
+A supervised model is only as good as the range of examples it saw. Train a spam filter exclusively on English email and it will flounder on a language it's never seen — not because the underlying pattern changed, but because the model never generalized past its training distribution. This is the same failure mode covered in [training vs. inference](/learn/ai-foundations/training-vs-inference): the model's knowledge is frozen at training time, and a supervised model in particular is frozen around whatever slice of the world its labels happened to cover.
+
+**Related:** [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting), [Self-Supervised Learning: Training Without Labels](/learn/ai-foundations/self-supervised-learning), [Training vs. Inference](/learn/ai-foundations/training-vs-inference)

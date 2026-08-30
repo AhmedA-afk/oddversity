@@ -1,0 +1,33 @@
+---
+title: "Progressive Tool Disclosure: Hiding Tools Until They're Needed"
+track: "context-engineering"
+status: live
+summary: "Loading only the tool definitions a turn needs, and fetching the rest on demand, so a huge toolset stops taxing every request."
+duration: "5 min read"
+---
+
+Every tool you register with a model costs tokens on every single turn, whether the model uses that tool or not. Give an agent 200 tools and you can burn tens of thousands of tokens on schemas before the conversation even starts — and the model still has to read through all of them to decide what's relevant.
+
+Progressive tool disclosure fixes this by treating the tool list like any other piece of context: load only what the current turn plausibly needs, and let the model pull in more when it discovers it needs to.
+
+## The problem with "just register everything"
+
+A coding agent might have tools for file editing, git, package management, browser automation, database queries, and a dozen MCP servers on top. Registered up front, that's a lot of `name`, `description`, and JSON Schema `parameters` blocks sitting in the system prompt of every request — even the ones that just ask "what does this function do?"
+
+It's not just cost. A long, undifferentiated tool list also degrades tool selection accuracy: the model has to disambiguate between more near-duplicate options, and the right tool gets buried among ones that will never apply this turn. This is the same relevance-filtering problem covered in [relevance filtering](/learn/context-engineering/relevance-filtering), applied specifically to tool schemas instead of documents.
+
+## Two disclosure strategies
+
+**Category-first, then detail.** Instead of exposing every tool, expose a small set of "meta-tools" — a `search_tools` or `list_categories` function — with real tool definitions loaded only after the model asks for a category ("give me the tools for database access"). The model's first move becomes a lookup rather than a leap. This is the same shape as [just-in-time context loading](/learn/context-engineering/just-in-time-context-loading): don't preload, let the agent fetch.
+
+**Task-scoped subsets.** If you can classify the incoming request cheaply — by keyword, by a lightweight router model, or by which subagent handled the last turn — load only the tool cluster that task type needs. A subagent spun up to fix a failing test doesn't need the deployment tools; a subagent doing research doesn't need write access to the filesystem. This pairs naturally with subagent architectures, where each subagent already gets a narrower toolset by design.
+
+## What actually gets deferred
+
+A practical implementation, similar to what Claude Code itself does with its own tool list, keeps a small always-on core (read, search, maybe one dispatch tool) resident in every request, and defers the long tail behind a `ToolSearch`-style lookup: the agent sees names and one-line descriptions for the deferred set, and only pulls the full parameter schema for a tool right before calling it. That first mention costs a few tokens per tool; the full schema, which can run into hundreds of tokens for a complex API, is paid only when it's actually going to be used.
+
+## The tradeoff to watch
+
+Disclosure adds a round trip: the model has to decide it needs a category, ask for it, then act — versus seeing everything and picking immediately. For toolsets under 15–20 tools, that overhead usually isn't worth it; just register them all. Progressive disclosure earns its keep once the toolset is big enough that the token cost and selection noise from full registration outweigh one extra lookup step, which in practice tends to be somewhere past a few dozen tools, and grows more valuable the more of those tools are rarely used.
+
+**Related:** [Just-in-Time Context: Letting the Agent Fetch Instead of Preload](/learn/context-engineering/just-in-time-context-loading), [The Token Cost of Tool Schemas](/learn/tools-function-calling/token-cost-of-tool-schemas), [Tool Selection at Scale: When You Have Hundreds of Tools](/learn/tools-function-calling/tool-selection-at-scale)

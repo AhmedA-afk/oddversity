@@ -1,0 +1,60 @@
+---
+title: "Tracing a Harness: Structured Spans for Every Model and Tool Call"
+track: "harness-design"
+status: live
+summary: "Instrument the control loop with structured spans so a slow or wrong agent run can be diagnosed step by step, not guessed at."
+duration: "6 min read"
+---
+
+A print statement tells you what happened. A trace tells you what happened, how long it took, what it cost, and what caused it — and that difference is the whole reason harness observability exists as its own discipline, not a footnote under logging.
+
+## Why logging isn't enough
+
+An agent run is a tree, not a line: a model call spawns three tool calls, one of those spawns a subagent, that subagent makes five more model calls. Flat logs from a run like this interleave across concurrent branches, so answering "why did this run take 40 seconds" or "which tool call produced the bad input to step 12" means manually reconstructing a call graph from timestamps. That doesn't scale past a handful of steps, and it's exactly the shape of problem tracing was built for.
+
+The fix is to treat every unit of work — a model call, a tool execution, a subagent invocation — as a **span**: a named operation with a start time, an end time, a parent span, and a bag of attributes. Spans nest into a tree that mirrors the actual execution, and that tree is the artifact you actually debug from.
+
+## What belongs on a span
+
+Each span needs enough attributes to answer "what happened here" without re-running anything:
+
+```
+span: tool_call
+  name: "read_file"
+  parent_span_id: <the model-call span that requested it>
+  start_time, end_time, duration_ms
+  attributes:
+    tool.input: {"path": "src/main.py"}
+    tool.output_bytes: 4213
+    tool.exit_status: "ok"
+  status: OK | ERROR
+```
+
+For model-call spans, the attributes that matter most are input/output token counts, the model ID actually used (after any [routing or fallback](/learn/harness-design/model-routing-and-fallback)), latency, and — if you're tracking spend — cost. The OpenTelemetry GenAI semantic conventions (see [Instrument LLM Calls with OpenTelemetry's GenAI Conventions](/learn/production/opentelemetry-genai-semantic-conventions)) standardize names like `gen_ai.request.model` and `gen_ai.usage.output_tokens` so your traces are queryable the same way across providers instead of every team inventing its own field names.
+
+Don't log full prompt and completion text into span attributes by default — it balloons trace storage and routinely leaks secrets or user data into a system with looser access controls than your primary logs. Store a truncated preview or a content hash on the span, and link out to the full transcript in your existing log store when you need to inspect it.
+
+## Wiring it into the control loop
+
+The natural place to open and close spans is the [control loop](/learn/harness-design/the-control-loop) itself, since it already sits between every model call and every tool dispatch. A minimal shape:
+
+```
+def run_step(state, span_context):
+    with tracer.start_span("model_call", parent=span_context) as model_span:
+        response = call_model(state)
+        model_span.set_attributes(usage_from(response))
+
+    for tool_call in response.tool_calls:
+        with tracer.start_span("tool_call", parent=model_span) as tool_span:
+            tool_span.set_attribute("tool.name", tool_call.name)
+            result = execute(tool_call)
+            tool_span.set_status(result.status)
+```
+
+Because spans carry a parent ID, [parallel tool calls](/learn/harness-design/parallel-tool-scheduling) and subagent delegation both fall out for free — a subagent's entire span tree just nests under the span that spawned it, so a single trace view shows the whole delegation chain without any special-casing.
+
+## Exporting somewhere you can query
+
+Spans are only useful once they land somewhere with a query interface — an OTel collector feeding Jaeger, Honeycomb, or a vendor LLM-observability tool. Once they do, questions that were archaeology become one filter: every trace where a tool span errored, every run where token usage crossed a threshold, the p95 latency of one specific tool across the last thousand runs. That's the payoff for the instrumentation cost — a slow or wrong run stops being something you re-run with extra print statements and becomes something you just look up.
+
+**Related:** [Logging Every Step for Debuggability](/learn/harness-design/observability-and-logging), [Instrument LLM Calls with OpenTelemetry's GenAI Conventions](/learn/production/opentelemetry-genai-semantic-conventions), [Trace Multi-Step Agent and RAG Pipelines](/learn/production/tracing-multi-step-ai-pipelines)

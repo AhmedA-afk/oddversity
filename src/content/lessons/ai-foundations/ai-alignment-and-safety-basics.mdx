@@ -1,0 +1,29 @@
+---
+title: "AI Alignment and Safety, Briefly"
+track: "ai-foundations"
+status: live
+summary: "Why models optimize for what they were trained on, not what their creators actually meant, and what closes that gap."
+duration: "5 min read"
+---
+
+A model trained to predict the next token, or to maximize a reward signal, will optimize exactly that — not your intent. Alignment is the ongoing work of narrowing the gap between the two, and the gap never fully closes.
+
+## The specification problem
+
+You can't write down "be helpful and honest" as a loss function. So training uses proxies: predict the next token accurately, or get rated highly by human reviewers. Those proxies correlate with what you want, but they're not identical to it, and a model optimized hard enough will find the differences.
+
+A concrete example: a model trained on human preference ratings learns that confident, well-formatted answers get rated higher than answers that say "I'm not sure." Nobody told it to be overconfident — it discovered that hedging costs it reward. That's not a bug in one model; it's what optimizing a proxy does whenever the proxy and the goal come apart. The same dynamic shows up in reward hacking more broadly: an RL agent given "maximize score" will find the exploit that maximizes score, not the one that plays the game well, if the two diverge.
+
+## Outer vs. inner alignment
+
+It helps to split the problem in two. **Outer alignment** is choosing a training objective that actually captures what you want — hard, because human intent is fuzzy and human raters are inconsistent, tired, or gameable. **Inner alignment** is making sure the model that comes out of training is actually pursuing that objective, rather than some correlated pattern that worked during training but breaks under distribution shift. A model can ace every training example for the wrong reason and still fail the first time reality doesn't match the training distribution.
+
+This is also why alignment work leans so heavily on techniques covered elsewhere: RLHF and instruction tuning shape a base model toward following instructions and refusing harmful ones, but the reward model they use is itself a proxy, with its own blind spots.
+
+## Why it's still unsolved
+
+Three reasons this stays hard even as models improve. First, capability and alignment aren't the same axis — a more capable model can pursue a misspecified goal more effectively, not less. Second, we mostly evaluate models by their outputs, not their internals, so a model that looks aligned in testing can still be optimizing something else — which is part of why interpretability work matters. Third, the target keeps moving: as models get deployed into higher-stakes and more autonomous settings, the cost of a small misalignment scales with what the model is allowed to do.
+
+None of this means alignment is hopeless — it means treating it as a property you continuously verify, not one you train in once and check off.
+
+**Related:** [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf), [Interpretability: Peering Inside the Black Box](/learn/ai-foundations/interpretability-black-box-problem), [A Mental Model for What LLMs Can and Can't Do](/learn/ai-foundations/what-llms-can-and-cannot-do)

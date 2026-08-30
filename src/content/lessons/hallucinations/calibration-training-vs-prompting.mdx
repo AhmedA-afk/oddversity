@@ -1,0 +1,32 @@
+---
+title: "Calibration: What Prompting Can't Fix and Training Has To"
+track: "hallucinations"
+status: live
+summary: "Reliable 'I don't know' behavior is a calibration problem, and calibration mostly gets fixed in training, not in the prompt."
+duration: "5 min read"
+---
+
+Ask a model to "say you're not sure when you're not sure," and it will comply -- by hedging on things it actually knows and staying confident on things it doesn't. That's not a prompting bug. It's a sign that the instruction is asking for something prompting can't supply.
+
+## Confidence Is Not the Same Thing as Calibration
+
+A model's fluent, confident tone is a property of its output distribution over words, not a measurement of how likely that output is to be correct. Calibration means something narrower and more useful: when a model says "I'm 80% sure," it should be right about 80% of the time across many such claims. Base language models trained purely to predict the next token are often reasonably well calibrated in this statistical sense -- their token probabilities do track real uncertainty. Instruction-tuned, RLHF-aligned chat models are usually worse calibrated, because reward signals during alignment favor confident, satisfying-sounding answers over hedged, accurate ones. Chasing helpfulness training pushes the model toward sounding sure.
+
+## Why a Prompt Can't Fix It
+
+Asking a model to self-report confidence relies on introspection the model doesn't reliably have. It has no privileged access to whether a specific fact was well-represented in training data versus reconstructed by pattern-matching -- it can only generate text that *sounds like* an uncertainty assessment, based on surface cues (is this an obscure name? does the question sound like a trick?) rather than the internal state that actually produced the answer. That's why prompted confidence scores correlate weakly with true accuracy, and why the same model will confidently fabricate a citation while hedging on a well-known fact it actually gets right. See [Confidence Signals: What Model Certainty Actually Reflects](/learn/hallucinations/confidence-and-uncertainty-signals) for what's really going on under the hood.
+
+## What Training Has to Do Instead
+
+Real calibration is learned by changing what gets rewarded during post-training. Two approaches matter in practice:
+
+- **Reward shaping for honesty.** Instead of rewarding any confident answer, the reward model penalizes confident wrong answers more than it penalizes an honest "I don't know," and rewards correct hedging. This has to happen at the reward-model level, because it changes what "good" means during fine-tuning -- see [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf).
+- **Training on labeled uncertainty.** Datasets built specifically to pair questions with ground-truth answerability -- some genuinely unanswerable, mislabeled, or outside the model's knowledge -- teach the model to associate specific question shapes with refusal or hedging, rather than inferring it live from the prompt.
+
+Neither of these is something you can replicate by writing a cleverer system prompt. You can *steer* behavior at inference time -- lower the bar for refusal, add retrieval so answers are grounded rather than guessed (see [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents)) -- but you can't manufacture calibrated introspection that wasn't trained in.
+
+## The Practical Split
+
+Treat prompting as a policy lever (when should the model refuse, what tone should it use) and treat calibration as a property you evaluate, not one you request. If you need trustworthy uncertainty, either use a model whose provider has invested in calibration training, or replace self-reported confidence with an external signal -- resampling-based methods like [Semantic Entropy: Measuring Uncertainty by Resampling](/learn/hallucinations/semantic-entropy-and-uncertainty-quantification) measure disagreement across generations instead of trusting what the model says about itself.
+
+**Related:** [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know), [Confidence Signals: What Model Certainty Actually Reflects](/learn/hallucinations/confidence-and-uncertainty-signals), [Semantic Entropy: Measuring Uncertainty by Resampling](/learn/hallucinations/semantic-entropy-and-uncertainty-quantification)

@@ -1,0 +1,54 @@
+---
+title: "Your RAG problem is a retrieval problem"
+description: "Nearly every bad RAG answer is a passage that never made it into the prompt. Here is how to prove that before you touch the generation half."
+published: "2026-08-30"
+tags: ["RAG", "Debugging", "Retrieval"]
+---
+
+There is a predictable sequence when a retrieval system gives a bad answer. Someone rewrites the prompt. Someone suggests a larger model. Someone proposes a reranker, an agentic loop, a knowledge graph. Weeks pass. The answers stay wrong.
+
+Almost always, the passage containing the answer was never in the prompt at all. No prompt can fix that, and no model can either.
+
+## The five-minute diagnostic
+
+Take five questions your system answers badly and that you know the corpus can answer. For each one, skip generation entirely and print the top ten retrieved chunks.
+
+Then read them. Not the scores — the text.
+
+You will land in one of two places, and they are different bugs with different fixes.
+
+**The right passage is in there.** Then it is a generation or context problem: too many chunks diluting attention, the passage buried in the middle of a long context, or a prompt that does not require the model to use what it was given. Reranking, tighter top-k and a stricter grounding instruction all apply here.
+
+**The right passage is not in there.** Then everything downstream is theatre. You cannot rerank a candidate set that lacks the answer, and asking a stronger model to reason over the wrong evidence produces a more articulate wrong answer.
+
+In my experience the second case is far more common, and it is the one that teams spend the least time on — because retrieval is boring and prompts are fun.
+
+## Why the passage went missing
+
+Four reasons cover most of it.
+
+**The chunk lost its meaning at the boundary.** A table separated from its headers. A step separated from its procedure. A clause separated from the definition of "it". The chunk retrieves fine — it just no longer means what it meant in the document. Read your actual chunks; the boundaries are usually visible as soon as you look at them, and almost nobody looks.
+
+**The query and the document use different words.** The user asks about "returns"; the policy says "merchandise disposition". Dense embeddings handle paraphrase better than keyword search, but not arbitrarily far, and they are weakest exactly where domain jargon lives.
+
+**The term was rare and exact.** Product codes, error strings, version numbers, surnames. Dense vectors compress; rare tokens are what compression discards first. This is the single strongest argument for hybrid search, and the failure is easy to reproduce: search for an identifier you know exists and watch it not come back.
+
+**There were four near-identical chunks.** Duplicated boilerplate, or five versions of the same document, and your top-5 is now five copies of the same paragraph. Effective k is one. Deduplicate before you conclude anything about your k.
+
+## What to do about it, in order
+
+**Build a retrieval-only eval.** Twenty questions, each with the passage that should be retrieved. Score recall at k — did the right chunk appear in the top k at all. This number is more useful than any end-to-end answer score, because it isolates the half that is actually broken.
+
+**Add hybrid search.** For most real corpora this is the largest single quality improvement available, and it is a smaller change than people expect: run a keyword search alongside the vector search and merge the rankings.
+
+**Fix your chunk boundaries.** Split on the document's structure — headings, paragraphs, function definitions, table rows with their headers — and treat size as the fallback rather than the strategy.
+
+**Then, and only then, rerank.** Reranking is a precision tool. It reorders what retrieval found; it cannot conjure what retrieval missed. Applied to a candidate set with 60% recall, an excellent reranker gives you an excellently ordered list that is wrong 40% of the time.
+
+## The uncomfortable version
+
+If your retrieval recall is 60%, your answer accuracy has a ceiling of 60% no matter what you do downstream. Every model upgrade, every prompt revision, every architectural flourish is redistributing quality inside that ceiling.
+
+Measure the ceiling first. It's a morning's work, and it will tell you whether the last month of prompt iteration was ever going to help.
+
+If you want the mechanics, the [chunking strategies lesson](/learn/rag/chunking-strategies-for-documents) covers boundaries, [hybrid search](/learn/rag/hybrid-search-lexical-and-vector) covers the merge, and the [guide to building a pipeline](/guides/build-a-rag-pipeline-over-your-own-documents) puts the whole thing together with the diagnostic built in.

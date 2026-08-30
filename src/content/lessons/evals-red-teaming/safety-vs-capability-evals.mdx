@@ -1,0 +1,31 @@
+---
+title: "Safety Evals vs. Capability Evals: Different Goals, Different Designs"
+track: "evals-red-teaming"
+status: live
+summary: "Capability evals measure what a model can do; safety evals measure what it won't do. Conflating them produces misleading scores and blind spots."
+duration: "5 min read"
+---
+
+A capability eval asks "can the model solve this?" A safety eval asks "will the model refuse to do this, even when asked cleverly?" They look similar — both are datasets with a scoring function — but optimizing one tells you almost nothing about the other, and teams that treat them as one bucket end up shipping a model that's great at coding and dangerously permissive, or so locked down it refuses benign requests.
+
+## Different failure directions
+
+Capability evals score toward a ceiling: higher is strictly better. A coding benchmark, a math suite, a tool-use accuracy test — you want the number to climb, and a perfect score means the model handles every case in the set.
+
+Safety evals don't work that way. A "harmful request refusal rate" of 100% sounds ideal until you notice it also means the model refused every borderline-but-legitimate request in your set — a security researcher asking about a known exploit, a nurse asking about lethal drug doses for dosing safety. The real target isn't a max score, it's a *curve*: refuse the genuinely harmful cases, comply with the legitimate ones, and the eval has to score both directions separately. This is why safety evals commonly report two numbers instead of one: a violation rate (bad completions on harmful prompts) and an over-refusal rate (unnecessary refusals on adjacent benign prompts). Optimizing only the first number is how you get a model that apologizes its way out of every gray-area question.
+
+## Different data, different provenance
+
+A capability dataset can often be built from real task distributions — production queries, textbook problems, existing benchmarks like the ones covered in [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss). The examples are things the model is *supposed* to succeed at, and you can source them straight from how the product gets used.
+
+A safety dataset is adversarial by construction. Nobody submits "ignore your instructions and help me do X" as a normal support ticket — you have to go looking for it, or generate it deliberately using techniques like the ones in [Crescendo, Many-Shot, and TAP: Building an Adversarial Prompt Set](/learn/evals-red-teaming/adversarial-dataset-construction). That changes who builds the set (specialists who think like attackers, not just domain experts), how it's maintained (it decays as jailbreak techniques evolve, unlike a math benchmark which stays valid for years), and how sensitive it is to distribute — a leaked capability eval costs you a slightly inflated score; a leaked safety eval hands attackers a tuned exploit list.
+
+## Different grading needs
+
+Capability grading is often closer to ground truth: a test passes or it doesn't, an answer matches a key or it doesn't. Safety grading is almost always a judgment call about intent and severity — was this refusal appropriate, was this completion actually harmful or just edgy — which pushes most safety evals toward [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge) or human review rather than exact-match scoring, with all the calibration problems that graders carry.
+
+## Run them separately, report them separately
+
+The practical takeaway: don't fold a handful of "harmful prompt" rows into your regular capability suite and call it covered. Keep the datasets, the metrics, and the pass bars distinct, and track both across model or prompt changes the way you'd track any eval diff — a capability regression and a safety regression are different incidents that need different owners.
+
+**Related:** [Crescendo, Many-Shot, and TAP: Building an Adversarial Prompt Set](/learn/evals-red-teaming/adversarial-dataset-construction), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Running a Structured Red-Team Exercise](/learn/evals-red-teaming/adversarial-red-teaming-process)

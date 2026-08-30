@@ -1,0 +1,47 @@
+---
+title: "Set a Learning Rate Schedule and Warmup"
+track: "fine-tuning"
+status: live
+summary: "Warm up the learning rate before you use it, then decay it, so training neither diverges early nor stalls out late."
+duration: "6 min read"
+---
+
+A fixed learning rate is a compromise: high enough to move fast, low enough not to blow up. A schedule lets you have both — start cautious, ramp to your real rate, then taper off as the model converges.
+
+## Why warmup exists
+
+At step zero, your optimizer's moment estimates (in Adam, the running mean and variance of gradients) are still initialized near zero and haven't seen enough data to be trustworthy. If you slam in a full learning rate immediately, especially on a freshly-attached LoRA adapter or a model with newly initialized layers, the first few updates can be huge relative to what the weights can absorb — loss spikes, sometimes irrecoverably.
+
+Warmup fixes this by linearly (occasionally: with a short constant or square-root ramp) increasing the learning rate from near zero up to the target peak over the first several hundred to a few thousand steps, or the first 3-10% of total training steps for a typical fine-tuning run. By the time the rate hits peak, the optimizer's statistics have stabilized and the model can tolerate bigger steps.
+
+Skip warmup and you'll often see it in the loss curve directly: a sharp early spike, sometimes a full divergence, especially with higher peak rates or larger batch sizes.
+
+## Decay: cosine vs. linear vs. constant
+
+After warmup, the rate needs to come back down. Staying at peak the whole run means the model keeps taking large, noisy steps right as it's trying to settle into a good minimum — you get worse final loss and less stable convergence.
+
+Two decay shapes dominate fine-tuning:
+
+- **Cosine decay** — the rate follows a cosine curve down to a small minimum (often 10% of peak, sometimes all the way to zero). It stays close to peak for a while, then decays faster in the middle, then eases off gently at the end. This is the default in most fine-tuning frameworks (Axolotl, Hugging Face `Trainer`, TRL) because it converges reliably without much tuning.
+- **Linear decay** — a straight line down to zero. Simple, and common for very short fine-tuning runs (a few epochs) where a smooth cosine tail doesn't have room to matter.
+
+A constant rate after warmup is used occasionally for short runs or when you're explicitly deferring decay to a later training phase, but it's rarely the right default for a single fine-tuning job.
+
+## Picking the numbers
+
+Concretely, a typical LoRA fine-tuning config looks like:
+
+```yaml
+learning_rate: 2e-4
+lr_scheduler_type: cosine
+warmup_ratio: 0.03      # or warmup_steps: 100
+min_lr_ratio: 0.1       # cosine floor, as a fraction of peak
+```
+
+Peak rate depends heavily on what you're training: LoRA adapters tolerate higher rates (1e-4 to 3e-4 is common) than full fine-tuning (often 1e-5 to 5e-5), because you're updating far fewer parameters and the base weights stay frozen as an anchor. `warmup_ratio` around 3-5% of total steps is a safe default; short runs (under a few hundred steps total) sometimes need a larger ratio just to get a few dozen warmup steps in at all.
+
+## Reading the loss curve
+
+If loss spikes right after warmup ends, your peak rate is too high — lower it or extend warmup. If loss is still dropping steadily when training ends, you decayed too fast or trained for too few steps. Watching this curve is also how you catch other run problems early — see [diagnosing catastrophic forgetting and overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting) for what a healthy vs. unhealthy curve looks like beyond the schedule itself.
+
+**Related:** [Set Hyperparameters for a Fine-Tuning Run](/learn/fine-tuning/fine-tuning-run-hyperparameters), [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting), [The Adam Optimizer: Momentum Meets Adaptive Rates](/learn/maths-foundations/the-adam-optimizer)

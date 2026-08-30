@@ -1,0 +1,25 @@
+---
+title: "Unsupervised Learning: Finding Structure Without Labels"
+track: "ai-foundations"
+status: live
+summary: "Clustering and pattern-finding in unlabeled data, and how it differs from supervised and self-supervised learning."
+duration: "5 min read"
+---
+
+Give a supervised model a dataset and it needs an answer key: this email is spam, this photo is a cat. Give an unsupervised model the same data with no labels at all, and its job is to find structure that was already there — groups, patterns, dimensions of variation — without anyone telling it what to look for.
+
+## What "no labels" actually buys you
+
+The practical reason unsupervised learning matters is that labels are expensive and structure is often what you wanted anyway. A retailer doesn't need a human to tag "budget shopper" or "power user" on every customer record — clustering finds those groups by measuring how similar customers are to each other and grouping the close ones together. Similarity here usually means distance in a numeric space, the same idea covered in [Cosine Similarity](/learn/maths-foundations/cosine-similarity): a customer is a point in high-dimensional space, and clustering algorithms like k-means or DBSCAN partition that space into regions of nearby points.
+
+Dimensionality reduction is the other half of the field. A dataset with hundreds of correlated columns usually has far fewer "real" underlying factors — techniques like PCA find the directions of greatest variance and compress the data onto them, which is also how you get a 2D plot out of a 768-dimensional embedding space. That machinery leans directly on [Eigenvalues and Eigenvectors](/learn/maths-foundations/eigenvalues-and-eigenvectors): PCA is, mechanically, an eigendecomposition of the data's covariance matrix.
+
+## Clustering vs. anomaly detection vs. compression
+
+These are the three jobs unsupervised methods are usually hired for. Clustering groups similar points (customer segments, topic groups in documents). Anomaly detection flips the question: instead of finding the dense clusters, it flags the points that don't belong to any of them — fraud detection and network intrusion systems are built this way, scoring how far a new point sits from everything the model has seen as "normal." Compression and representation learning find a smaller set of variables that still explain most of what's in the data, which is exactly what an autoencoder does when it squeezes an image through a narrow bottleneck layer and tries to reconstruct it.
+
+## Where it sits next to the other paradigms
+
+It's easy to lump unsupervised learning in with [Self-Supervised Learning](/learn/ai-foundations/self-supervised-learning) since neither uses human-provided labels, but they're solving different problems. Self-supervised learning manufactures a label from the data itself — predict the next word, fill in the masked pixel — specifically so it can train with the machinery of [Supervised Learning](/learn/ai-foundations/supervised-learning-explained). Unsupervised learning in the classical sense isn't predicting anything; there's no target to be right or wrong about, only structure to be uncovered. That's also why evaluating it is harder: without ground truth, "did clustering work?" is judged by whether the groups are useful and coherent, not by an accuracy score.
+
+**Related:** [Self-Supervised Learning: Training Without Labels](/learn/ai-foundations/self-supervised-learning), [Supervised Learning, Explained](/learn/ai-foundations/supervised-learning-explained), [Eigenvalues and Eigenvectors, Intuitively](/learn/maths-foundations/eigenvalues-and-eigenvectors)

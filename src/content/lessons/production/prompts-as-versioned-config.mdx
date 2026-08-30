@@ -1,0 +1,40 @@
+---
+title: "Treat Prompts as Versioned Config, Not Embedded Strings"
+track: "production"
+status: live
+summary: "Store prompts outside application code with their own history, review process, and rollback path."
+duration: "5 min read"
+---
+
+A prompt hardcoded as a string literal in your codebase looks harmless until the day you need to change it without a deploy, roll it back at 2am, or figure out which version was live when a customer got a bad answer. Prompts are config, not code — and they deserve config's tooling.
+
+## Why embedding a prompt in code is a trap
+
+When a system prompt lives inline in a Python or TypeScript file, every wording tweak requires a full code review, a CI run, and a deploy — for a change that's really just copy. Worse, you lose the ability to answer basic questions: which prompt version produced this output? What changed between last Tuesday and today? Who approved this edit? Git blame on a 40-line f-string buried in a service class answers none of that cleanly, especially once the prompt is templated with conditionals and interpolated variables.
+
+The deeper problem is coupling. A prompt change and a code change are different kinds of risk with different owners — a product manager or prompt engineer should be able to ship a wording fix without touching the application's dependency graph or waiting on a backend release train.
+
+## What "versioned config" looks like in practice
+
+Pull each prompt into its own file or record, addressed by a name and a version:
+
+```
+prompts/
+  support-triage/
+    v3.txt
+    v4.txt
+  order-summary/
+    v1.txt
+```
+
+Or store them in a database table with columns for `name`, `version`, `content`, `created_by`, and `status` (draft/staged/live). Either way, the application code references a prompt by name and pulls whatever version is marked live — it never contains the prompt text itself. This is the same discipline as [prompt templates and variables](/learn/prompt-engineering/prompt-templates-and-variables): separate the fixed structure from the data that fills it, then separate both from the application logic that calls them.
+
+Some teams use a dedicated prompt-management platform (LangSmith, PromptLayer, Langfuse) that gives you a UI for editing, diffing, and promoting versions. Others just use a git submodule or a config-as-code repo with normal PR review. The tool matters less than the property: a prompt change has its own commit, its own diff, and its own audit trail, independent of application deploys.
+
+## Rollback is the real payoff
+
+The entire reason to do this is the moment something breaks. If a new prompt version starts producing worse outputs, you want to flip a pointer back to the last-known-good version — not revert a merged application PR and redeploy the service. Treat "live" as a mutable pointer over immutable versions, the same pattern used for [feature flags and kill switches](/learn/production/feature-flags-and-kill-switches): every version you've ever shipped stays retrievable, and switching between them is a config write, not a code change.
+
+This pairs naturally with structured logging — if you [log every LLM call as structured data](/learn/production/structured-logging-for-llm-calls), tag each request with the prompt version that generated it. Now a regression isn't just fixable, it's diagnosable: you can filter production traffic by prompt version and see exactly when quality shifted.
+
+**Related:** [Prompt Templates: Building Reusable, Parameterized Prompts](/learn/prompt-engineering/prompt-templates-and-variables), [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches)

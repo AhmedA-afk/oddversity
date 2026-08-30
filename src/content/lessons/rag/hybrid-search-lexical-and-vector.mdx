@@ -1,0 +1,37 @@
+---
+title: "Hybrid Search: Lexical and Vector Combined"
+track: "rag"
+status: live
+summary: "Blend keyword (BM25) and vector search so retrieval catches exact terms and paraphrases alike."
+duration: "5 min read"
+---
+
+Vector search finds meaning; keyword search finds exact words. Neither one alone is enough, and hybrid search is the fix: run both, then merge the results.
+
+## Why one search strategy isn't enough
+
+Embedding search is excellent at paraphrase — it finds "reset my login" when you asked about "forgot my password" — but it's surprisingly bad at exact tokens: product codes, error messages, part numbers, acronyms, names. "Error E4021" and "Error E4029" embed almost identically, because semantically they're nearly the same sentence, even though they mean completely different bugs. A keyword index built on BM25 (a scoring formula that rewards exact, rare-term matches, refined from decades-old TF-IDF search) nails that case instantly — it just looks for the literal string.
+
+The failure runs the other way too: pure keyword search misses "cancel my plan" when the document says "terminate a subscription," because it has no notion of meaning at all, only string overlap.
+
+So the two methods have almost opposite failure modes, which is exactly why combining them works better than picking either as "the" retrieval method.
+
+## How the merge actually works
+
+A hybrid pipeline runs both searches independently against the same query, then fuses two ranked lists into one. The two lists use incompatible scales — BM25 scores are unbounded and corpus-dependent, [cosine similarity](/learn/maths-foundations/cosine-similarity) scores sit between -1 and 1 — so you can't just add the raw numbers together.
+
+The standard fix is **Reciprocal Rank Fusion (RRF)**: ignore the raw scores entirely and score each result by its *rank* in each list.
+
+```
+score(doc) = sum over each ranked list of  1 / (k + rank_in_that_list)
+```
+
+`k` is a small constant (60 is a common default) that softens the effect of rank 1 versus rank 2. A document that lands near the top of both the keyword list and the vector list gets a high combined score. A document that's great in one list and absent from the other still gets a moderate boost — it isn't thrown out just because one method missed it. RRF needs no score normalization and no tuning of relative weights, which is why it's the default fusion method in most vector databases that ship hybrid search out of the box (Weaviate, Qdrant, Elasticsearch, and others all support it directly).
+
+Some systems instead weight the two lists by hand (`final = α · vector_score + (1-α) · bm25_score`), but that requires normalizing scores onto a shared scale first and tuning `α` per corpus — more moving parts for a gain that RRF usually matches without the tuning.
+
+## Where it fits in the pipeline
+
+Hybrid search runs before [reranking](/learn/rag/reranking-retrieved-results), not instead of it. A typical order is: retrieve a wider candidate set from both lexical and vector search, fuse with RRF, then hand the top handful to a reranker for a final, more expensive relevance pass. Hybrid retrieval casts a wide, high-recall net cheaply; reranking spends more compute narrowing it down. Skipping hybrid and going vector-only is a common reason RAG systems silently fail on exact-match queries — codes, IDs, names — while looking fine on everything else during a demo.
+
+**Related:** [Similarity Search and ANN Indexes](/learn/rag/similarity-search-and-ann-indexes), [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)

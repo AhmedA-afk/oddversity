@@ -1,0 +1,52 @@
+---
+title: "Cost-Aware Agents: Budgeting Tokens Across a Long-Running Loop"
+track: "agentic-ai"
+status: live
+summary: "Cap runaway spend in autonomous loops with step budgets, cheap-model triage, and early-exit heuristics."
+duration: "6 min read"
+---
+
+An agent loop has no natural stopping point built in — left alone, it will happily burn tokens on a fifty-step detour to answer a question that needed five. Cost-awareness means putting explicit limits and cheap-first habits into the loop itself, not hoping the model self-regulates.
+
+## Step and token budgets
+
+The simplest control is a hard ceiling: a max number of loop iterations, and a max token count across the whole run. Track spend as you go — every model call and every tool result adds to a running total — and stop the loop when either limit is hit, returning whatever partial result exists rather than erroring silently.
+
+```python
+MAX_STEPS = 15
+MAX_TOKENS = 50_000
+spent_tokens = 0
+
+for step in range(MAX_STEPS):
+    if spent_tokens >= MAX_TOKENS:
+        return partial_result("budget exhausted")
+    response = call_model(messages)
+    spent_tokens += response.usage.total_tokens
+    if is_done(response):
+        return response
+    messages.append(execute_tool(response))
+```
+
+Budgets should scale with task complexity, not be one fixed number for everything. A lookup-and-answer task might get 5 steps; a multi-file refactor might get 50. Pass the budget in at the start based on a rough estimate, and let the agent see its own remaining budget so it can wrap up gracefully instead of getting cut off mid-thought — this pairs with picking good [termination conditions](/learn/agentic-ai/stopping-conditions-for-agents) generally, since a budget is just one more signal for "done."
+
+## Cheap-model triage
+
+Not every step in a loop needs your best model. Classification, routing, and "does this tool result look useful" checks are often high-volume and low-difficulty — exactly where a cheaper, faster model does the job at a fraction of the cost. A common pattern: use a small model to triage which of several candidate actions is worth taking, then hand only the chosen path to the expensive model for the actual reasoning and generation.
+
+This is the same idea behind [routing requests to cheap or frontier models by difficulty](/learn/production/model-routing-by-task-complexity) in production systems, applied inside a single agent's loop rather than across a fleet of users. A tool-heavy agent that calls a search API twenty times per task, for example, can use a cheap model to filter or rank those twenty results before ever showing them to the expensive model doing the synthesis.
+
+## Early-exit heuristics
+
+The most expensive failure mode isn't a single costly step — it's an agent that keeps looping past the point of diminishing returns. Build in heuristics that catch this early:
+
+- **Repetition detection** — if the last two or three tool calls produced near-identical results, the agent is stuck; stop and ask for help or return what you have.
+- **Confidence thresholds** — if the model's own stated confidence (or a lightweight self-check) is already high after step 3, don't force it through step 4 and 5 just because the budget allows it.
+- **Cost-to-value checkpoints** — periodically compare tokens spent so far against the value of the task; a $2 answer to a $0.10 question is a bug, not thoroughness.
+
+These heuristics work best combined with the [reflection](/learn/agentic-ai/reflection-and-self-critique) pattern: a periodic self-critique step is a natural place to also ask "is this worth continuing?" rather than only "is this correct?" Cost and quality checks share a checkpoint, so you're not paying for a second pass just to ask about money.
+
+## Making budgets visible
+
+None of this works if spend is invisible until the bill arrives. Log token usage per step, not just per run, so you can see where a loop's cost actually concentrates — often it's not the reasoning steps but a handful of huge tool outputs getting fed back into context on every turn. That's a signal to prune or summarize, not just to budget harder.
+
+**Related:** [Termination Conditions](/learn/agentic-ai/stopping-conditions-for-agents), [Reflection: Letting an Agent Grade Itself](/learn/agentic-ai/reflection-and-self-critique), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity)

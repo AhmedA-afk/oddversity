@@ -11,3 +11,13 @@ node_modules/
 .DS_Store
 # logs
 npm-debug.log*
+
+# Internal working docs — kept locally, not published.
+# CODEX-BRIEF.md is agent-orchestration instructions and references a private
+# sibling repo path; STRATEGY.md holds unpublished revenue and traffic figures.
+# Neither belongs in a public repo, least of all one whose credibility rests on
+# a human byline.
+CODEX-BRIEF.md
+STRATEGY.md
+CURRICULUM-CHECKLIST.md
+docs-maths-foundations-overview.md

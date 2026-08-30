@@ -1,0 +1,29 @@
+---
+title: "Why High-Dimensional Space Feels Weird"
+track: "maths-foundations"
+status: live
+summary: "Distance and volume stop behaving in hundreds of dimensions — here's why, and why embeddings work anyway."
+duration: "5 min read"
+---
+
+Every embedding you've ever used lives in a space with hundreds or thousands of dimensions. Your intuition for "space" comes from three of them. That mismatch isn't a minor footnote — it changes which distance measures are even meaningful.
+
+## Distances stop discriminating
+
+Pick two random points in a 2D square and the distance between them varies a lot — some pairs are close, some far. Do the same in 1,000 dimensions and something strange happens: almost every pair of random points ends up roughly the same distance apart. The nearest neighbor and the farthest neighbor start looking almost identical in distance. This isn't a quirk of one dataset — it falls directly out of how variance adds up across independent dimensions. A [dot product](/learn/maths-foundations/dot-product-explained) between two random high-dimensional vectors averages out toward zero for the same reason: each dimension contributes a small, mostly-canceling term, and only genuine correlation across many dimensions survives the noise.
+
+This is why raw Euclidean distance quietly breaks down as a similarity measure at scale, and why [cosine similarity](/learn/maths-foundations/cosine-similarity) — which measures angle, not magnitude — tends to hold up better for embeddings. Angle is less sensitive to the volume effects below.
+
+## Volume hides in the corners
+
+Take a hypercube and shrink it by 10% along every edge. In 2D that removes about 19% of the area. In 100D, that same 10% shrink removes over 99.99% of the volume. Almost all the volume of a high-dimensional cube lives in a thin shell near its outer surface, not in the middle. The same logic applies to a hypersphere: as dimensions grow, the volume concentrates near the surface, and the "middle" becomes essentially empty. Points sampled from a high-dimensional distribution end up scattered across a thin shell rather than clustered near a center — which is part of why "average" and "typical" stop meaning what they mean in 2D.
+
+## Why embeddings still work
+
+If distance gets less informative and everything drifts to a thin shell, why do embedding models — the ones behind [cosine similarity](/learn/maths-foundations/cosine-similarity) search, recommendation, and retrieval — work at all?
+
+Because real embeddings aren't random points scattered uniformly through the space. They're produced by a model trained so that semantically related things land near each other and unrelated things don't — the data occupies a much lower-dimensional structure folded inside the high-dimensional space, sometimes called a manifold. The ambient dimension count (768, 1536, whatever) is a ceiling, not the actual shape of the data. [The geometry of embeddings](/learn/maths-foundations/the-geometry-of-embeddings) covers what that structure actually looks like and why directions in the space end up meaning something.
+
+The practical takeaway: don't trust raw distance-based intuitions imported from 2D or 3D when debugging retrieval or clustering in embedding space. Check what similarity metric you're using, and remember that "close" in 1,000 dimensions is doing different mathematical work than "close" on a map.
+
+**Related:** [Cosine Similarity: Measuring How Alike Two Things Are](/learn/maths-foundations/cosine-similarity), [The Dot Product, Explained](/learn/maths-foundations/dot-product-explained), [The Geometry of Embeddings](/learn/maths-foundations/the-geometry-of-embeddings)

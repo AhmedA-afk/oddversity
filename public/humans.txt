@@ -1,0 +1,27 @@
+/* TEAM */
+
+  Editor: see /about
+  Site: https://oddversity.com
+
+/* THANKS */
+
+  Every open specification, SDK changelog and primary source this curriculum
+  cites. Corrections from readers are the highest-value contribution here —
+  if you find an error, name the page and the specific claim.
+
+/* NAME */
+
+  A university it isn't — no accreditation, no admission, no fee, no
+  certificate. The odd half is the honest one: this material is organised
+  around the cases that don't fit the happy path, because that is where the
+  learning is.
+
+/* SITE */
+
+  Standards:   HTML5, CSS3, ECMAScript 2020
+  Components:  Astro, MDX
+  Type:        Source Serif 4, IBM Plex Sans, IBM Plex Mono — self-hosted
+  Software:    Written in a text editor, built statically, served as files
+
+  No tracking cookies. No account required. No paywall.
+  Progress is stored in your own browser and never leaves it.

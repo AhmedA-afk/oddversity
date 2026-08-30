@@ -1,0 +1,31 @@
+---
+title: "Deduplicate and Decontaminate Your Training Data"
+track: "fine-tuning"
+status: live
+summary: "Strip near-duplicate examples and anything overlapping your eval set before training, or your metrics will lie."
+duration: "6 min read"
+---
+
+A fine-tuning run that scores great on your eval and falls apart in production usually has one of two boring causes: the training set is full of near-duplicates that let the model memorize instead of generalize, or the eval set leaked into training and you're measuring recall, not skill.
+
+## Deduplication: why copies distort training
+
+Scraped and aggregated datasets accumulate duplicates — the same FAQ answer pasted across ten support tickets, a boilerplate paragraph repeated in hundreds of documents. Exact duplicates are easy to catch by hashing each example. The harder problem is near-duplicates: two examples that differ by a timestamp, a variable name, or a rephrased sentence but are functionally the same training signal.
+
+Left in, duplicates do two things. They give the model repeated gradient updates on the same pattern, which quietly overweights whatever that cluster represents relative to genuinely diverse examples. And they inflate a validation split drawn from the same pool — if a near-duplicate of a training example lands in validation, your loss curve looks better than the model actually is.
+
+The standard fix is MinHash with locality-sensitive hashing (LSH): compute a compact fingerprint of each example's shingled text, bucket similar fingerprints together, then drop all but one example per cluster above a similarity threshold (commonly around 0.8 Jaccard similarity). Tools like `datasketch` in Python or the deduplication pipeline in Hugging Face's `datatrove` implement this at scale — exact hashing is O(n) but only catches identical text; MinHash LSH catches near-duplicates in roughly O(n) too, which is why it's the default for large datasets.
+
+## Decontamination: why eval overlap is worse than it looks
+
+Decontamination is a different check: does anything in your training set overlap with your eval or benchmark set? This is not the same failure as duplication within training data — it directly corrupts your ability to know whether the fine-tune worked.
+
+The common source isn't usually a copy-paste mistake. It's indirect: your training data comes from the same web scrape or internal corpus that a public benchmark was built from, so a benchmark question and a near-identical version of it both ended up in your training set without anyone intending it. The model then "solves" the eval by recall.
+
+Check for contamination the same way you check for near-duplicates — n-gram overlap (typically 8- to 13-gram matching) or embedding similarity between every training example and every eval example, flagging pairs above a threshold for removal from the training side. Do this before you train, not after you see a suspiciously high score. A model that jumps 15 points on your eval after fine-tuning on a scraped dataset is a decontamination bug until proven otherwise.
+
+## Order of operations
+
+Run both passes before you touch [hyperparameters](/learn/fine-tuning/fine-tuning-run-hyperparameters) or kick off training: deduplicate the training set internally first, then decontaminate it against your held-out eval set. If you're also generating [synthetic training data](/learn/fine-tuning/synthetic-data-generation), run these checks after generation — synthetic examples cluster into near-duplicates easily, since a larger model asked the same question many ways tends to converge on similar phrasing.
+
+**Related:** [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset), [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model), [Generate Synthetic Training Data with a Larger Model](/learn/fine-tuning/synthetic-data-generation)

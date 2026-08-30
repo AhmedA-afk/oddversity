@@ -1,0 +1,25 @@
+---
+title: "Multi-Hop Compounding: How One Wrong Step Snowballs"
+track: "hallucinations"
+status: live
+summary: "A small error early in a reasoning chain doesn't stay small — each later step builds on it and the final answer arrives confidently wrong."
+duration: "5 min read"
+---
+
+Ask a model a question that needs three facts chained together, and get one of them slightly wrong, and the model won't notice. It will reason forward from the bad fact as if it were true, and every downstream step inherits the error. The final answer looks just as fluent and confident as a correct one — there's no seam where the wrongness shows.
+
+## How the snowball forms
+
+Consider a question like "Who was the CEO of the company that acquired the startup founded by the person who invented X?" That's four hops: identify the inventor, find their startup, find the acquirer, find the acquirer's CEO. If the model misremembers the inventor at hop one, hops two through four aren't "wrong" in isolation — they're perfectly correct answers to a question nobody asked, chained onto a false premise. The model has no internal alarm that fires when it's reasoning from bad data, because from its perspective each step is just pattern-completing on the previous one, and the previous one look like established fact by the time it's context.
+
+This is different from a single-shot hallucination, where the model just guesses. Here, the guess happens once, early, and then gets amplified by legitimate-looking reasoning. That's what makes multi-hop errors so much harder to catch by eye than a single wrong fact: the final output has internal consistency. Everything downstream of the error follows logically from it, so the whole chain reads as coherent even though it's built on sand.
+
+## Why longer chains make it worse
+
+Each hop is a chance for a small probability of error to compound. If a single retrieval or recall step is 90% reliable, a four-hop chain that depends on all four being right independently is already down near 65%. Add the fact that later hops often can't be verified without redoing earlier ones — you can't easily check "who's the acquirer's CEO" without first re-confirming who the acquirer even is — and errors become sticky. Nobody re-derives step one when checking step four; they take it as given, the same way the model did. This is also why chain-of-thought traces (see [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting)) help but don't solve the problem — a transparent chain of reasoning is still a chain, and showing your work doesn't make the first link correct, it just makes the failure easier to *find* after the fact.
+
+## Containing it
+
+The fix isn't asking the model to "be more careful" — it's breaking the chain into independently checkable pieces. Verify or ground each hop before handing it to the next step, rather than letting the model run the whole chain in one uninterrupted pass. This is the same logic behind [Decomposition: Splitting One Big Prompt into a Pipeline](/learn/prompt-engineering/task-decomposition): treat each hop as its own sub-task with its own output, so a wrong intermediate fact is visible and correctable instead of silently absorbed into the next prompt. For retrieval-heavy chains, [Agentic RAG: Iterative, Multi-Hop Retrieval](/learn/rag/agentic-rag) does exactly this — it re-retrieves and re-checks at each hop rather than trusting the first pass. And because a snowballed answer still looks fluent, don't rely on reading the final output for confidence — apply [Self-Verification: Having the Model Check Its Own Work](/learn/hallucinations/self-verification-techniques) at each intermediate hop, not just at the end, where the damage is already baked in.
+
+**Related:** [Decomposition: Splitting One Big Prompt into a Pipeline](/learn/prompt-engineering/task-decomposition), [Agentic RAG: Iterative, Multi-Hop Retrieval](/learn/rag/agentic-rag), [Self-Verification: Having the Model Check Its Own Work](/learn/hallucinations/self-verification-techniques)

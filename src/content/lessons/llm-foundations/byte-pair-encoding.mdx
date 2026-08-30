@@ -1,0 +1,34 @@
+---
+title: "Byte-Pair Encoding: How Tokenizers Are Actually Built"
+track: "llm-foundations"
+status: live
+summary: "The merge-based algorithm that builds a tokenizer's fixed vocabulary by repeatedly fusing the most frequent adjacent pair."
+duration: "5 min read"
+---
+
+Tokenization tells you text gets chopped into tokens, but not where the tokens themselves come from. Byte-Pair Encoding (BPE) is the algorithm most production tokenizers — GPT's, Llama's, and most others — actually use to build that vocabulary, and it's simpler than it sounds: start from individual bytes, and keep merging whatever pair shows up most.
+
+## The core algorithm
+
+BPE starts by splitting your training corpus into its smallest units — individual bytes or characters, each its own token. Then it repeats one step: count every adjacent pair of tokens in the corpus, find the single most frequent pair, and merge it into one new token. That new token gets added to the vocabulary, the corpus is rewritten with every occurrence of that pair replaced, and the counting starts over.
+
+Run this loop enough times and common substrings fuse into single tokens. If `t` and `h` co-occur constantly, they merge into `th`. Later, `th` and `e` merge into `the`. Keep going and whole common words become one token, while rare words stay fragmented into smaller pieces. You stop once you hit a target vocabulary size — say 50,000 or 100,000 tokens — which is a knob you set before training starts, not something the algorithm decides on its own.
+
+```
+corpus: l o w  l o w e r  n e w e s t  w i d e s t
+step 1: most frequent pair "e s" -> merge to "es"
+        l o w  l o w e r  n e w es t  w i d es t
+step 2: most frequent pair "es t" -> merge to "est"
+        l o w  l o w e r  n e w est  w i d est
+...continue until vocab size target is reached
+```
+
+## Why bytes, not characters
+
+Modern tokenizers (GPT's, for instance) run BPE over raw UTF-8 bytes rather than Unicode characters. That's the "byte" in Byte-Pair Encoding, and it fixes a real problem: a character-level vocabulary has to special-case every script and every emoji, and it still breaks on text it's never seen. A byte-level vocabulary only ever needs 256 starting symbols, because any string in any language is a byte sequence. There's no "unknown token" fallback — genuinely novel input just falls back to individual bytes, which are always in the vocabulary. That's also why a rare word or a typo can still get encoded, just as more, smaller tokens.
+
+## Merges are a fixed, ordered list
+
+The output of training isn't just a vocabulary — it's an ordered list of merge rules, learned once from a large corpus and then frozen. Encoding new text at inference time doesn't recompute frequencies; it applies the merges in the order they were learned, greedily, to whatever text comes in. That's why the same input always tokenizes the same way, and why tokenizer training (a one-time, corpus-wide statistical process) is a completely different phase from encoding (a fast, deterministic lookup applied per request). It's also why a domain-specific corpus — a lot of code, or a lot of a non-English language — produces a noticeably different set of merges, and why the vocabulary size chosen during training becomes a permanent property of the model.
+
+**Related:** [Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained), [Context Window Mechanics](/learn/llm-foundations/context-window-mechanics), [Multi-Head Attention: Why One Attention Pattern Isn't Enough](/learn/llm-foundations/multi-head-attention)

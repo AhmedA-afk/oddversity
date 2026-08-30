@@ -1,0 +1,32 @@
+---
+title: "GraphRAG: Retrieval Over a Knowledge Graph"
+track: "rag"
+status: live
+summary: "Build a knowledge graph from your documents so retrieval returns connected entities and relationships, not isolated chunks."
+duration: "6 min read"
+---
+
+Standard RAG retrieves the chunks that are semantically closest to a query. That works when the answer lives inside one chunk. It falls apart when the answer requires connecting facts scattered across many documents — "how are these three companies related to this lawsuit?" is a question about structure, not similarity. GraphRAG answers that by retrieving over a graph of entities and relationships instead of a flat list of text spans.
+
+## How the graph gets built
+
+During indexing, an LLM reads each chunk and extracts entities (people, organizations, products, events) and the relationships between them ("Company A acquired Company B in 2023"). Those extractions become nodes and edges in a graph, stored alongside the original text so every edge can be traced back to its source passage. This is the expensive part of GraphRAG: extraction is an LLM call per chunk, so indexing a large corpus costs meaningfully more in tokens and time than embedding it.
+
+Microsoft's GraphRAG approach (the reference implementation most people mean by the term) adds one more step: it runs community detection on the graph — clustering densely connected nodes — and asks the LLM to summarize each community. A community summary captures "what this cluster of entities is about" at a level no single chunk contains, which is what makes multi-hop and "give me the big picture" questions answerable at all.
+
+## Two retrieval modes
+
+GraphRAG typically supports two query paths:
+
+- **Local search** starts from the entities mentioned in the query, walks outward along edges to pull in directly connected entities and relationships, and hands the model a subgraph plus the source text behind it. This is for questions about a specific entity and its immediate context — "what deals has this person been involved in?"
+- **Global search** skips entity matching and instead retrieves from the community summaries, then has the model synthesize across them. This is for questions that require reasoning across the whole corpus — "what are the main themes in this document set?" — which flat chunk retrieval structurally cannot answer, because no single chunk contains "the whole theme."
+
+This two-mode split is the practical reason to reach for GraphRAG: it's not a strict upgrade over vector [hybrid search](/learn/rag/hybrid-search-lexical-and-vector), it's a different retrieval shape for a different class of question.
+
+## When it's worth the cost
+
+GraphRAG earns its cost on corpora where relationships matter more than any single document: investigative research, compliance and legal discovery, organizational knowledge bases, or scientific literature where the value is in the connections between findings. It's a poor fit for FAQ-style or single-document lookup, where the extra indexing cost buys nothing over a well-tuned vector or [hybrid](/learn/rag/hybrid-search-lexical-and-vector) pipeline — that's a case for reading [When RAG Is the Wrong Tool](/learn/rag/when-rag-is-the-wrong-tool) as a lens on the "graph vs. flat" decision specifically, not just RAG-vs-nothing.
+
+In practice, teams often run GraphRAG as one retrieval path among several rather than a replacement: entity-heavy or synthesis questions go to the graph, everything else goes to standard vector retrieval. It's also worth pairing with [structured memory store](/learn/context-engineering/structured-memory-stores) thinking — a knowledge graph is one of a few shapes memory can take, and the choice between graph, vector, and key-value isn't unique to RAG indexing.
+
+**Related:** [Hybrid Search: Lexical and Vector Combined](/learn/rag/hybrid-search-lexical-and-vector), [When RAG Is the Wrong Tool](/learn/rag/when-rag-is-the-wrong-tool), [Structured Memory Stores: Vector, Key-Value, or Knowledge Graph](/learn/context-engineering/structured-memory-stores)

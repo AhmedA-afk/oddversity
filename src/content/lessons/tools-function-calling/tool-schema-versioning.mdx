@@ -1,0 +1,46 @@
+---
+title: "Versioning Tool Schemas Without Breaking Running Agents"
+track: "tools-function-calling"
+status: live
+summary: "Change a tool's contract without breaking agent sessions that were prompted against the old shape."
+duration: "5 min read"
+---
+
+A tool schema isn't just an API contract between your code and a caller — it's baked into the model's context. The system prompt, the tool definitions, and every prior tool call in a session all reflect *some* version of that schema. Change it mid-flight and you can silently break sessions that are still running against the old one.
+
+## Why this is different from normal API versioning
+
+With a REST API, an old client keeps sending old-shaped requests until it upgrades. With tool calling, the "client" is a model that was steered by whatever schema and description sat in its context at the start of the conversation. If a long-running agent session started before you shipped a change, the model may keep emitting arguments that matched the schema it saw then — not the one your server now expects.
+
+Two failure shapes show up in practice:
+
+- **Silent drift**: you rename a field or tighten a constraint (say, `location: string` becomes `location: {city, country}`), and an in-flight agent keeps sending the old flat string. If your server coerces it loosely, you get wrong behavior instead of a clean error.
+- **Hard breaks**: you remove a parameter the model still references from earlier turns, or make an optional field required. The next tool call in that session fails outright, often mid-task with no good recovery path.
+
+## Additive changes are (mostly) safe
+
+The cheapest way to avoid breakage: treat tool schemas like public API surface and default to additive-only changes.
+
+- Add new optional parameters rather than repurposing existing ones.
+- Never remove or rename a field a live description already promised — deprecate it in the description text ("prefer `city_id`; `location` is accepted but ignored") and stop advertising it in new sessions once it's safe.
+- Keep enums additive: adding a new allowed value is safe, removing one isn't, since old context may have taught the model to emit it.
+
+This gets you a long way, but it doesn't cover structural changes — swapping a string for an object, splitting one tool into two, or changing what a tool *does* semantically.
+
+## Version the tool, not just the schema
+
+For anything structural, give the tool itself a version, not just the field:
+
+```json
+{"name": "search_flights_v2", "description": "..."}
+```
+
+Register both `search_flights` and `search_flights_v2` on the server. New sessions get only the new tool in their tool list; sessions that started before the cutover keep the old tool available until they naturally end. Route both to shared logic internally, but keep the argument-parsing layer per version so a v1-shaped call is parsed as v1, not force-fit into v2's expectations.
+
+This is more code to carry, but it's the difference between "old sessions degrade gracefully" and "old sessions start throwing 400s halfway through a task." Retire the old tool version only after telemetry shows no live sessions are still calling it — not on a fixed calendar date.
+
+## Handle the transition at the boundary
+
+Whatever you do at the schema level, defend the execution boundary too: validate incoming arguments against the version you can actually detect (by tool name, or a `schema_version` field you require going forward), and return a structured error the model can act on rather than a stack trace — see [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries). A model that gets "unrecognized field `location`, use `city` and `country` instead" can often self-correct within the same turn; one that gets a raw 500 usually can't.
+
+**Related:** [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Schema Versioning: Evolving a Contract Without Breaking Consumers](/learn/structured-outputs/schema-versioning-and-migration)

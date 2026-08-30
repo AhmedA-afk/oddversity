@@ -1,0 +1,40 @@
+---
+title: "Optimize Inference Serving: Batching and KV Cache"
+track: "fine-tuning"
+status: live
+summary: "Serve LLMs faster and cheaper with continuous batching and KV cache management, the two levers behind vLLM and TGI."
+duration: "6 min read"
+---
+
+A fine-tuned model that's slow or expensive to serve doesn't help anyone. Two ideas do most of the work in modern serving frameworks: batching requests together intelligently, and reusing the memory that attention needs instead of recomputing it.
+
+## Why naive serving wastes the GPU
+
+If you serve one request at a time, the GPU sits mostly idle: generating a token is memory-bandwidth-bound, not compute-bound, so a single sequence can't saturate the hardware. The classic fix is batching — running several requests through the model together so their matrix multiplies share the same pass over the weights.
+
+The problem is that requests don't arrive or finish at the same time. Static batching (wait for a batch to fill, run it, wait for the whole batch to finish before starting the next) leaves the GPU blocked on whichever request in the batch happens to generate the most tokens, while shorter requests in the batch sit finished and unused.
+
+## Continuous batching
+
+Continuous batching (also called in-flight or dynamic batching) fixes this at the scheduler level: instead of batching at the request boundary, the server batches at the token-generation step. After every forward pass, any sequence that finished gets evicted and a new queued request gets slotted in immediately, so the batch composition changes every step. This keeps GPU utilization high regardless of how unevenly requests finish, and it's the core scheduling idea behind [vLLM](https://github.com/vllm-project/vllm), Hugging Face's TGI, and NVIDIA's TensorRT-LLM.
+
+The tradeoff is scheduling complexity and a fairness question: a server under load has to decide how to interleave new requests with ones already generating, which affects tail latency for individual users even as aggregate throughput goes up.
+
+## The KV cache problem
+
+Each token a model generates attends back over every previous token's key and value vectors — recomputing those from scratch at every step would be wasteful, so servers cache them. That's the KV cache, and it grows linearly with sequence length and batch size, often becoming the dominant consumer of GPU memory during serving — more than the model weights themselves for long-context or large-batch workloads.
+
+Naive KV cache allocation reserves a large contiguous block per sequence sized for the worst case, which fragments memory and wastes it badly when actual sequence lengths vary. vLLM's answer is PagedAttention: it manages the KV cache like an OS manages virtual memory, in fixed-size non-contiguous pages, so sequences only consume the memory they actually use and pages can be shared between sequences with a common prefix (like a shared system prompt) instead of duplicated.
+
+```
+Naive: [seq A: reserved 2048 tokens, used 200] → wasted
+Paged: [seq A: 2 pages used, 2 pages free] → freed for other requests
+```
+
+## Reading the levers you actually control
+
+When you're choosing or tuning a serving stack, the knobs that matter are: max batch size (how many concurrent sequences), max sequence length (caps memory per sequence), KV cache block size, and whether the framework supports prefix caching for shared prompts. Quantizing the model — see [Quantize a Model: GGUF, AWQ, and GPTQ](/learn/fine-tuning/quantization-gguf-awq-gptq) — shrinks weight memory and frees more room for KV cache and larger batches, so the two techniques compound rather than compete.
+
+None of this changes what the model outputs — it's purely about throughput and cost per token. Get it wrong and a well fine-tuned model still feels sluggish and expensive in production.
+
+**Related:** [Quantize a Model: GGUF, AWQ, and GPTQ](/learn/fine-tuning/quantization-gguf-awq-gptq), [Distill a Large Model into a Small One](/learn/fine-tuning/knowledge-distillation), [Merge and Version LoRA Adapters](/learn/fine-tuning/merging-and-versioning-adapters)

@@ -1,0 +1,31 @@
+---
+title: "Tool-Call Hallucination: Inventing Calls, Arguments, or Results"
+track: "hallucinations"
+status: live
+summary: "An agent fabricates a tool call, its arguments, or its result instead of admitting the step can't be completed."
+duration: "5 min read"
+---
+
+Ask an agent to check a flight status and it might do the right thing: call the `getFlightStatus` tool, wait for the response, and report what came back. Or it might skip straight to "Flight AA123 is on time" without calling anything at all — narrating a plausible result because that's what a flight-status answer usually looks like.
+
+That's tool-call hallucination: the model produces text that looks like it used a tool, or looks like a tool result, when no real call happened — or it happened but the model reports something different from what actually came back.
+
+## Three places it shows up
+
+**Fabricated calls.** The model names a tool that doesn't exist, or calls a real tool with a schema it invented (a parameter that isn't defined, a value type the tool never accepts). This tends to happen when the tool list is long or the model is under pressure to "just answer" — it pattern-matches to a call shape it's seen elsewhere rather than the one actually offered. See [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes) for the broader family.
+
+**Fabricated arguments.** The call is real, but an argument is invented rather than sourced — a date, an ID, a filename the user never gave. The model needs *some* value to fill the slot and generates a plausible one instead of asking or leaving it unset. This is especially dangerous in write-path tools: an invented account ID or file path sent to a real API doesn't just look wrong, it does something wrong.
+
+**Fabricated results.** The most common and hardest to catch: the call either never fires or fires and returns an error or empty result, and the model narrates a result anyway because it "knows" roughly what that kind of tool tends to return. A search tool times out; the model still lists three source titles. A database query returns zero rows; the model reports a total anyway.
+
+## Why it happens
+
+The model is trained to produce fluent, complete-looking output, and a tool result is just another span of text in the conversation. Nothing about next-token prediction distinguishes "text I'm asserting because it's true" from "text shaped like a plausible tool response." When the harness doesn't force a hard boundary between "I called the tool" and "I'm now describing what it returned," the model can drift across that boundary mid-generation, especially under [context rot](/learn/context-engineering/context-rot) or when the tool result is far back in a long transcript.
+
+## Containing it
+
+The fix lives mostly in the harness, not the prompt. Structural tool calling — where the API enforces a distinct call step separate from prose, and returns the actual result in a distinct message — closes off "fabricated calls" almost entirely, because there's no way to fake the call format ([Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely)). For arguments, validate against the schema before dispatch and reject anything the user didn't actually supply for required identifiers, rather than letting the model backfill. For results, treat every tool response as untrusted until it's actually in context: log whether a call fired, diff the model's summary against the raw payload for high-stakes tools, and in agent loops verify a claimed action side effect actually happened (a file exists, a record changed) rather than trusting the narration.
+
+The general defense is the same one that works for hallucination everywhere: a model that's allowed to say "the tool call failed, I don't have that data" is far less likely to invent an answer than one that's been implicitly trained, by prompt or by prior turns, to always produce something.
+
+**Related:** [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes), [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely), [Teaching a Model to Say 'I Don't Know'](/learn/hallucinations/teaching-models-to-say-i-dont-know)

@@ -1,0 +1,48 @@
+---
+title: "Parallel Tool Calls"
+track: "tools-function-calling"
+status: live
+summary: "Let the model request multiple independent tools in one turn instead of waiting on each one in sequence."
+duration: "5 min read"
+---
+
+Ask a model to check the weather in three cities and a sequential agent makes three separate round trips, each one waiting on the last. A model that supports parallel tool calls can request all three in a single turn, and your harness can run them at the same time.
+
+## What it actually looks like
+
+When the model decides it needs several independent pieces of information, instead of returning one tool call and waiting for the result before asking for the next, it returns an array of tool calls in a single response. For example, asking "compare the weather in Tokyo, Paris, and Lima" can produce three `get_weather` calls in one turn, each with a different city argument. Your code executes them, then sends all three results back together before the model continues.
+
+```
+assistant turn:
+  tool_call(get_weather, {city: "Tokyo"})
+  tool_call(get_weather, {city: "Paris"})
+  tool_call(get_weather, {city: "Lima"})
+
+your harness:
+  run all three concurrently
+  return three tool_result blocks, matched by id
+
+assistant turn:
+  "Tokyo is warmer than Paris, and Lima is..."
+```
+
+The key constraint is independence. Parallel calls only make sense when none of the calls needs another's output as input — that's the difference between this and [sequential, multi-step tool use](/learn/tools-function-calling/sequential-multi-step-tool-use), where each result feeds the next decision.
+
+## Why it matters
+
+Latency is the main win. Three sequential API calls that each take two seconds cost you six seconds of wall-clock time; run them concurrently and you pay roughly the cost of the slowest one. For agents that lean on search, file reads, or multiple lookups, this compounds fast — an agent gathering context from five sources sequentially can feel sluggish in a way that the same agent running those five calls at once does not.
+
+It also changes how you should think about [designing a tool schema](/learn/tools-function-calling/designing-a-tool-schema): a schema that only makes sense called once per turn (like "confirm and submit the order") shouldn't be the same tool as one meant to be called several times in parallel (like "look up product by SKU").
+
+## Handling it in your harness
+
+Parallel calls raise the bar on execution correctness. You need to:
+
+- **Match results to calls by ID.** Each tool call in the batch has an identifier, and your tool result must reference the same one — the model can't tell which output belongs to which call otherwise.
+- **Isolate failures.** If one of three parallel calls errors out, the other two should still return normally. Don't let one failure abort the batch — see [handling tool errors and retries](/learn/tools-function-calling/handling-tool-errors-and-retries) for the pattern.
+- **Watch for shared state.** Two parallel calls that both write to the same file or database row can race. If a tool has side effects, either make it safe to run concurrently or force the model toward sequential use for that tool via [tool choice](/learn/tools-function-calling/tool-choice-and-forcing-tool-use).
+- **Cap the batch size.** A model asked to "check everything" can return a dozen calls at once; decide up front how much concurrency your [sandbox](/learn/tools-function-calling/sandboxing-tool-execution) and rate limits can actually absorb.
+
+Not every model or every prompt triggers parallel calls automatically — some providers require an explicit setting to enable it, and even then the model only batches calls it judges to be genuinely independent. Test with prompts that clearly require multiple, unrelated lookups to confirm your setup is actually using it.
+
+**Related:** [Sequential, Multi-Step Tool Use](/learn/tools-function-calling/sequential-multi-step-tool-use), [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries)

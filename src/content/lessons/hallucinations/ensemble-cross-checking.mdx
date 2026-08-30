@@ -1,0 +1,36 @@
+---
+title: "Ensemble Cross-Checking: Catching Hallucinations Through Disagreement"
+track: "hallucinations"
+status: live
+summary: "Running multiple models or passes on the same question and treating disagreement itself as a hallucination signal."
+duration: "5 min read"
+---
+
+A single model answering a single time gives you no way to tell a solid answer from a confident guess. Ask the same question three different ways — different models, different prompts, different sampling seeds — and a hallucinated detail tends to wobble while a grounded one stays put. Ensemble cross-checking turns that wobble into a signal you can act on before output ships.
+
+## Why disagreement is informative
+
+A hallucination isn't usually a random draw from the model's whole vocabulary — it's the model filling a gap with whatever's locally plausible given the prompt and its training data. That filler is unstable: change the phrasing, change the model, change the sampling temperature, and a fabricated fact often changes too, because nothing is anchoring it. A fact the model actually has grounded knowledge of tends to survive those perturbations. So instead of asking "is this answer right," ensemble cross-checking asks "does this answer hold up when I ask three different ways" — a cheaper question that correlates well with the one you actually care about.
+
+This is a cousin of [self-consistency sampling](/learn/prompt-engineering/self-consistency-sampling), which resamples one model at one temperature to vote on a final answer. Cross-checking generalizes the idea: instead of only varying the random seed, you vary the *source* — different model families (say, one Anthropic model and one from another provider), different prompt framings, or a mix of both. Sources that fail independently, for independent reasons, make disagreement much more diagnostic than resampling the same model against itself, which can share the same blind spot across every draw.
+
+## Building a simple cross-check
+
+The pattern is three steps: fan out, compare, flag.
+
+1. **Fan out.** Send the same question to two or three independent sources — different models, or the same model with meaningfully different prompts (e.g., one with retrieved context, one without, to see if the answer depends on it).
+2. **Compare.** For short factual answers, compare directly. For longer answers, extract the atomic claims from each response first (a separate model call works fine for this) and compare claim-by-claim rather than diffing prose — two answers can agree on substance while reading nothing alike.
+3. **Flag disagreement.** Where the sources agree, ship with higher confidence. Where they diverge, don't average or pick a favorite — surface the disagreement. That might mean a targeted retrieval to resolve it, or routing to a human, following the same logic as [escalation design for uncertain answers](/learn/hallucinations/escalation-design-for-uncertain-answers).
+
+```
+answers = [call(model_a, prompt), call(model_b, prompt), call(model_a, prompt_reworded)]
+claims_per_answer = [extract_claims(a) for a in answers]
+disagreements = find_unsupported_or_conflicting(claims_per_answer)
+# disagreements → escalate or re-retrieve; agreement → ship
+```
+
+## What it costs, and where it breaks down
+
+Cross-checking multiplies inference cost by the number of sources you fan out to, plus the comparison pass — real money and latency, so it belongs on high-stakes answers, not every chat turn. It also has a blind spot: if every source shares the same gap in training data or the same systematic bias, they can agree confidently on the same wrong answer, and agreement alone won't catch that. Cross-checking is strongest against *idiosyncratic* fabrication — the kind of gap-filling that varies by source — and weakest against a fact the whole model family gets wrong the same way, which is where [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) still earns its place as the harder check.
+
+**Related:** [Self-Consistency: Voting Across Multiple Reasoning Paths](/learn/prompt-engineering/self-consistency-sampling), [Self-Verification: Having the Model Check Its Own Work](/learn/hallucinations/self-verification-techniques), [Escalation Design: Handing Off to a Human When Confidence Drops](/learn/hallucinations/escalation-design-for-uncertain-answers)

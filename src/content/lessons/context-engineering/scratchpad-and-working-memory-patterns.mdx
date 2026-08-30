@@ -1,0 +1,31 @@
+---
+title: "Scratchpad Patterns: Giving an Agent Somewhere to Think"
+track: "context-engineering"
+status: live
+summary: "Give an agent a working-memory space outside the transcript so intermediate reasoning stops crowding out the context that matters."
+duration: "5 min read"
+---
+
+An agent doing a multi-step task generates a lot of thinking it doesn't need to keep repeating back to itself: half-formed plans, failed attempts, notes-to-self about what to try next. If all of that lives in the visible conversation, every later turn has to re-read it, and the model's attention gets spent on scaffolding instead of the task. A scratchpad is a place to put that thinking that isn't the transcript itself.
+
+## Two different things people call "scratchpad"
+
+The term covers two related but distinct patterns, and mixing them up causes confusion.
+
+The first is **in-context scratchpad thinking**: asking the model to reason step by step before answering, the way [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting) works. That reasoning is still in the context window — it's just structurally separated (often in its own tags or an extended-thinking block) from the final answer, so a harness can strip it before showing the user, or before feeding history back into the next turn.
+
+The second is an **external scratchpad**: a scratch file, a key-value store, or a running "notes.md" the agent writes to and reads from using a tool call, the way Claude Code writes plans to a file rather than restating them every turn. This is genuinely outside the context window. The agent only pays token cost for a scratchpad entry when it actively reads it back — not on every subsequent turn just because the entry exists.
+
+## Why this beats stuffing everything into the transcript
+
+Without a scratchpad, an agent's working notes accumulate in the same window as everything else, and they compete with the real inputs — the user's request, retrieved documents, tool schemas — for both space and attention. This is the same pressure covered in [token budgeting](/learn/context-engineering/token-budgeting-strategies) and [context rot](/learn/context-engineering/context-rot): more tokens in the window doesn't mean better performance, and low-value tokens (a discarded plan, a dead-end tool call) actively hurt.
+
+An external scratchpad breaks that coupling. The agent can dump as much intermediate reasoning as it wants — draft a plan, list candidate approaches, jot down a partial result — without any of it costing context on turns where it isn't relevant. When the agent later needs the plan, it reads the file back in deliberately, at the moment it's useful. That's the same instinct behind [just-in-time context loading](/learn/context-engineering/just-in-time-context-loading): fetch working state when you need it rather than carrying it everywhere by default.
+
+## What actually goes in a scratchpad
+
+Good candidates are things the agent needs to reference later but doesn't need to see on every turn: a running task list with checked-off items, intermediate calculations, a log of what's already been tried (so the agent doesn't repeat a failed approach), or a draft of output being built up over several steps. This overlaps with [structured memory stores](/learn/context-engineering/structured-memory-stores) — a scratchpad is really the simplest possible memory store, usually just flat text or a lightweight file, chosen because the working state is short-lived and doesn't need indexing or search.
+
+The failure mode to watch for is treating the scratchpad as a dumping ground and then reloading the whole thing every turn anyway — at that point it's not saving anything, it's just relocated context rot. A scratchpad earns its keep only when the agent is selective about what it reads back in.
+
+**Related:** [Just-in-Time Context: Letting the Agent Fetch Instead of Preload](/learn/context-engineering/just-in-time-context-loading), [Structured Memory Stores: Vector, Key-Value, or Knowledge Graph](/learn/context-engineering/structured-memory-stores), [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot)

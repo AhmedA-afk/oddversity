@@ -1,0 +1,33 @@
+---
+title: "Distill a Large Model into a Small One"
+track: "fine-tuning"
+status: live
+summary: "Train a small, cheap model to mimic a big one's outputs on a narrow task instead of running the expensive model in production."
+duration: "6 min read"
+---
+
+You've got a task where GPT-4-class or Claude Opus-class quality works great, but the per-call cost and latency don't. Distillation is how you keep most of that quality while swapping in a model ten to fifty times cheaper to run.
+
+## The core idea
+
+Distillation means using a large "teacher" model to generate training examples, then fine-tuning a small "student" model on those examples until it approximates the teacher's behavior on your specific task. The student never learns to be a generalist — it learns to imitate one narrow slice of the teacher's competence, which is a much easier problem than the teacher's original job.
+
+Concretely: you send a batch of representative inputs (support tickets, extraction queries, classification cases) to the teacher, save its outputs, clean them up, and use those input-output pairs as a fine-tuning dataset for the student. This is why distillation and [synthetic data generation](/learn/fine-tuning/synthetic-data-generation) are basically the same operation with different framing — the teacher's outputs *are* the training set.
+
+## Two flavors: hard-label and soft-label
+
+**Hard-label distillation** is what almost everyone does in practice with API-based models: you only get the teacher's final text output, so the student is trained the normal supervised way — input in, teacher's output as the target. This works with any provider, including closed models where you never see internal probabilities.
+
+**Soft-label distillation** is the classic academic version: instead of training on the teacher's single chosen output, you train the student to match the teacher's full probability distribution over next tokens (its "soft" targets), which carries more signal than a single sampled answer — the model sees not just what the teacher said, but how confident it was between alternatives. This requires access to the teacher's logits, so it only works with open-weight models you control, and it's mostly used by labs training smaller models from their own larger ones. If you're distilling from a hosted API, you're doing hard-label distillation by default, whether you call it that or not.
+
+## When distillation beats fine-tuning small directly
+
+If you already have labeled data, skip distillation and just fine-tune the small model on it — see [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset). Distillation earns its place specifically when labeling is the bottleneck: you don't have enough human-labeled examples, but you do have a strong model that's good enough at the task to serve as a labeler. The teacher effectively replaces a team of annotators.
+
+It also beats prompting the small model directly with the same instructions the teacher follows. Small models frequently can't execute complex multi-step instructions reliably no matter how the prompt is written, but they can learn the *mapping* from input to output when you show them thousands of concrete examples of it. Distillation converts "follow these instructions" into "recognize this pattern," which is a task small models are much better at.
+
+## What you lose
+
+The student inherits the teacher's blind spots and biases along with its competence — including any hallucination patterns, since the student is optimizing to match outputs, not ground truth. It also won't generalize past the distribution of inputs you sampled from the teacher; a narrow training set produces a narrow, brittle student. Budget for holding back an eval set the teacher never saw, so you can check the student on inputs it wasn't shown — the same discipline covered in [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model). And distillation is a separate lever from shrinking a model's weights after training — pair it with [quantization](/learn/fine-tuning/quantization-gguf-awq-gptq) if you also need a smaller memory footprint, not as a substitute for it.
+
+**Related:** [Generate Synthetic Training Data with a Larger Model](/learn/fine-tuning/synthetic-data-generation), [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset), [Quantize a Model: GGUF, AWQ, and GPTQ](/learn/fine-tuning/quantization-gguf-awq-gptq)

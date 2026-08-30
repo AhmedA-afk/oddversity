@@ -1,0 +1,36 @@
+---
+title: "Leading Questions and False Premises That Induce Hallucination"
+track: "hallucinations"
+status: live
+summary: "Leading questions and false premises push a model to confirm things that aren't true instead of correcting you."
+duration: "5 min read"
+---
+
+Ask a model "Why did Einstein win the Nobel Prize for relativity?" and many will happily explain the physics — even though his 1921 prize was for the photoelectric effect. The premise was wrong, but the question was so confidently phrased that the model answered it anyway.
+
+## Why the model plays along
+
+A language model predicts the most likely continuation of your text, not the most truthful one. When a question embeds a false premise, the statistically likely continuation is usually an answer that treats the premise as settled — because that's how real conversations work. People rarely ask "why did X happen" unless X happened. The model has learned that pattern from billions of examples, so it inherits the assumption along with the phrasing. This is closely related to why models hallucinate in the first place: they're optimizing for a plausible-sounding next token, not for truth verification.
+
+Leading questions work the same way, just softer. "Isn't it true that GPT-4 has a trillion parameters?" nudges the model toward agreement, because agreement is the more common conversational move after "isn't it true that." Confidence in the prompt transfers to confidence in the response, whether or not it's warranted.
+
+## What this looks like in practice
+
+- **False premise:** "What caused the 2023 recall of the iPhone 15?" (no such recall happened) — a weak model may invent a plausible-sounding reason rather than say it doesn't know.
+- **Leading question:** "The study clearly showed a 40% improvement, right?" — the model may confirm a number you made up on the spot.
+- **Compound false premise:** "Given that Python was created in 1975, why did it take so long to add type hints?" — burying a wrong fact inside a longer question makes it easier for the model to accept without scrutiny.
+
+This is the same mechanism attackers exploit in prompt injection: text framed as fact or instruction gets treated as fact or instruction. Here the "attacker" is often just an honest but mistaken user.
+
+## Reducing the risk
+
+You can't fully prevent this at the model level, but you can reduce it:
+
+- **Instruct the model to verify premises before answering.** A system prompt line like "If a question contains a factual claim you cannot confirm, state that before answering" changes the model's default behavior from compliance to scrutiny.
+- **Ask open, not leading, questions.** "What do you know about X's Nobel Prize?" surfaces more than "Why did X win for Y?"
+- **Ground answers in retrieved sources** rather than the model's parametric memory, so there's something to check the claim against — see grounding with source documents.
+- **Push back explicitly.** Teaching the model to say it doesn't know is the direct countermeasure to premise-acceptance behavior.
+
+None of this makes the model immune — a sufficiently confident false premise can still slip through. Treat it the way you'd treat a leading question from a person: worth noticing, not worth trusting by default.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Teaching a Model to Say 'I Don't Know'](/learn/hallucinations/teaching-models-to-say-i-dont-know)

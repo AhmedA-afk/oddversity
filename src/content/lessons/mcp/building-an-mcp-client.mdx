@@ -1,0 +1,55 @@
+---
+title: "Building an MCP Client From Scratch"
+track: "mcp"
+status: live
+summary: "Implement the initialize handshake, tool discovery, and the tool-call loop yourself, without an SDK."
+duration: "7 min read"
+---
+
+Every MCP SDK hides the same three moves: negotiate a session, ask the server what it can do, and feed tool results back to the model in a loop. Writing those three moves by hand once is the fastest way to stop treating MCP as magic.
+
+## The handshake is a capability negotiation, not a login
+
+A client opens a transport (stdio or Streamable HTTP — see [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http)) and sends an `initialize` request carrying its own protocol version and the capabilities it supports — roots, sampling, elicitation. The server replies with its protocol version and its own capabilities: which tool, resource, and prompt features it implements. Only after the client sends an `initialized` notification is the session live.
+
+This matters because capability negotiation, not a fixed spec version, decides what the rest of the session can do. A client that skips reading the server's response and just assumes `tools/list` will work is the single most common bug in hand-rolled clients — it works against well-behaved servers and breaks silently against older ones.
+
+```json
+// client -> server
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": { "roots": {}, "sampling": {} },
+    "clientInfo": { "name": "my-client", "version": "0.1.0" }
+  }
+}
+```
+
+## Discovery: build the tool list the model actually sees
+
+Once initialized, the client calls `tools/list` and gets back each tool's name, description, and JSON Schema for its input. This is the exact payload you forward into the model's tool-use API — see [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas) for how that schema is shaped. A from-scratch client owns the translation step: MCP's tool format and your model provider's tool format aren't always byte-identical, and if you skip normalizing (stripping fields the provider rejects, renaming `inputSchema` to whatever the SDK expects) the model never sees the tool at all — no error, just silence where a tool should be.
+
+## The tool-call loop
+
+This is the part every SDK does for you and the part worth building once by hand: the model responds with a tool-call request, your client turns that into a `tools/call` JSON-RPC request against the right server, waits for the result, and appends it to the conversation as a tool-result message before calling the model again. Repeat until the model stops requesting tools.
+
+```python
+while True:
+    response = model.send(messages, tools=tool_list)
+    if not response.tool_calls:
+        break
+    for call in response.tool_calls:
+        result = mcp_client.call_tool(call.name, call.arguments)
+        messages.append(tool_result_message(call.id, result))
+```
+
+Two things break this loop in practice. First, a server can be slow or hang — a from-scratch client needs its own timeout around `tools/call`, because MCP doesn't guarantee one. Second, when you're juggling more than one server, the loop needs to route each call by which server actually owns that tool name; see [Orchestrating Multiple MCP Servers in One Client Session](/learn/mcp/multi-server-orchestration) once you're past a single connection.
+
+## Where the SDK earns its keep
+
+None of this is hard to build once. What's hard to get right by hand is what the SDKs quietly handle: request-ID bookkeeping across concurrent calls, notification handling (progress, cancellation, resource-changed events), and reconnect logic for Streamable HTTP sessions. Build the client from scratch to understand the protocol, then switch back to the SDK for anything you actually ship — the loop above is the part worth internalizing; the plumbing around it isn't.
+
+**Related:** [Connecting a Client to an MCP Server](/learn/mcp/connecting-a-client-to-an-mcp-server), [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas), [Inspecting and Testing MCP Servers](/learn/mcp/inspecting-and-testing-mcp-servers)

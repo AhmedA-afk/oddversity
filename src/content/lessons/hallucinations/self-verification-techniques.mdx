@@ -1,0 +1,31 @@
+---
+title: "Self-Verification: Having the Model Check Its Own Work"
+track: "hallucinations"
+status: live
+summary: "Getting a model to re-read, critique, or re-derive its own answer before you treat it as final."
+duration: "5 min read"
+---
+
+Ask a model a hard question and it commits to an answer in one pass. Ask it to check that answer against the question again, in a second pass, and it often catches its own mistake. Self-verification is just that: a deliberate second look, done by the model itself, before output ships.
+
+## Why a second pass catches what the first missed
+
+Generation is forward-only. The model produces tokens left to right, and once a wrong claim is written, everything after it tends to rationalize around it rather than correct it — that's part of why models sound confident while being wrong (see [why models hallucinate](/learn/hallucinations/why-models-hallucinate)). A verification pass breaks that momentum. The model reads its own completed answer as an artifact, separate from the pressure of generating it, and checks it the way a human proofreads a draft instead of live-narrating one.
+
+This is cheap leverage: no new data, no retrieval, no fine-tuning. Just a second call.
+
+## Three ways to structure it
+
+**Critique-and-revise.** Feed the answer back with a prompt like "list anything in this answer that might be wrong or unsupported, then produce a corrected version." This works best when you separate the critique step from the revision step — a model asked to critique and fix in one breath tends to skip the critique.
+
+**Re-derivation.** For anything with a checkable structure — arithmetic, a SQL query, a date calculation — ask the model to solve it a second way and compare. Two independent derivations agreeing is much stronger evidence than one confident derivation, which is the same logic behind [self-consistency sampling](/learn/prompt-engineering/self-consistency-sampling), except here you're varying the method instead of just resampling.
+
+**Claim-by-claim grounding check.** For factual or sourced answers, walk through each claim and ask "is this stated in the source material, or did I infer it?" This is the same discipline as [citations and attribution](/learn/hallucinations/citations-and-attribution), applied as a self-check rather than a formatting requirement.
+
+## What it doesn't fix
+
+Self-verification catches errors the model can *recognize* as errors when re-reading — slips, unsupported leaps, arithmetic mistakes. It does not catch errors rooted in something the model simply doesn't know; asking a model to double-check a fabricated fact often just produces a second, equally confident fabrication, because there's nothing in its own output to contradict it. That failure mode needs grounding against an external source, not introspection — see [grounding with source documents](/learn/hallucinations/grounding-with-source-documents). Self-verification is a filter for reasoning errors, not a substitute for evidence.
+
+It also costs a full extra generation. For low-stakes output that's rarely worth it; for anything that ships to a user unreviewed, it usually is.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Self-Consistency: Voting Across Multiple Reasoning Paths](/learn/prompt-engineering/self-consistency-sampling)

@@ -1,0 +1,31 @@
+---
+title: "Promptfoo, Braintrust, and Ragas: Picking an Eval Tool"
+track: "evals-red-teaming"
+status: live
+summary: "What promptfoo, Braintrust, and Ragas each actually give you out of the box, and what you'll still build yourself."
+duration: "6 min read"
+---
+
+Every eval tool promises to solve "does my AI feature actually work." None of them do it alone — they each automate a different slice of the pipeline: dataset management, grading, or tracing. Picking one is really about picking which slice you'd rather not build by hand.
+
+## Three tools, three centers of gravity
+
+**Promptfoo** is a CLI-first, config-driven tool for prompt and model comparison. You write a YAML file listing prompts, providers (OpenAI, Anthropic, local models), test cases, and assertions, then run it in CI. Its strength is fast, cheap iteration: diffing two prompts or two models side by side on the same test set, with built-in assertion types (contains, JSON schema match, similarity, LLM-graded rubric) so you rarely write custom grading code for common cases. It's also become a common choice for red-teaming, with built-in adversarial test generation for prompt injection and jailbreak probes — see [Automating Adversarial Probes](/learn/evals-red-teaming/automated-adversarial-testing). What it doesn't give you: production tracing, or a persistent place to review live traffic — it's built around one-shot or CI-triggered runs.
+
+**Braintrust** is closer to an observability platform with evals built in. You log real traces — prompts, tool calls, retrieved context, final output — from a production app, then run evals against logged spans or a held-out dataset, all in one place with a web UI for diffing scores across experiments. That's the tradeoff: powerful for teams that want offline evals and [production monitoring](/learn/evals-red-teaming/offline-vs-online-evals) unified in one system with a UI, but it's a hosted platform with real setup and buy-in, not a script you drop into a repo.
+
+**Ragas** isn't a general eval framework — it's a metrics library purpose-built for RAG. It ships pre-built implementations of retrieval-and-generation metrics like faithfulness (does the answer only claim what the retrieved context supports), answer relevance, and context precision/recall, each backed by an LLM-as-judge under the hood. If you're building a [RAG pipeline](/learn/rag/building-a-rag-pipeline-end-to-end), Ragas saves you from re-deriving these metrics yourself. Outside RAG, it has little to offer.
+
+## What none of them give you
+
+Every one of these tools assumes you've already done the hard part: deciding what "correct" means for your task, and assembling a [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) that actually represents production traffic. A tool can run your rubric a thousand times over a thousand rows — it can't write the rubric. Metric selection, judge calibration, and figuring out when your eval is silently rewarding the wrong behavior are still on you; see [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics) and [LLM-Judge Bias](/learn/evals-red-teaming/llm-judge-bias-and-calibration).
+
+None of them fully solve non-determinism either — rerun the same eval twice and scores can shift a point or two just from sampling noise, which is a separate problem from tool choice (see [Taming Flaky Evals](/learn/evals-red-teaming/flaky-eval-mitigation)).
+
+## A rough way to choose
+
+If you're iterating on prompts or comparing models before you have a production app, start with promptfoo — it's the lowest-friction way to get a repeatable, CI-runnable comparison. If you already have a live app generating real traffic and want evals tied to production traces, Braintrust's unified logging-plus-eval model earns its overhead. If your task is specifically RAG, layer Ragas's metrics on top of whichever runner you're using — it's a metrics library, not a competitor to either.
+
+Many teams end up combining two: promptfoo or a custom harness for CI regression gates (see [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration)), plus Braintrust or an equivalent for watching what's actually happening in production. The tool doesn't replace that decision — it just makes whichever decision you already made faster to execute.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics), [Offline Evals vs Production Monitoring](/learn/evals-red-teaming/offline-vs-online-evals)

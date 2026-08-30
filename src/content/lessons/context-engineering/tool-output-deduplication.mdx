@@ -1,0 +1,41 @@
+---
+title: "Tool Output Deduplication: Stopping Repeated Results from Eating the Budget"
+track: "context-engineering"
+status: live
+summary: "Stripping near-identical tool results before they silently crowd out everything else in the window."
+duration: "5 min read"
+---
+
+An agent that greps the same file three times, or re-fetches a URL it already read, doesn't just waste a tool call — it pays for that duplicate content again on every single turn afterward, because the whole transcript gets replayed into the model each time.
+
+## Why duplicates are worse than they look
+
+A single 3,000-token tool result costs 3,000 tokens once. But an agent loop re-sends the full conversation history on every turn, so that result gets billed and re-read on turn two, turn three, turn ten — long after it stopped being useful. Duplicates compound: an agent that calls a search tool with slightly different queries five times, and gets 80% overlapping results each time, can burn most of its context on content the model has already seen, with none of it doing new work. Worse, near-duplicates dilute attention — the model has to figure out which of five almost-identical blocks is authoritative, which is itself a source of [context rot](/learn/context-engineering/context-rot).
+
+## Where duplication actually comes from
+
+It rarely comes from the model calling the exact same tool with the exact same arguments twice (though that happens). More often it's near-duplication: a file read at line 1-100, then re-read at line 1-150 because the agent needed a bit more; a web search and a follow-up search that surface three of the same five results; a directory listing repeated after every file edit. Each individual call is reasonable — the accumulation is the problem.
+
+## Strategies that actually work
+
+**Hash and drop exact repeats.** Before appending a new tool result to context, hash its content (or a normalized version of it) against results already in the window. An exact match gets replaced with a short pointer — "see result from turn 4" — instead of the full payload again.
+
+```
+if hash(new_result) in seen_hashes:
+    inject_reference(seen_hashes[hash(new_result)])
+else:
+    seen_hashes[hash(new_result)] = turn_id
+    inject_full(new_result)
+```
+
+**Diff near-duplicates instead of concatenating them.** When a file is re-read, only the delta since the last read is usually worth sending — the harness can diff the new content against the last version it emitted and pass just the changed lines plus a note that the rest is unchanged.
+
+**Dedupe at the retrieval layer, not just the context layer.** If a search tool is returning overlapping chunks across calls, filter by document ID or chunk ID before the result ever reaches the model, rather than relying on the model to notice the overlap itself — see [relevance filtering](/learn/context-engineering/relevance-filtering).
+
+**Collapse superseded state, don't just skip duplicates.** A `ls` output from ten turns ago isn't identical to the current one, so hash-matching won't catch it — but it's stale and misleading if a file was since created or deleted. The harness should treat "type of result" (directory listing, file read, search result) as a slot that gets overwritten, not appended to, when a fresher version of the same query arrives.
+
+## The tradeoff
+
+Aggressive deduplication can hide a genuine change — a file that was re-read because it changed since last time shouldn't be silently pointed back at the old version. The safe default is to dedupe on exact content hashes (never wrong) and treat same-type-different-content as a replace rather than a discard, keeping only the freshest copy in context.
+
+**Related:** [Context Rot](/learn/context-engineering/context-rot), [Relevance Filtering](/learn/context-engineering/relevance-filtering), [Token Budgeting Strategies](/learn/context-engineering/token-budgeting-strategies)

@@ -1,0 +1,50 @@
+---
+title: "Trace Multi-Step Agent and RAG Pipelines"
+track: "production"
+status: live
+summary: "Instrument every hop in a pipeline with a shared trace ID so you can see exactly where it broke, not just that it broke."
+duration: "6 min read"
+---
+
+A single user request to an agent or RAG app can fan out into a dozen calls: a retrieval query, a rerank, two tool calls, and three LLM turns. When the answer comes back wrong or slow, logs alone won't tell you which of those hops was the problem — you need a trace.
+
+## Why logs aren't enough
+
+A log line says "LLM call took 4.2s." It doesn't say which user request triggered it, what came before it, or what happened after. Once a pipeline has more than one step, you need to reconstruct the whole chain to debug anything. That's what [structured logging](/learn/production/structured-logging-for-llm-calls) gives you per-event — tracing is what stitches those events into one causal path.
+
+## Spans, traces, and the parent-child chain
+
+Distributed tracing (the same idea used for microservices, via OpenTelemetry) models a request as a **trace**: a tree of **spans**, where each span is one unit of work — a retrieval call, a tool invocation, an LLM completion — with a start time, an end time, and a parent span. The whole tree shares one `trace_id`, generated when the request enters your system and threaded through every downstream call.
+
+A RAG query might produce spans like this:
+
+```
+trace_id: 8f2a...
+├─ span: embed_query          (12ms)
+├─ span: vector_search          (45ms)
+├─ span: rerank                 (80ms)
+└─ span: llm_generate          (2100ms)
+   ├─ attr: model = "claude-sonnet-4-5"
+   ├─ attr: input_tokens = 1840
+   └─ attr: output_tokens = 312
+```
+
+For an agent, the tree gets deeper: an orchestrator span wraps each tool-call span, and a retry shows up as a sibling span rather than a mystery gap in the timeline. This is the same shape as [reading an agent's trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev) during development — production tracing is that same view, always on, for real traffic.
+
+## What to attach to each span
+
+A span with just a duration is barely more useful than a log line. Attach:
+
+- **The prompt and completion** (or a hash/pointer to them if you truncate for storage)
+- **Token counts and cost** for that specific call, so a slow trace and an expensive trace are the same investigation — see [cost tracking](/learn/production/token-and-cost-tracking)
+- **Retrieved document IDs and scores**, not just "retrieval succeeded"
+- **Model and parameter version**, so a regression traces back to a specific deploy
+- **Error and retry metadata**, tagged on the span that actually failed, not just the top-level request
+
+## Picking a backend
+
+You don't need to build this from scratch. OpenTelemetry is the standard instrumentation layer, and LLM-specific platforms (Langfuse, LangSmith, Arize Phoenix, Datadog LLM Observability, among others) add prompt/token-aware views on top of the same trace-and-span model, so you're not stuck staring at raw JSON. Whichever you pick, the win is the same: click into a slow or wrong request and see the exact hop that caused it, instead of guessing from aggregate metrics.
+
+Once tracing exists, it becomes the raw material for [setting SLOs](/learn/production/latency-and-cost-slos) on individual steps and for [on-call playbooks](/learn/production/on-call-playbooks-for-ai) that tell responders which span to check first.
+
+**Related:** [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Set SLOs for Latency, Cost, and Quality](/learn/production/latency-and-cost-slos), [Write an On-Call Playbook for AI Failures](/learn/production/on-call-playbooks-for-ai)

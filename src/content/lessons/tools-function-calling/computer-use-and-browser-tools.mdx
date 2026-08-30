@@ -1,0 +1,41 @@
+---
+title: "Computer-Use and Browser-Control Tools"
+track: "tools-function-calling"
+status: live
+summary: "Gives a model a screenshot and screen coordinates instead of a narrow API, trading precision for reach."
+duration: "6 min read"
+---
+
+Most tools you design have a fixed, named schema: `send_email(to, subject, body)`. Computer-use tools flip that. Instead of calling a function that does the thing, the model sees a screenshot, picks a pixel coordinate or an accessibility target, and asks the harness to click it, type into it, or scroll it — the same interface a human uses, because no structured API exists for the task at hand.
+
+## Why you'd reach for this instead of an API
+
+Every other tool in this track assumes someone already built an API for the action you want. Computer use exists for the huge space of software that never got one: a legacy internal dashboard, a vendor's admin console with no public endpoints, a one-off SaaS tool a client uses. If a human would open a browser and click through it, computer use lets a model do the same thing without you reverse-engineering the site first.
+
+The trade-off is real. A `search_flights(origin, destination, date)` call either succeeds or returns a clear error. A click on a coordinate that used to be a "Submit" button but is now six pixels to the left because the page re-rendered just... misses. You've swapped a narrow, reliable interface for a broad, brittle one.
+
+## The loop underneath
+
+Computer-use and browser-control tools both run the same cycle:
+
+1. Capture the current state — a screenshot for GUI control, or a DOM/accessibility snapshot for browser tools.
+2. Send it to the model along with the goal and history so far.
+3. The model returns one action: click at `(x, y)`, type text, scroll, press a key, or navigate to a URL.
+4. The harness executes that action, captures the new state, and repeats.
+
+Browser-specific tools (Playwright- or CDP-backed agents, for example) usually skip raw pixel coordinates in favor of the DOM: the model gets a labeled list of clickable elements and picks one by ID. That's faster and less error-prone than screenshot-and-click, but it only works on the web — it can't drive a native desktop app, a game, or a legacy client. Full computer-use (screenshot in, coordinate out) works on anything with a screen, which is the whole point and the whole cost: it's slower per step and more prone to misclicks than a DOM-aware tool.
+
+## Where this actually breaks
+
+The failure modes are different from a typical function call gone wrong:
+
+- **Stale coordinates.** The model reasons about a screenshot that's a step behind — a modal closed, a page finished loading, an ad appeared — and clicks where something used to be.
+- **Ambiguous targets.** Two "Delete" buttons on the same screen, one destructive and one not. A misread pixel is a real-world action, not a retryable API error.
+- **Unbounded blast radius.** A function-calling tool can only do what you exposed. A computer-use tool can do anything the screen allows — including things you never intended it to reach, like a payment form sitting one tab over. Treat every computer-use session the way you'd treat [sandboxing tool execution](/learn/tools-function-calling/sandboxing-tool-execution): a dedicated, disposable browser profile or VM, not the machine you're reading this on.
+- **Slow, expensive steps.** Each loop iteration costs a full image in the prompt plus a round-trip. A task that's one API call elsewhere can be a dozen screenshots here.
+
+## When it's the right call
+
+Reach for computer use when there's genuinely no API — internal legacy tools, one-off vendor UIs, testing your own product the way a user experiences it. If an API exists, use it: it's cheaper, faster, and doesn't fail because a button moved. Computer use is the tool of last resort that happens to also be the most general one, which is exactly why it needs the tightest [approval gates](/learn/tools-function-calling/approval-gates-for-sensitive-tools) of anything in your toolset — a model with hands on a real screen can do real damage before anyone reviews the call.
+
+**Related:** [Sandboxing Tool Execution](/learn/tools-function-calling/sandboxing-tool-execution), [Approval Gates for Sensitive Tool Calls](/learn/tools-function-calling/approval-gates-for-sensitive-tools), [Computer-Use Agents: Letting a Model Operate a GUI](/learn/agentic-ai/computer-use-agents)

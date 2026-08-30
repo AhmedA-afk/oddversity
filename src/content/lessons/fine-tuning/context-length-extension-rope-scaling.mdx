@@ -1,0 +1,31 @@
+---
+title: "Extend Context Length with RoPE Scaling and YaRN"
+track: "fine-tuning"
+status: live
+summary: "Stretch a trained context window past its pretraining length by rescaling rotary position embeddings instead of retraining from scratch."
+duration: "6 min read"
+---
+
+A model trained on 8K-token sequences doesn't just get slower past 8K tokens — it falls apart, because it never saw position indices that high during training. RoPE scaling is how you push that ceiling to 32K, 128K, or beyond without paying for a full retrain.
+
+## Why position breaks first
+
+Most open-weight models encode token position with [rotary position embeddings](/learn/llm-foundations/rotary-position-embeddings): each token's query and key vectors get rotated by an angle proportional to its position, so attention scores naturally decay with distance. That rotation is built from a fixed set of frequencies. Push a model past the sequence length it was trained on and the highest positions produce rotation angles the model has literally never encountered — attention degrades and outputs go incoherent, even though nothing about the architecture technically forbids a longer sequence.
+
+The fix isn't a new architecture. It's reshaping the frequencies so far-out positions land inside the range the model already learned.
+
+## Linear scaling and NTK-aware scaling
+
+The simplest approach, **linear position interpolation**, compresses every position index by the ratio you're extending by — a 4x context extension divides every position by 4, so what used to be position 32,000 now looks like position 8,000 to the model. Cheap and effective, but it squeezes *all* frequencies uniformly, which blurs the model's fine-grained sense of nearby-token distance since local resolution matters more than long-range resolution.
+
+**NTK-aware scaling** fixes that by treating high and low frequencies differently: it stretches the low frequencies (responsible for long-range position) more aggressively while barely touching the high frequencies (responsible for fine local position). The result preserves short-distance precision — still important for the bulk of attention patterns — while making room for much longer sequences.
+
+## YaRN: the practical default
+
+**YaRN** (Yet another RoPE extensioN method) builds on NTK-aware scaling and adds two refinements that matter in practice: a smooth interpolation ramp across frequency bands instead of a hard cutoff, and an *attention temperature* adjustment that compensates for the fact that stretched embeddings otherwise flatten attention distributions. Together these let YaRN extend context by 8x or more with only a small amount of continued fine-tuning on long sequences — far cheaper than retraining, and the technique behind most of the community's long-context Llama and Mistral variants.
+
+## What this means for you
+
+None of these methods make a model *understand* long context for free — they change how position is represented so the existing weights can generalize to positions they didn't train on. You still need some long-sequence fine-tuning afterward to let attention patterns adapt, and you should validate on tasks that actually stress long-range retrieval, not just perplexity, since perplexity can look fine while retrieval quality quietly degrades. If you're choosing between extending context yourself and just using a model natively trained at your target length, check [long-context strategies](/learn/context-engineering/long-context-strategies) first — sometimes the better fix is architectural, not post-hoc.
+
+**Related:** [RoPE: Rotary Position Embeddings Explained](/learn/llm-foundations/rotary-position-embeddings), [Context Window Mechanics](/learn/llm-foundations/context-window-mechanics), [Long-Context Strategies for Million-Token Windows](/learn/context-engineering/long-context-strategies)

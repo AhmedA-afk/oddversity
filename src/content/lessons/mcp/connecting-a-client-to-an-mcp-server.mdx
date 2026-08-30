@@ -1,0 +1,52 @@
+---
+title: "Connecting a Client to an MCP Server"
+track: "mcp"
+status: live
+summary: "Configure a host app to discover, launch, and handshake with an MCP server, and verify the connection actually works."
+duration: "6 min read"
+---
+
+An MCP server is useless until a host application's client actually connects to it. That connection is a config entry plus a handshake — get either wrong and the host silently shows zero tools instead of a helpful error.
+
+## Where the config lives
+
+Every MCP host — Claude Desktop, Claude Code, Cursor, and the rest — reads a config file that lists servers by name and tells the client how to launch or reach each one. For a local server over [stdio](/learn/mcp/mcp-transports-stdio-vs-http), that means a command and arguments the host spawns as a subprocess:
+
+```json
+{
+  "mcpServers": {
+    "notes": {
+      "command": "node",
+      "args": ["./notes-server/index.js"]
+    }
+  }
+}
+```
+
+For a remote server over HTTP, it's a URL instead of a command, plus whatever headers or auth the server expects. The exact file path and schema differ per host, but the shape is always the same: a name, a way to reach the process, and any startup parameters.
+
+## What the handshake actually does
+
+Once the host spawns or dials the server, the client and server run MCP's initialization sequence before anything else can happen:
+
+1. The client sends `initialize`, stating the protocol version it speaks and what it supports.
+2. The server responds with its own protocol version, its capabilities (does it offer tools, resources, prompts?), and identifying info.
+3. The client sends `initialized` to confirm, and the session is live.
+
+This isn't a formality — it's how a Claude Sonnet-class host avoids calling a tool the server never actually implements, and how the server learns it doesn't need to advertise features the client won't use. Only after this exchange does the client call `tools/list` to pull the actual [tool schemas](/learn/mcp/mcp-tool-discovery-and-schemas).
+
+## Verifying the connection
+
+A connected server should show up in the host's UI as available, usually with a tool count next to its name. If it doesn't:
+
+- Check the process actually starts — run the `command` from your config directly in a terminal first.
+- Check the working directory and any relative paths; a subprocess spawned by the host doesn't inherit your shell's `cwd`.
+- Check stderr — most hosts surface it in a log panel, and a crash on startup is the single most common cause of "zero tools."
+
+The [MCP Inspector](/learn/mcp/inspecting-and-testing-mcp-servers) is worth reaching for here: it connects to your server outside of any host, so you can confirm the server itself is healthy before blaming the client config.
+
+## A note on trust
+
+A connected server can see every tool call and argument you send it, and — depending on what it exposes — can inject content straight into the model's context. Before pointing a real host at a third-party server, treat it the way you'd treat installing a CLI tool: know what it does, not just what it claims to do. That matters more once a server sits behind [auth](/learn/mcp/mcp-auth-fundamentals) or handles [untrusted input](/learn/mcp/securing-mcp-servers-against-prompt-injection).
+
+**Related:** [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http), [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas), [Inspecting and Testing MCP Servers](/learn/mcp/inspecting-and-testing-mcp-servers)

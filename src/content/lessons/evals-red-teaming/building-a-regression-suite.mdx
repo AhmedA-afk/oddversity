@@ -1,0 +1,50 @@
+---
+title: "Turning Bugs into a Regression Suite"
+track: "evals-red-teaming"
+status: live
+summary: "Every failure you fix should leave behind a permanent test case, so it never comes back unnoticed."
+duration: "5 min read"
+---
+
+You fix a bug, ship the patch, and move on. Three weeks later a prompt tweak or model upgrade brings the exact same failure back, and nobody notices until a user complains. A regression suite closes that loop: every real failure becomes a permanent test case that runs on every future change.
+
+## Why "fixed" isn't the same as "fixed for good"
+
+LLM systems don't fail like normal software. A prompt edit meant to fix issue A can silently reopen issue B, because prompts, retrieval, and model behavior are entangled in ways unit tests don't capture. Without a suite, the only way to know you broke something is a user finding it in production. With one, you know within minutes of the change.
+
+The habit is simple: **any time a real failure gets reported or found — a wrong answer, a broken tool call, a case where the model ignored an instruction — it doesn't just get fixed, it gets captured.** The input that triggered it, the context around it, and a clear pass/fail check become one more row in your eval set, alongside the cases from your [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset).
+
+## What a regression case actually looks like
+
+A good regression entry has three parts:
+
+```json
+{
+  "id": "regr-042",
+  "input": "Cancel my order #A1123 and refund to original payment",
+  "context": { "order_status": "shipped" },
+  "expected": {
+    "behavior": "should_not_auto_refund",
+    "note": "must escalate to human review for shipped orders"
+  },
+  "found": "2026-06-02",
+  "source": "support-ticket-9931"
+}
+```
+
+Keep the original trigger verbatim — don't paraphrase it into something cleaner, since the exact wording or context is often what exposed the bug. Tag it with a metric that can grade it automatically, whether that's an exact match, a rule, or an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) check, so the suite runs without a human re-reading every case.
+
+## Running it like CI
+
+The suite only earns its keep if it runs automatically, not "whenever someone remembers." Wire it into the same place you already run [eval-driven iteration](/learn/evals-red-teaming/eval-driven-iteration): every pull request, every prompt change, every model swap runs the full regression set and reports pass/fail before merge. Treat a regression failure the same way you'd treat a broken unit test — it blocks the change, not a follow-up ticket.
+
+Two practical rules keep the suite useful instead of bloated:
+
+- **One case per distinct failure**, not per bug report. Five tickets about the same root cause should collapse into one regression case, or your suite balloons with redundant, slow-to-run duplicates.
+- **Never delete a passing case.** A case that's been green for a year is still cheap insurance; the moment you remove it is usually the moment that exact bug comes back.
+
+## The compounding payoff
+
+Early on, a regression suite is a handful of cases and feels like overhead. A year in, it's hundreds of cases distilled from real production pain, and it catches the regressions that vibes-based spot-checking never would — which is the whole reason [vibes-based iteration breaks down](/learn/evals-red-teaming/why-evals-matter) as a system matures. The suite is, in effect, an institutional memory of everything that's ever gone wrong, enforced automatically instead of relying on someone remembering to check.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration), [Catch Regressions with Evals in CI](/learn/production/eval-based-regression-testing)

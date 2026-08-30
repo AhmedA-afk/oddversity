@@ -1,0 +1,60 @@
+---
+title: "Read the loop before you pick a framework"
+description: "Agent frameworks are worth using. They are not worth using before you can say precisely which forty lines they replaced."
+published: "2026-08-30"
+tags: ["Agents", "Tools", "Learning"]
+---
+
+There is a specific kind of stuck that comes from adopting an agent framework too early. The demo works. Then something behaves oddly, and you cannot tell whether the problem is your prompt, your tool schema, the framework's retry policy, its context truncation, or a version change in its planner. Every layer is a candidate, and you have no model of any of them.
+
+The fix is cheap and takes an afternoon: write the loop yourself, once.
+
+## The loop
+
+```python
+messages = [{"role": "user", "content": goal}]
+
+while True:
+    response = model.call(messages, tools=SCHEMAS)
+    messages.append(assistant_message(response))
+
+    if not response.tool_calls:
+        return response.text
+
+    results = [execute(call) for call in response.tool_calls]
+    messages.append(tool_results(results))
+```
+
+That is an agent. Everything else — retries, tracing, parallel tool execution, durable state, subagents, planners, memory — is an addition to those nine lines, and each addition exists because someone hit a specific problem with them.
+
+## What you learn by writing it
+
+**Where cost comes from.** The message list grows every turn and the whole thing is re-sent. Cost per turn rises as the loop continues. Nobody who has watched that array grow ever again wonders why an agent got expensive.
+
+**Why tool descriptions matter more than tool code.** The model chooses from names and descriptions. Change "Order lookup tool" to "Look up recent orders for one customer by their email address; use this when the user asks about a specific person's order history" and behaviour changes immediately. You feel this in a way no documentation conveys.
+
+**Why errors should be verbatim.** Return `FileNotFoundError: src/mian.py` and the model notices the typo and fixes it. Return "error" and it retries identically, forever, on your budget.
+
+**Where the security boundary is.** The model emits a request. Your code decides whether to comply. Once you have written the `if` statement that decides, "the system prompt says not to delete files" stops sounding like a control.
+
+**What stopping actually requires.** You will build a turn limit, discover it does not bound cost, add a token budget, watch the agent call the same tool four times, and add a no-progress check. Three guards, each one learned from a failure you caused yourself in a sandbox rather than in production.
+
+## Then pick a framework, deliberately
+
+With the loop in your head, framework evaluation becomes concrete. You are no longer asking "which is best" — you are asking which of *these* problems it solves, and what it costs you in visibility:
+
+- Do I need durable state that survives a crash mid-loop?
+- Do I need parallel tool execution?
+- Do I need tracing I would otherwise build?
+- Do I need a team convention more than I need my own abstraction?
+- What does it do to my context when the conversation gets long — and can I see it?
+
+Those are answerable questions. "Should I use LangGraph" is not.
+
+## The part that is not about frameworks
+
+This generalises. The same move works for RAG — write the retrieve-embed-rank loop before adopting a pipeline library — and for evals, and for serving. Not because libraries are bad, but because a library you understand is a tool and a library you do not is a dependency you cannot debug.
+
+Frameworks are worth using. Use one after you can say precisely which forty lines it replaced.
+
+The [agent loop lesson](/learn/agentic-ai/the-agent-loop) has the mechanics, [choosing an agent framework](/learn/agentic-ai/choosing-an-agent-framework) is the dated comparison, and the [from-scratch guide](/guides/build-a-tool-calling-agent-from-scratch) is the afternoon.

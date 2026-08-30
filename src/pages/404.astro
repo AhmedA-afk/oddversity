@@ -1,0 +1,37 @@
+---
+import Layout from '../components/Layout.astro';
+import { tracks } from '../data/curriculum.ts';
+
+const popular = ['rag', 'agentic-ai', 'mcp', 'prompt-engineering', 'evals-red-teaming', 'production']
+  .map((id) => tracks.find((t) => t.id === id))
+  .filter(Boolean);
+---
+<Layout title="Page not found" description="That page doesn't exist. Search the curriculum or start from a track." noindex>
+  <section class="wrap">
+    <span class="eyebrow">404</span>
+    <h1>That page isn't here.</h1>
+    <p>It may have been renamed, or the link may be wrong. Search is usually faster than guessing.</p>
+    <div class="cta">
+      <button type="button" class="btn btn-primary" data-search-open>Search the site ⌘K</button>
+      <a href="/learn" class="btn btn-ghost">Browse all tracks</a>
+    </div>
+    <div class="pop">
+      <div class="eyebrow">Popular tracks</div>
+      <ul>
+        {popular.map((t) => <li><a href={`/learn/${t!.id}`}>{t!.name}</a><span>{t!.summary}</span></li>)}
+      </ul>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .wrap { max-width: 680px; margin-inline: auto; padding: 90px 32px 8px; }
+  h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -.022em; margin-top: 12px; }
+  p { margin-top: 16px; color: var(--muted); font-size: 16px; line-height: 1.65; }
+  .cta { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .pop { margin-top: 52px; padding-top: 24px; border-top: 1px solid var(--rule); }
+  .pop ul { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 12px; }
+  .pop li { display: flex; flex-direction: column; gap: 3px; }
+  .pop a { font: 500 15px/1.3 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .pop span { font-size: 13px; line-height: 1.5; color: var(--muted); }
+</style>

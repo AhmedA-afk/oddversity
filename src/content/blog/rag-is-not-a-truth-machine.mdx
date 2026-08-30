@@ -1,0 +1,24 @@
+---
+title: "RAG is not a truth machine"
+description: "What retrieval fixes, what it leaves exposed, and how to design a grounded answer path."
+published: "2026-08-29"
+tags: ["RAG", "Reliability", "AI systems"]
+---
+
+Retrieval-augmented generation is one of the most useful patterns in AI applications. It is also one of the easiest to oversell. Adding documents to a prompt does not automatically make an answer correct.
+
+## Three different failure points
+
+The retriever can miss the right passage. It can return a passage that is semantically close but not sufficient. Or the model can receive good evidence and still misread, omit, or overstate it. These are different bugs and need different tests.
+
+The practical response is to measure retrieval recall, inspect ranking quality, validate citations, and test the final answer against a rubric. The [RAG evaluation lesson](/learn/rag/evaluating-rag-quality) has the useful decomposition.
+
+## Evidence needs boundaries
+
+Retrieved text is data, not authority. A document can be stale, contradictory, or maliciously written to influence the model. Keep permissions outside the model, label context clearly, and restrict tools independently of the content you retrieve.
+
+## The honest answer path
+
+A dependable system can say that the available evidence is insufficient. It can show the source version it used. It can separate a quoted fact from a conclusion. Those behaviors are more valuable than a confident paragraph that happens to sound informed.
+
+If you are building this now, begin with a narrow corpus, real user questions, and a small held-out test set. Expand only after the first path is observable.

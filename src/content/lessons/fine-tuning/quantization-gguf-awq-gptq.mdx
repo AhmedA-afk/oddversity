@@ -1,0 +1,31 @@
+---
+title: "Quantize a Model: GGUF, AWQ, and GPTQ"
+track: "fine-tuning"
+status: live
+summary: "Shrink a fine-tuned model with post-training quantization, and how to pick a format and bit-width."
+duration: "6 min read"
+---
+
+A model fine-tuned in 16-bit precision is often too big and too slow to serve cheaply. Quantization shrinks its weights to lower precision, usually 4 or 8 bits, cutting memory and often speeding up inference with only a small hit to quality.
+
+## What quantization actually does
+
+A weight stored as a 16-bit float takes twice the memory of an 8-bit integer, and four times that of a 4-bit one. Post-training quantization takes a model that's already trained (or fine-tuned) and rounds its weights down to a lower-precision representation, calibrating the rounding so the model's outputs barely change. A 7B-parameter model that needs roughly 14GB in 16-bit precision can often run in under 5GB at 4-bit, which is the difference between "needs a datacenter GPU" and "runs on a laptop."
+
+The cost isn't free. Every bit you drop loses some information, and quality degrades as bit-width falls, though not linearly — going from 16-bit to 8-bit is usually close to lossless, while going below 4-bit starts to show up in harder reasoning tasks. The right bit-width is a tradeoff you tune against your own evals, the same way you'd check for [catastrophic forgetting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting) after a fine-tuning run.
+
+## The three formats
+
+**GPTQ** was one of the first practical post-training quantization methods for LLMs. It quantizes weights layer by layer, using a small calibration dataset to minimize the error introduced at each step. It's GPU-only and was the default choice for 4-bit inference on CUDA hardware for a long time.
+
+**AWQ** (Activation-aware Weight Quantization) improves on that idea by noticing that not all weights matter equally — a small fraction of channels, identified by looking at activation magnitudes on a calibration set, have an outsized effect on output quality. AWQ protects those channels more carefully during quantization, which tends to preserve quality better than GPTQ at the same bit-width, especially at 4-bit. Like GPTQ, it's built for GPU serving.
+
+**GGUF** is a different kind of artifact: a file format (successor to GGML) built for the `llama.cpp` ecosystem, designed to run efficiently on CPUs as well as GPUs, including Apple Silicon. GGUF isn't a single quantization algorithm — it packages a family of quantization schemes (named things like `Q4_K_M` or `Q5_K_S`) with different bit-widths and internal tradeoffs, plus the model's metadata and tokenizer in one portable file. If you want something that runs locally on a consumer machine, GGUF is usually the answer.
+
+## Picking a format and bit-width
+
+Start with your deployment target. Serving from a GPU behind an API sits well with AWQ or GPTQ at 4-bit; AWQ generally edges out GPTQ on quality today and has broader tooling support in serving frameworks. Running locally, offline, or on CPU points you to GGUF, where `Q4_K_M` is a common default that balances size and quality, with `Q5` or `Q8` variants available when you can afford the extra memory.
+
+Whichever you pick, quantization is a step after fine-tuning, not a replacement for it — re-run your evaluation suite on the quantized model before shipping, since a model that passed evals at full precision can regress after aggressive quantization. If you need to go smaller than quantization alone can safely take you, look at [knowledge distillation](/learn/fine-tuning/knowledge-distillation) instead, which trains a genuinely smaller model rather than compressing an existing one.
+
+**Related:** [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model), [Distill a Large Model into a Small One](/learn/fine-tuning/knowledge-distillation), [Optimize Inference Serving: Batching and KV Cache](/learn/fine-tuning/inference-serving-optimization)

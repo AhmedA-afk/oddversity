@@ -1,0 +1,27 @@
+---
+title: "AI Agents vs. Chatbots"
+track: "ai-foundations"
+status: live
+summary: "A chatbot replies. An agent plans, calls tools, and takes multi-step action toward a goal — a different system entirely."
+duration: "5 min read"
+---
+
+Ask a chatbot to book you a flight and it will tell you how to book a flight. Ask an agent the same thing and it opens a browser, searches fares, compares options against your calendar, and books one. That gap — between describing an action and taking it — is the entire difference between these two systems, and it changes how you build, test, and trust them.
+
+## What a chatbot actually does
+
+A chatbot is a single-turn-in, single-turn-out loop: you send a message, the model reads it plus the conversation history, and it generates a reply. There's no branching, no external calls, no state beyond "what was said so far." Even a chatbot that looks impressively knowledgeable is still just producing the next block of text. If it needs live data — today's weather, your account balance — it either can't get it or you paste it in yourself. The model is the whole system.
+
+## What makes something an agent
+
+An agent adds a loop around the model: the model doesn't just answer, it decides what to do next, and "do" can mean calling a tool — a search API, a database query, a code interpreter, a file write — then reading the result and deciding again. This sense-think-act cycle repeats until the goal is met or the agent gives up. That loop is what lets an agent look something up, act on what it finds, and correct course when a step fails, none of which a plain chatbot can do because it has no way to act on the world between generating text and stopping. If you want the mechanics of that decide-act-observe cycle, see [the agent loop](/learn/agentic-ai/the-agent-loop) and [giving agents tools](/learn/agentic-ai/tool-use-basics).
+
+## Same model, different harness
+
+Here's the part that trips people up: an agent and a chatbot can run on the identical underlying LLM. What differs is the harness around it — the code that gives the model tools to call, feeds their results back in, and decides when to stop looping. A support chatbot becomes a support *agent* the moment you give it the ability to actually issue a refund instead of just explaining the refund policy. Nothing about the model changed; the system around it did.
+
+## Why the distinction is practical, not academic
+
+This matters for how you scope a project. A chatbot is cheap, predictable, and low-risk — a bad reply is just wrong text. An agent that can take actions needs error handling for failed tool calls, guardrails on what it's allowed to touch, and a way to tell when it's stuck in a loop instead of making progress, because now a bad step can mean a real refund issued to the wrong person or a real email sent. Before reaching for an agent, it's worth checking whether the task actually needs multi-step autonomy or whether [a workflow beats an agent](/learn/agentic-ai/when-not-to-use-an-agent) — a fixed sequence of steps is easier to test and far easier to debug than a model deciding its own path.
+
+**Related:** [What Makes Something an Agent](/learn/agentic-ai/what-is-an-agent), [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent)

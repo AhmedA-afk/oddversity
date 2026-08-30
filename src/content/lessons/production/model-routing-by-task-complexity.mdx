@@ -1,0 +1,35 @@
+---
+title: "Route Requests to Cheap or Frontier Models by Difficulty"
+track: "production"
+status: live
+summary: "Classify each request's difficulty first, then send it to the smallest model that can actually handle it."
+duration: "6 min read"
+---
+
+Not every request needs your best model. A support bot answering "what's your return window" doesn't need the same model as one drafting a legal summary — but most apps send both through the same endpoint, paying frontier prices for trivial work.
+
+## The core idea: classify, then route
+
+Model routing splits a single "call the model" step into two: a cheap classification pass that scores request difficulty, then a dispatch step that sends the request to whichever model tier matches that score. A small, fast model (or even a non-LLM heuristic) does the classifying; the actual work goes to a small model for easy cases and a frontier model for hard ones.
+
+The classifier itself doesn't need to be smart — it needs to be cheap and fast, since it runs on every request before the real work even starts. Common approaches, roughly in order of sophistication:
+
+- **Rules and heuristics**: input length, presence of code blocks, keyword matches ("refund" vs. "explain the tax implications of..."), or which feature/endpoint triggered the call.
+- **A small classifier model**: a cheap, fast model (or a fine-tuned tiny model) scores difficulty or intent in one short call, adding minimal latency.
+- **Confidence-based escalation**: run the cheap model first, and only re-route to a stronger model when its output looks uncertain — low logprobs, a refusal, a self-reported low-confidence flag, or a downstream check catching an error.
+
+That last pattern — try cheap, escalate on low confidence — avoids a separate classification call entirely, at the cost of sometimes paying for two calls on the same request.
+
+## Where the savings actually come from
+
+The economics only work because task difficulty is usually skewed: most production traffic is repetitive and easy (classification, extraction, short lookups), and only a minority of requests genuinely need frontier reasoning. If your traffic is 80% simple and 20% hard, and the cheap tier costs a fraction of the frontier tier per token, routing correctly can cut your total model spend dramatically while keeping the hard 20% at full quality.
+
+The failure mode is misrouting: an easy-looking request that's actually subtle (a short, calm-sounding message hiding a genuine edge case) gets routed to a weak model and comes back wrong or unhelpful. This is why routing decisions need the same scrutiny as any other model output — see [Track Cost Per Request](/learn/production/token-and-cost-tracking) for measuring what routing actually saves, and pair it with an escalation path rather than a hard cutoff: a low-confidence response from the cheap tier should trigger a retry on the frontier tier, not just ship as-is (see [Build an Escalation Queue for Low-Confidence Output](/learn/production/human-escalation-queues-for-low-confidence-output)).
+
+## Building it into your stack
+
+In practice, routing sits at the same layer as provider failover and load balancing — most teams implement it as one policy inside an [LLM gateway](/learn/production/llm-gateway-and-provider-abstraction) rather than scattering `if` statements through application code. That keeps the routing rules, the model tier list, and the fallback behavior in one place you can tune without redeploying every caller.
+
+Treat the routing policy itself as something you evaluate, not something you set once and forget: track accuracy and user-facing quality per tier, not just cost, and re-tune thresholds as model pricing and capability shift — a boundary that made sense six months ago may be leaving savings on the table, or quietly degrading quality, today.
+
+**Related:** [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Put an LLM Gateway in Front of Every Provider](/learn/production/llm-gateway-and-provider-abstraction), [Build an Escalation Queue for Low-Confidence Output](/learn/production/human-escalation-queues-for-low-confidence-output)

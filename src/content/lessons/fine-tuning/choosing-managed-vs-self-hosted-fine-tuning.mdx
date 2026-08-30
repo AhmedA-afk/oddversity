@@ -1,0 +1,33 @@
+---
+title: "Managed Fine-Tuning API vs. Self-Hosting the Run"
+track: "fine-tuning"
+status: live
+summary: "Weigh a provider's fine-tuning endpoint against renting GPUs yourself on cost, control, and data privacy."
+duration: "6 min read"
+---
+
+Once you've decided to fine-tune, you face a second decision that shapes everything downstream: do you upload your dataset to a provider's fine-tuning API, or rent GPUs and run the training loop yourself. Both produce a fine-tuned model. They trade cost, control, and speed for very different amounts of your time.
+
+## What "managed" actually buys you
+
+A managed fine-tuning API — offered by most closed-model providers and by open-model hosts like Together AI or Fireworks — takes a JSONL file of examples and returns a deployable model endpoint, usually within hours. You never touch a GPU, a training script, or a `CUDA out of memory` error. Pricing is typically per-token trained plus a per-token inference rate on the resulting model, so cost scales with usage rather than with idle compute.
+
+The tradeoff is opacity. You often can't see or tune the exact hyperparameters, can't inspect intermediate checkpoints, and can't export the weights if the provider trained a closed model — you're renting a specialized endpoint, not owning an artifact. If the provider deprecates that endpoint or changes pricing, you re-run the job or migrate. For most teams doing SFT on a few thousand examples against a well-known base model, this is the right default: the win is deploy speed, not control. See [Deduplicate and Decontaminate Your Training Data](/learn/fine-tuning/dataset-decontamination-and-deduplication) before you upload anything, since a managed run gives you fewer chances to catch a leaky dataset after the fact.
+
+## What self-hosting actually costs
+
+Self-hosting means renting GPUs (on-demand cloud, a spot market, or your own hardware) and running the training loop with a framework like Axolotl, Unsloth, or TRL. You get full control: any hyperparameter, any PEFT method, full visibility into loss curves, and — critically — you own the resulting weights outright. That matters for [LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning) work where you want to merge, quantize, or version adapters freely without a provider's terms of service in the way.
+
+The cost is real engineering time: picking a GPU size that fits your model and batch size, debugging distributed training if you scale past one GPU, and building your own eval and deployment pipeline afterward. A LoRA fine-tune of a 7-8B model can run on a single rented A100 or H100 for a few dollars an hour and finish in under an hour for a modest dataset — genuinely cheap in raw compute. The expensive part is the hours you spend getting the pipeline right the first time, and the ongoing cost of hosting the inference endpoint yourself once training is done.
+
+## The decision in practice
+
+Three questions settle it for most teams:
+
+- **Does the data ever leave your infrastructure?** If contracts or regulation forbid sending training data to a third party, self-hosting isn't optional — see how this interacts with your platform's [Data Retention Policy for AI Systems](/learn/production/data-retention-and-privacy-policy).
+- **Do you need a base model or training method the managed API doesn't offer?** Providers typically support a narrow menu of base models and SFT, sometimes DPO. If you want a specific open-weight base, an unusual [PEFT config](/learn/fine-tuning/full-fine-tuning-vs-peft), or [distributed training](/learn/fine-tuning/distributed-training-with-fsdp-and-deepspeed) across many GPUs, you need to self-host.
+- **Is this a one-off experiment or a recurring pipeline?** If you'll retrain weekly as your product data grows, the fixed cost of building your own training pipeline amortizes fast. If it's a single specialization run, a managed API's hours-not-weeks turnaround usually wins.
+
+A common middle path: prototype on a managed API to validate that fine-tuning even helps over prompting or RAG, then move to self-hosting once you know the investment is worth it and need control the API doesn't give you.
+
+**Related:** [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag), [Full Fine-Tuning vs Parameter-Efficient Fine-Tuning](/learn/fine-tuning/full-fine-tuning-vs-peft), [Choose a Fine-Tuning Framework: Axolotl, Unsloth, TRL, torchtune](/learn/fine-tuning/choosing-a-training-framework)

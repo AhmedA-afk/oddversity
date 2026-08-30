@@ -1,0 +1,31 @@
+---
+title: "Sampling: Temperature, Top-k, and Top-p"
+track: "llm-foundations"
+status: live
+summary: "Greedy, temperature, top-k, and top-p turn next-token probabilities into text, each trading coherence for variety differently."
+duration: "6 min read"
+---
+
+A model doesn't output words — it outputs a probability distribution over its whole vocabulary for what token comes next. Sampling is the rule that turns that distribution into an actual choice, and which rule you pick changes how the text reads.
+
+## Greedy decoding: always the top pick
+
+The simplest strategy is greedy decoding: at every step, take the single most probable token. It's deterministic — same prompt, same output, every time — which is great for reproducibility but bad for quality. Greedy text tends to loop, hedge, and feel flat, because it never risks a slightly-less-likely word that would have opened up a better sentence. It also can't recover from an early bad pick; one greedy step commits the whole continuation to it.
+
+## Temperature: reshaping the distribution
+
+Temperature is applied before sampling, inside the [softmax function](/learn/maths-foundations/the-softmax-function) that turns raw scores into probabilities. Formally it divides the logits by a value T before the softmax. At `T = 1`, the distribution is unchanged. Lower it toward 0 and the distribution sharpens — the top token's probability climbs and the model behaves more like greedy decoding. Raise it above 1 and the distribution flattens, giving low-probability tokens a real shot and making output more varied, sometimes to the point of incoherence. There's a deeper walkthrough of the mechanics in [Temperature: Reshaping a Probability Distribution](/learn/maths-foundations/temperature-in-sampling). Practically: 0–0.3 for tasks with a right answer (extraction, code, math), 0.7–1.0 for brainstorming or creative writing.
+
+Temperature alone has a flaw: even at low temperature, it still considers every token in the vocabulary, including absurd ones. If a bad token has even 0.01% probability, a long enough generation will eventually hit it. Top-k and top-p fix this by truncating the candidate pool before temperature is applied.
+
+## Top-k: a fixed shortlist
+
+Top-k keeps only the k highest-probability tokens and zeroes out everything else, then samples (optionally with temperature) from that shortlist. `k = 1` is identical to greedy decoding. `k = 40` is a common default. The problem is that k is fixed regardless of context: when the model is very confident (say, finishing "Once upon a"), the top few tokens hold almost all the probability mass and a shortlist of 40 pointlessly includes noise. When the model is genuinely uncertain, 40 might be too few good options.
+
+## Top-p: an adaptive shortlist
+
+Top-p (nucleus sampling) fixes that by choosing the shortlist dynamically. Instead of a fixed count, it takes the smallest set of tokens whose cumulative probability exceeds p — commonly 0.9 or 0.95. When the model is confident, that set might be just two or three tokens; when it's uncertain, it naturally expands to include more. This is why top-p is the default sampling strategy in most production APIs today, often used together with a modest temperature rather than in place of it.
+
+In practice, temperature and top-p are usually tuned together, not treated as alternatives: temperature sets the general risk level, top-p caps how far into the distribution's tail the model is allowed to reach. Getting this pair right matters more than most people expect for anything downstream that expects consistent behavior, including [evals](/learn/evals-red-teaming/why-evals-matter) and [structured output](/learn/structured-outputs/why-structured-output), where high temperature can quietly break format reliability.
+
+**Related:** [The Softmax Function](/learn/maths-foundations/the-softmax-function), [Temperature: Reshaping a Probability Distribution](/learn/maths-foundations/temperature-in-sampling), [Next-Token Prediction: The One Objective](/learn/llm-foundations/next-token-prediction)

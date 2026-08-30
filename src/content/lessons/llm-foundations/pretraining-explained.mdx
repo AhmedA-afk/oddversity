@@ -1,0 +1,27 @@
+---
+title: "Pretraining: Learning From the Whole Internet"
+track: "llm-foundations"
+status: live
+summary: "Pretraining is next-token prediction run at massive scale on a huge slice of the internet, and it's where an LLM acquires nearly all its raw knowledge."
+duration: "6 min read"
+---
+
+Before a model can chat, code, or follow instructions, it goes through pretraining: weeks of [next-token prediction](/learn/llm-foundations/next-token-prediction) run over a text corpus so large that no human could read it in a lifetime. This one stage is where the model acquires most of what it "knows."
+
+## What actually happens
+
+A base model starts with random weights and no knowledge of anything. It's shown huge quantities of text — web pages, books, code, papers, forums — and at every position it predicts the next token, gets corrected against what actually came next, and adjusts its weights slightly. Repeated across an enormous corpus, this simple correction loop is enough to make the model internalize grammar, facts, coding patterns, reasoning steps, and writing style, because all of them help it predict better.
+
+The corpus itself is [the data the model learned from](/learn/ai-foundations/the-data-the-model-learned-from): filtered and deduplicated web crawls, licensed and public-domain books, code repositories, and more. Data quality and mix matter as much as raw volume — a smaller, cleaner corpus can outperform a larger, noisier one.
+
+## Why scale changes the outcome
+
+Pretraining is where the [emergent abilities](/learn/llm-foundations/emergent-abilities-in-llms) of LLMs show up. A small model trained the same way on the same objective might only learn local grammar and common phrases. A much larger model, trained on far more tokens, starts handling arithmetic, translation, and multi-step reasoning it was never explicitly taught — capabilities that fall out of getting extremely good at prediction, not from any separate reasoning module.
+
+This is also expensive by design: pretraining runs use thousands of accelerators for weeks and burn through compute budgets, which is why frontier labs treat "how much to spend on pretraining vs. everything after it" as a genuine strategic decision.
+
+## Pretraining is not the finished product
+
+The result of pretraining is a **base model** — extremely knowledgeable, but only good at continuing text plausibly, not at being a helpful assistant. Ask a fresh base model a question and it's just as likely to continue with more questions, since that's a statistically plausible continuation of "question-shaped" text. Turning that raw predictor into something that reliably answers, follows instructions, and stays in a conversational voice happens afterward, in [instruction tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf). The [model family](/learn/llm-foundations/model-families-and-variants) names you see — base, instruct, chat — mark exactly this line: everything before it is pretraining, everything after it is built on top of a pretrained model.
+
+**Related:** [Next-Token Prediction](/learn/llm-foundations/next-token-prediction), [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf), [Emergent Abilities in LLMs](/learn/llm-foundations/emergent-abilities-in-llms)

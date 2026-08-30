@@ -1,0 +1,35 @@
+---
+title: "Model Families: Base, Instruct, Chat, Reasoning"
+track: "llm-foundations"
+status: live
+summary: "Base, instruct, chat, and reasoning variants share weights but behave nothing alike — know what each training stage changes."
+duration: "5 min read"
+---
+
+Download two checkpoints from the same model family and you can get two completely different tools: one that finishes your sentence, and one that answers your question. The difference isn't the architecture. It's what happened *after* pretraining.
+
+## Base models: pure next-token prediction
+
+A base model comes straight out of [pretraining](/learn/llm-foundations/pretraining-explained) — trained on huge amounts of text with one objective: predict the next token. Give it "The capital of France is" and it completes the sentence. Give it "How do I center a div?" and it might not answer at all — it might continue the sentence with more questions, because that's what a forum post full of unanswered questions looks like in the training data.
+
+Base models are completions engines, not assistants. They have no notion of "answer the user" baked in — they only know what's statistically likely to follow given text. That's genuinely useful for creative continuation, few-shot pattern completion, and research, but it's a rough tool for anyone expecting a helpful reply.
+
+## Instruct models: taught to follow directions
+
+An instruct model takes that same base model and fine-tunes it on examples of instructions paired with good responses — "Summarize this," "Write a function that...," "Explain X like I'm five" — so the model learns the *shape* of following a request rather than merely continuing text. This is instruction tuning, one half of what [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf) covers.
+
+An instruct model still isn't necessarily built for back-and-forth conversation. It's tuned to take one instruction and produce one useful output — which is exactly why it shows up so often as the workhorse behind single-shot API calls: extraction, classification, rewriting.
+
+## Chat models: tuned for the back-and-forth
+
+Chat models add another layer: training on multi-turn conversations, plus (usually) RLHF or a similar preference-tuning step that pushes the model toward responses humans actually rate as helpful, honest, and safe — not just responses that look instruction-shaped. This is the layer that gives you a model that remembers it's mid-conversation, refuses politely instead of complying with something harmful, and asks a clarifying question instead of guessing. Most consumer-facing products — the chat window you actually type into — are running a chat-tuned variant.
+
+## Reasoning models: trained to think before answering
+
+The newest branch trains models to generate an extended chain of intermediate reasoning before producing a final answer, often with reinforcement learning against verifiable outcomes (a correct math answer, passing tests) rather than only human preference labels. The visible effect: on hard multi-step problems — math, code, planning — these models are dramatically more reliable, at the cost of higher latency and token spend per response. They're not strictly "better" at everything; for a one-line factual lookup, a reasoning model is often slower for no real gain.
+
+## Why this matters when you're picking a model
+
+The name on a model card ("base," "instruct," "chat," or a reasoning-specific label) tells you what training stages it went through — which tells you what it's actually for. Using a base model where you wanted a chat model gets you rambling completions. Using a heavyweight reasoning model for simple extraction burns latency and cost for nothing. [Choosing a Model](/learn/ai-foundations/choosing-a-model) covers picking within a family; this is about knowing which variant to even start from.
+
+**Related:** [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf), [Pretraining: Learning From the Whole Internet](/learn/llm-foundations/pretraining-explained), [Choosing a Model](/learn/ai-foundations/choosing-a-model)

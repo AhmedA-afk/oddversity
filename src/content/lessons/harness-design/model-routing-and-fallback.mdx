@@ -1,0 +1,41 @@
+---
+title: "Model Routing and Fallback Inside a Harness"
+track: "harness-design"
+status: live
+summary: "Route requests to the right model by task or cost, and fail over cleanly when a provider errors, rate-limits, or times out."
+duration: "5 min read"
+---
+
+A harness that only ever talks to one model, one endpoint, is one outage away from being useless. Model routing decides *which* model handles a given call; fallback decides what happens when that model can't.
+
+## Routing by task, not by default
+
+Most harnesses are built around a single "the model" assumption, but a real control loop touches several kinds of work in one session: a cheap classification, a long tool-heavy plan, a quick summarization pass. Routing means picking the model for each call based on what the call actually needs — not hardcoding one model for everything.
+
+A simple router is just a lookup keyed on call type:
+
+```
+route("intent-classify")   -> small, fast model
+route("plan-and-act")      -> frontier model, extended thinking on
+route("summarize-tool-output") -> small model, no thinking
+```
+
+The signal for routing can be static (the harness always sends subagent grunt work to a cheaper model) or dynamic (a difficulty estimate, a token-budget check, or the previous call's confidence decides). Static routing is easier to reason about and debug; dynamic routing saves more money but adds a failure mode of its own — a misrouted "easy" call that was actually hard, silently producing a worse answer with no error to catch.
+
+The trap to avoid is routing on model name instead of on capability. Hardcode `"claude-opus-4-5"` into your router and the day that model is deprecated, every call site breaks at once. Route on a capability label your harness owns — `"reasoning-tier"`, `"fast-tier"` — and keep the label-to-model mapping in one place, so a model swap is a one-line config change instead of a grep-and-replace across the codebase.
+
+## Fallback is routing under failure
+
+Fallback is the same mechanism triggered by an error instead of a task type: the primary model call errors, rate-limits, or times out, and the harness needs a decision about what to try next, rather than surfacing a raw exception to the user mid-agent-loop.
+
+The three fallback strategies you'll actually use:
+
+- **Retry the same model** — for transient errors (5xx, connection resets) with exponential backoff. This is usually correct first, since it doesn't change behavior.
+- **Fail over to a different provider** — for sustained outages or a rate-limit that backoff won't clear before the user gives up. This is where "model routing" and "model fallback" become the same code path: the fallback target is chosen by the same capability-tier logic as normal routing, just triggered by an exception instead of a task label.
+- **Degrade the request** — drop to a smaller model, or a smaller context window, rather than a different provider entirely. Useful when the failure is "this request is too expensive/too slow right now," not "the provider is down."
+
+The dangerous failure mode is silent degradation with no signal. If a harness quietly falls back from a frontier model to a much weaker one on every timeout, a user watching consistent-looking output has no way to know quality just dropped. Log every fallback event — which tier, why, what triggered it — the same way you'd log a [retry](/learn/harness-design/harness-observability). Treat model choice as part of the trace, not an implementation detail buried inside the call.
+
+Fallback also needs a circuit breaker, not just a retry loop. A provider that's down doesn't need five retries per request across a thousand concurrent calls — it needs the harness to notice after the first few failures and stop sending traffic there until a health check says it's back.
+
+**Related:** [Fail Over Automatically When a Model Provider Goes Down](/learn/production/multi-provider-failover-and-redundancy), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity), [Tracing a Harness: Structured Spans for Every Model and Tool Call](/learn/harness-design/harness-observability)

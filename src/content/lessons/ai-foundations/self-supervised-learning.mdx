@@ -1,0 +1,27 @@
+---
+title: "Self-Supervised Learning: Training Without Labels"
+track: "ai-foundations"
+status: live
+summary: "The model generates its own labels from raw data — the trick that let LLMs train on the entire internet without human annotation."
+duration: "5 min read"
+---
+
+Supervised learning needs a human to say "this is a cat" for every example. Self-supervised learning skips the human: it carves the labels out of the data itself, and that's the single trick that made training on the whole internet possible.
+
+## The core move: hide part of the input, predict it
+
+Take a sentence, block out a word, and ask the model to guess it. The blocked-out word *is* the label — nobody typed it in, it was already sitting right there in the text. Do this billions of times across a huge pile of unlabeled text, and you've built a training signal at essentially zero labeling cost.
+
+This is exactly what [next-token prediction](/learn/llm-foundations/next-token-prediction) is: given everything so far, predict the next token. Every sentence on the internet becomes a free training example, because the "answer key" is just the next word that's already there. That's the mechanism behind [pretraining](/learn/llm-foundations/pretraining-explained) at internet scale — you don't need someone to label a trillion tokens, you need text, and the text labels itself.
+
+The same idea shows up outside language. Vision models learn by predicting a masked patch of an image, or by matching two cropped views of the same photo and pushing their representations together. Audio models predict the next chunk of a waveform. The specific task changes, but the shape is identical: mask something the model can see, make it guess the missing piece, score it against ground truth that cost nothing to produce.
+
+## Why this beats hand-labeling
+
+[Supervised learning](/learn/ai-foundations/supervised-learning-explained) is bottlenecked by human effort — someone has to sit down and label "spam" or "not spam" on every example, and that doesn't scale past a few million rows without serious money. Self-supervised learning removes that bottleneck entirely. The dataset is the label source, so scale is limited only by how much raw data exists and how much compute you can throw at it. That's the whole reason a modern [foundation model](/learn/ai-foundations/foundation-models-explained) can train on a meaningful slice of [the text, code, and images humans have put online](/learn/ai-foundations/the-data-the-model-learned-from) instead of a curated, labeled dataset a fraction of that size.
+
+## What it's still not
+
+Self-supervised pretraining teaches a model the statistical shape of language and the world — grammar, facts, style, some reasoning patterns — but it doesn't by itself teach the model to be a helpful assistant that follows instructions or refuses harmful requests. That's a separate, much smaller supervised (and human-feedback) stage layered on afterward. Self-supervision gets you a model that's very good at predicting plausible continuations; it takes additional training to turn that into a model that's good at answering *your* question. It's worth keeping straight from [training versus inference](/learn/ai-foundations/training-vs-inference) too — self-supervision describes how the weights get set during training, not anything that happens while the model is answering you.
+
+**Related:** [Supervised Learning, Explained](/learn/ai-foundations/supervised-learning-explained), [Foundation Models, Explained](/learn/ai-foundations/foundation-models-explained), [Pretraining: Learning From the Whole Internet](/learn/llm-foundations/pretraining-explained)

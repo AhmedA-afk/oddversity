@@ -1,0 +1,149 @@
+---
+import Layout from '../../components/Layout.astro';
+import { getCollection, render } from 'astro:content';
+import { ogImage } from '../../data/og-images';
+
+export async function getStaticPaths() {
+  const guides = await getCollection('guides');
+  return guides.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const toc = headings.filter((h) => h.depth === 2);
+
+const all = (await getCollection('guides')).sort(
+  (a, b) => Date.parse(b.data.published) - Date.parse(a.data.published),
+);
+const others = all.filter((g) => g.id !== entry.id).slice(0, 3);
+
+const lessons = await getCollection('lessons');
+const lessonByPath = new Map(
+  lessons.map((l) => {
+    const [track, ...rest] = l.id.split('/');
+    return [`/learn/${track}/${rest.join('/')}`, l];
+  }),
+);
+const related = entry.data.related
+  .map((path) => ({ path, entry: lessonByPath.get(path) }))
+  .filter((r) => r.entry);
+---
+<Layout
+  title={entry.data.title}
+  description={entry.data.description}
+  type="article"
+  image={ogImage(`guide-${entry.id}`)}
+  imageAlt={`${entry.data.title} — a Oddversity guide`}
+  publishedTime={entry.data.published}
+  modifiedTime={entry.data.updated ?? entry.data.published}
+  breadcrumbs={[
+    { name: 'Home', url: '/' },
+    { name: 'Guides', url: '/guides' },
+    { name: entry.data.title, url: `/guides/${entry.id}` },
+  ]}
+  howto={{
+    name: entry.data.title,
+    description: entry.data.description,
+    steps: entry.data.steps,
+  }}
+  faq={[{ q: entry.data.question, a: entry.data.description }]}
+>
+  <div class="wrap">
+    <article class="doc">
+      <nav class="crumb mono" aria-label="Breadcrumb">
+        <a href="/guides">Guides</a> <span>/</span> <span>{entry.data.level}</span>
+      </nav>
+      <h1>{entry.data.title}</h1>
+      <p class="q">Answers: “{entry.data.question}”</p>
+      <div class="meta mono">
+        <span>{entry.data.duration}</span><span aria-hidden="true">·</span>
+        <span>{entry.data.level}</span><span aria-hidden="true">·</span>
+        <span>Updated {entry.data.updated ?? entry.data.published}</span>
+      </div>
+      <p class="lede">{entry.data.description}</p>
+
+      {entry.data.steps.length > 0 && (
+        <section class="steps" aria-label="What this guide covers">
+          <div class="eyebrow">What you'll do</div>
+          <ol>{entry.data.steps.map((s) => <li>{s}</li>)}</ol>
+        </section>
+      )}
+
+      <div class="prose"><Content /></div>
+
+      {related.length > 0 && (
+        <section class="related">
+          <div class="eyebrow">Go deeper in the curriculum</div>
+          <ul>
+            {related.map((r) => (
+              <li>
+                <a href={r.path}>{r.entry!.data.title}</a>
+                <span>{r.entry!.data.summary}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {others.length > 0 && (
+        <section class="related">
+          <div class="eyebrow">Other guides</div>
+          <ul>
+            {others.map((g) => (
+              <li>
+                <a href={`/guides/${g.id}`}>{g.data.title}</a>
+                <span>{g.data.description}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </article>
+
+    <aside class="toc" aria-label="On this page">
+      {toc.length > 0 && (
+        <div class="toc-inner">
+          <div class="eyebrow">On this page</div>
+          <ul>{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul>
+          <a href="/guides" class="back mono">← All guides</a>
+        </div>
+      )}
+    </aside>
+  </div>
+</Layout>
+
+<style>
+  .wrap { max-width: 1080px; margin-inline: auto; padding: 44px 32px 8px; display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 52px; align-items: start; }
+  .doc { min-width: 0; max-width: 740px; }
+  .crumb { font-size: 11.5px; color: var(--muted); margin-bottom: 18px; }
+  .crumb a { color: var(--muted); }
+  .crumb span { margin: 0 6px; }
+  .doc h1 { font-size: clamp(30px, 4.4vw, 42px); letter-spacing: -.022em; }
+  .q { margin-top: 14px; font: 400 15px/1.5 'Source Serif 4', 'Source Serif 4 Fallback', Georgia, serif; font-style: italic; color: var(--muted); }
+  .meta { margin-top: 14px; display: flex; gap: 8px; font-size: 11.5px; color: var(--muted); }
+  .lede { margin-top: 20px; font-size: 17px; line-height: 1.65; color: var(--muted); }
+
+  .steps { margin-top: 30px; padding: 20px 24px; background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; }
+  .steps ol { margin: 12px 0 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 7px; }
+  .steps li { font-size: 14px; line-height: 1.5; color: var(--text); }
+  .steps li::marker { color: var(--accent); font-family: 'IBM Plex Mono', 'IBM Plex Mono Fallback', monospace; font-size: 12px; }
+
+  .prose { margin-top: 34px; }
+
+  .related { margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--rule); }
+  .related ul { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 12px; }
+  .related li { display: flex; flex-direction: column; gap: 3px; }
+  .related a { font: 500 14.5px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .related span { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+  .toc-inner { position: sticky; top: 88px; }
+  .toc ul { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 8px; }
+  .toc a { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+  .toc a:hover { color: var(--accent); text-decoration: none; }
+  .back { display: block; margin-top: 20px; font-size: 11.5px; color: var(--accent); }
+
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 32px 20px 8px; }
+    .toc { display: none; }
+  }
+</style>

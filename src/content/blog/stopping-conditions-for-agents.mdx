@@ -1,0 +1,70 @@
+---
+title: "Every agent loop needs five stopping conditions"
+description: "A turn limit is the one everybody implements and the least useful. Here are the other four, and the specific failure each one catches."
+published: "2026-08-30"
+tags: ["Agents", "Reliability", "Cost"]
+---
+
+An agent loop that cannot stop is not an agent, it is an outage with a personality. Most implementations ship with one stopping condition — a maximum number of turns — and that is the weakest of the five that matter.
+
+Here is the set, and what each one is actually for.
+
+## 1. The turn limit
+
+The obvious one. Cap iterations so the loop terminates.
+
+It catches an infinite loop. It does not catch an expensive loop, because a single turn can carry an enormous context, and twelve turns of a 100k-token conversation is a large bill arriving quietly. Treat this as a backstop, not a budget.
+
+## 2. The token budget
+
+Track cumulative tokens across the loop and stop at a ceiling.
+
+This is the one that protects you from cost, and it is the one most often missing. Agent context grows monotonically — every tool result gets appended, and the next call re-sends everything. Cost per turn rises as the loop continues, so the last turns are the expensive ones, exactly when the agent is most likely to be stuck.
+
+Log the running total. The shape of that number over a session tells you more about your agent's health than almost any other metric.
+
+## 3. The no-progress detector
+
+If the agent calls the same tool with the same arguments twice, it is stuck. It has not noticed, and it will not notice.
+
+```python
+signature = (call.name, json.dumps(call.input, sort_keys=True))
+if signature in seen:
+    result = "You already called this with these exact arguments and got the same result. Try a different approach."
+    is_error = True
+seen.add(signature)
+```
+
+Feeding that back as an error is better than breaking outright — a decent model will usually change strategy when told plainly. But count the occurrences, and break on the second one, because an agent that ignores the hint will ignore it forever.
+
+## 4. The wall clock
+
+Anything a human is waiting on needs a deadline shorter than their patience. Anything running unattended needs one shorter than your alerting interval.
+
+This is separate from the turn limit for a specific reason: a single tool call can hang. A turn limit of twelve does not bound a loop where turn three is waiting on a database that has stopped answering.
+
+## 5. The authority boundary
+
+The one nobody calls a stopping condition, and the most important.
+
+The loop must stop and ask a human before anything irreversible: sending, paying, deleting, publishing, granting access, deploying. Not because the model is unreliable in general, but because an agent reading untrusted content — a web page, a document, a ticket, an email — can have its objective changed by that content, and it will pursue the new objective with exactly the same competence.
+
+A confirmation prompt is a stopping condition that happens to have a human as its resume signal. Design it as part of the loop rather than as a UI afterthought, and make it show the resolved arguments, because the recipient is the field an attacker changed.
+
+## What this looks like together
+
+```python
+budget = TokenBudget(limit=200_000)
+deadline = time.monotonic() + 120
+seen = set()
+
+for turn in range(MAX_TURNS):
+    if budget.exhausted():          return stop("token budget")
+    if time.monotonic() > deadline: return stop("deadline")
+    ...
+    if requires_approval(call):     return pause_for_human(call)
+```
+
+Five guards, none of them clever. Together they turn a loop that can run away into one that fails in a way you can read in a log — which is the entire difference between something you can put in production and something you can only demo.
+
+The [agent loop lesson](/learn/agentic-ai/the-agent-loop) has the full mechanics, [stopping conditions](/learn/agentic-ai/stopping-conditions-for-agents) goes deeper on each guard, and the [build-it-yourself guide](/guides/build-a-tool-calling-agent-from-scratch) has a working implementation you can read in one sitting.

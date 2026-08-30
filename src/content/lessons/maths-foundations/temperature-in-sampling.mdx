@@ -1,0 +1,39 @@
+---
+title: "Temperature: Reshaping a Probability Distribution"
+track: "maths-foundations"
+status: live
+summary: "Temperature rescales logits before softmax — low values sharpen toward the top token, high values flatten toward randomness."
+duration: "4 min read"
+---
+
+Every time a language model picks its next token, it starts with a probability distribution over its whole vocabulary. Temperature is the knob that decides how sharp or flat that distribution is before a token gets sampled from it.
+
+## Where temperature actually applies
+
+A model's raw output, before softmax, is a vector of scores called logits — one per token in the vocabulary. Temperature divides every logit by a value `T` before the softmax step:
+
+```
+p_i = exp(logit_i / T) / sum_j exp(logit_j / T)
+```
+
+At `T = 1`, this is plain softmax — the model's untouched distribution. Turning `T` down shrinks the gap between logits before they get exponentiated, which (after exponentiation) makes the largest logit dominate even harder. Turning `T` up does the opposite: it compresses the differences between logits toward zero, so exponentiation returns numbers that are closer to equal.
+
+## Low temperature vs. high temperature
+
+Picture three candidate next tokens with logits 4, 2, and 1.
+
+At low temperature (say `T = 0.3`), dividing by `T` stretches those logits apart to roughly 13.3, 6.7, 3.3 — softmax then puts almost all the probability mass on the top token. Output becomes deterministic and repetitive: good for code generation, data extraction, or anything with one clearly correct answer.
+
+At high temperature (say `T = 1.5`), dividing by `T` compresses the logits to about 2.7, 1.3, 0.7 — the three tokens end up much closer in probability, so sampling picks the second or third choice far more often. Output becomes varied and sometimes surprising: useful for brainstorming or creative writing, risky for anything that needs to be reliably correct.
+
+`T = 0` is a special case — rather than dividing by zero, implementations treat it as greedy decoding: always take the single highest-probability token, with no sampling at all.
+
+## Why it's a rescale, not a re-ranking
+
+Temperature never changes which token has the highest logit — the argmax token stays the same regardless of `T`. It only changes how much probability mass gets distributed to the runners-up. That's why temperature alone doesn't fix a model that's confidently wrong; if the top logit is a bad token, a low temperature just makes the model pick that bad token more consistently. Temperature controls how much the model explores around its own ranking, not whether that ranking is any good.
+
+## Temperature is one lever among several
+
+In practice, temperature is rarely used alone — it's usually paired with top-p or top-k truncation to keep sampling from ever reaching the extreme tail of unlikely tokens, since even a flattened distribution still assigns some probability to nonsense. The full picture of how these knobs interact is worth its own look at [sampling with temperature, top-k, and top-p](/learn/llm-foundations/sampling-temperature-top-p).
+
+**Related:** [The Softmax Function](/learn/maths-foundations/the-softmax-function), [Probability Basics for AI](/learn/maths-foundations/probability-basics-for-ai), [Sampling: Temperature, Top-k, and Top-p](/learn/llm-foundations/sampling-temperature-top-p)

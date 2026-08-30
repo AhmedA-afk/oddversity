@@ -1,0 +1,27 @@
+---
+title: "Orchestrating Concurrent Model Calls Across Processes"
+track: "harness-design"
+status: live
+summary: "Run many agent instances in parallel across processes or machines without duplicating work or corrupting shared state."
+duration: "6 min read"
+---
+
+A single-process harness runs one control loop talking to one model at a time. The moment you need throughput — a hundred repo scans, a thousand support tickets — you're running many control loops at once, and now you own problems a single loop never had: who owns a piece of work, what happens when a worker dies mid-call, and how results land back in one place without clobbering each other.
+
+## Work distribution, not just parallel calls
+
+Firing off concurrent model calls with `Promise.all` or `asyncio.gather` is easy inside one process — it's [parallel tool scheduling](/learn/harness-design/parallel-tool-scheduling) at a smaller scale. Distributed orchestration is a different problem: work items live in a queue (Redis, SQS, a Postgres table with a `status` column) that many worker processes pull from independently. The queue, not the caller, is the source of truth for what's been claimed. A worker claims an item with an atomic operation — `SELECT ... FOR UPDATE SKIP LOCKED`, or a Redis `BRPOPLPUSH` — so two workers can never grab the same row. Without that atomicity you get duplicate model calls on the same input, which is wasted spend at best and duplicate side effects (two emails sent, two tickets filed) at worst.
+
+## Leases, not locks, for crash safety
+
+A worker that claims an item and then dies — OOM, spot instance reclaimed, network partition — must not hold that item forever. The fix is a lease: claiming sets a `visible_after` timestamp instead of a permanent lock. If the worker doesn't heartbeat or complete before the lease expires, the item becomes claimable again. This is exactly [crash recovery and resumption](/learn/harness-design/crash-recovery-and-resumption) applied at the fleet level rather than the single-session level — pick a lease duration longer than your slowest expected model call plus retries, or you'll get workers stepping on their own in-flight work.
+
+## Shared state without a shared process
+
+Workers can't share in-memory state, so anything that needs to be visible across them — a running total of tokens spent, a deduplication set of URLs already fetched, rate-limit counters — has to live in an external store. Keep this state small and cheap to update: a Redis `INCR` for counters, a set for dedup, not a full JSON blob you read-modify-write under contention. Where two workers might touch the same key, prefer atomic single-key operations over read-then-write; the latter races even with a "lock" unless the lock itself is atomic.
+
+## Aggregating results
+
+Fan-out is the easy half; fan-in is where bugs hide. Give every work item a stable ID and write results keyed by that ID rather than appending to a list — appends from concurrent writers can interleave or drop under load. A results table (or a queue with an ID-keyed sink) lets a separate aggregation step run once, after checking every item reached a terminal state, rather than racing the workers themselves.
+
+**Related:** [Parallel Tool Scheduling](/learn/harness-design/parallel-tool-scheduling), [Crash Recovery and Resumption](/learn/harness-design/crash-recovery-and-resumption), [Delegating Work to Subagents](/learn/harness-design/subagent-and-task-delegation)

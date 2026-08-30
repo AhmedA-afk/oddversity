@@ -1,0 +1,33 @@
+---
+title: "Continuous Red-Teaming: Bug Bounties and Live Adversarial Traffic"
+track: "evals-red-teaming"
+status: live
+summary: "A red-team exercise is a snapshot; attackers don't stop after launch, so your defenses shouldn't either."
+duration: "6 min read"
+---
+
+A structured red-team exercise tells you how your system holds up against the attacks your team thought to try, on the day they tried them. It says nothing about the attack nobody on the team imagined, or the jailbreak technique that gets published three weeks after you ship. Continuous red-teaming is the practice of treating adversarial testing as an ongoing pipeline instead of a pre-launch checkbox.
+
+## Why a one-time exercise expires
+
+Three things make a point-in-time red-team assessment go stale fast. New jailbreak techniques circulate publicly and get copied faster than any internal team can anticipate them. Your product itself changes — new tools, new system prompt, new user-facing feature — and each change opens surface a prior exercise never tested. And real users, at scale, are more creative and more numerous than any red team you can staff; a handful of specialists will never generate the volume or diversity of a million daily sessions.
+
+The fix isn't "run the exercise more often," though periodic re-runs still matter (see [Running a Structured Red-Team Exercise](/learn/evals-red-teaming/adversarial-red-teaming-process)). The fix is adding two channels that run continuously: paid external probing, and automated monitoring of your own live traffic.
+
+## Bug bounty programs for AI systems
+
+A bug bounty pays independent researchers to find and responsibly disclose vulnerabilities, with payouts scaled to severity. Applied to LLM products, this extends beyond classic security bugs (auth bypass, injection into your database) to model-specific failures: reliable jailbreaks, prompt injection that exfiltrates data through a connected tool, or a way to make an agent take an action outside its intended scope (see [Testing for Scope Escape](/learn/evals-red-teaming/scope-escape-and-tool-abuse)).
+
+What makes AI bug bounties different from traditional ones is scope definition. "Get the model to say something offensive" is nearly always in scope somewhere on a large enough surface — that's not useful signal on its own. A well-run program instead specifies concrete harm classes tied to your actual product: for an agent with file-system access, a demonstrated path to reading files outside its working directory; for a customer-support bot, a demonstrated path to leaking another customer's data. Vague scope produces noise; specific scope produces triage-able reports.
+
+## Watching live traffic for attack patterns
+
+The second channel is passive: instrument production to flag adversarial-looking input as it happens, rather than waiting for a researcher to report it. In practice this means a lightweight classifier or heuristic layer sitting alongside the main request path — flagging things like repeated attempts at the same prompt with small variations, known jailbreak fragments, or requests that trip your safety classifiers at unusual rates from a single account. This is the same instrumentation philosophy behind [Tracking Eval Scores Across Model Versions](/learn/evals-red-teaming/eval-and-safety-metrics-dashboards), but pointed at adversarial signal instead of quality metrics.
+
+The output of this monitoring isn't just an alert — it's a feed. Flagged transcripts become candidate additions to your adversarial dataset (see [Crescendo, Many-Shot, and TAP: Building an Adversarial Prompt Set](/learn/evals-red-teaming/adversarial-dataset-construction)), so every real attack your system sees eventually becomes a regression test that future model or prompt versions are checked against before shipping.
+
+## Closing the loop
+
+Continuous red-teaming only pays off if findings actually change the system. That means routing bounty reports and flagged traffic into the same regression suite your offline evals run against, not a separate spreadsheet nobody revisits. A jailbreak found on Tuesday should be a test case by Friday and a blocked pattern by the next release. Treat the bounty program and the traffic monitor as sensors feeding one pipeline, not two disconnected compliance exercises — the value is in the loop closing, not in either sensor alone.
+
+**Related:** [Running a Structured Red-Team Exercise](/learn/evals-red-teaming/adversarial-red-teaming-process), [Testing for Scope Escape](/learn/evals-red-teaming/scope-escape-and-tool-abuse), [Crescendo, Many-Shot, and TAP: Building an Adversarial Prompt Set](/learn/evals-red-teaming/adversarial-dataset-construction)

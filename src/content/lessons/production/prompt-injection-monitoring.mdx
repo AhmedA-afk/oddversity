@@ -1,0 +1,37 @@
+---
+title: "Monitor Production Traffic for Prompt Injection and Abuse"
+track: "production"
+status: live
+summary: "Guardrails will miss things — watch live traffic for injection patterns and abuse so you catch what got through, not just what you blocked."
+duration: "5 min read"
+---
+
+Your guardrail layer will let something through eventually. Monitoring is what tells you it happened before a user does.
+
+## Why the guardrail isn't the whole plan
+
+An input filter or system-prompt defense is a point-in-time check: it looks at one request and decides pass or block. But injection techniques evolve, attackers iterate against your specific defenses, and legitimate content (a pasted email, a scraped webpage, a tool result) can carry an instruction-shaped payload your filter never anticipated. Treating the guardrail as sufficient means your first signal of a new attack pattern is a support ticket or a screenshot on social media, days after it started working.
+
+Monitoring closes that gap by watching what actually happened across many requests, not just judging one request in isolation. It's the difference between a lock on the door and a camera that shows you someone kept jiggling the handle at 3 a.m.
+
+## What to watch for
+
+Build detection around a few concrete signal types, layered on top of your normal [structured logs](/learn/production/structured-logging-for-llm-calls):
+
+- **Injection markers in input.** Phrases like "ignore previous instructions," "you are now," "new system prompt," or attempts to close out delimiters you use internally (`</system>`, triple backticks mid-sentence). None of these are proof on their own, but a spike in their frequency is a real signal — especially in fields that shouldn't contain instructions at all, like a "name" or "notes" input.
+- **Behavioral anomalies in output.** A model that suddenly starts responding in an unusual format, refuses a normally-safe request, reveals system-prompt content, or calls a tool it's never called for that user before. This catches injections that don't match any known text pattern because the attack worked and the *behavior* changed.
+- **Abuse-shaped usage.** One account issuing a much higher request rate than its history, unusually long or repetitive prompts, or the same payload tried across many accounts in a short window — a signature of someone probing your defenses systematically rather than using the product.
+- **Refusal and error-rate shifts.** A jump in your model's own refusal rate or malformed-output rate is often the earliest evidence of adversarial input, showing up before any keyword filter fires.
+
+## Wiring detection into the pipeline
+
+None of this needs a bespoke ML system to start. A practical setup:
+
+1. Run a lightweight classifier or regex/keyword pass over both input and output as part of the same step where you already do [structured logging](/learn/production/structured-logging-for-llm-calls) — tag each request with a risk score rather than a binary block decision.
+2. Emit that score as a field, and alert on aggregates (rate of high-risk requests per hour, per user, per endpoint) instead of trying to hand-review every flagged row.
+3. Route anything above a threshold into a review queue, and feed confirmed attacks back into your guardrail rules and your [regression eval suite](/learn/production/eval-based-regression-testing) so the same pattern gets caught earlier next time.
+4. Treat repeat offenders as a [rate-limiting](/learn/production/rate-limiting-llm-apps) problem, not just a content-filtering one — someone iterating against your prompt defenses is also a traffic pattern you can throttle.
+
+The goal isn't a system that blocks everything up front — that's the guardrail's job, and it will never be perfect. It's a system that shortens the time between "an attack started working" and "you know about it," so a novel jailbreak becomes a Tuesday-afternoon fix instead of a week of quiet exploitation.
+
+**Related:** [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Catch Regressions with Evals in CI](/learn/production/eval-based-regression-testing), [Rate-Limit and Add Backpressure to LLM Traffic](/learn/production/rate-limiting-llm-apps)

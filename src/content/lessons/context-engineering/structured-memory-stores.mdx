@@ -1,0 +1,27 @@
+---
+title: "Structured Memory Stores: Vector, Key-Value, or Knowledge Graph"
+track: "context-engineering"
+status: live
+summary: "The three memory backends behind agent memory, and which one actually matches what you need to recall."
+duration: "6 min read"
+---
+
+Once you decide an agent needs `memory vs state` that persists across sessions, you hit a second question the tutorials skip: memory stored *how*? "Add a memory store" isn't one decision — it's a choice between three data structures with different strengths, and picking the trendy one (vector store, always) instead of the right one is how memory systems end up expensive and still wrong.
+
+## Key-value: exact facts, exact lookups
+
+A key-value store — a Redis hash, a Postgres table, a JSON blob per user — is the right answer when memory is a small set of discrete facts you'll look up by an exact or near-exact key: `preferred_language: TypeScript`, `timezone: IST`, `subscription_tier: pro`. Lookups are O(1), the data is human-readable, and updates are trivial — overwrite the key. The failure mode is scale and structure: key-value has no notion of "things similar to this" and no notion of "how these facts relate to each other." It works great for a few dozen user preferences and falls apart the moment memory needs to answer "what do I know that's *relevant* to this new situation" rather than "what's the value for this exact key."
+
+## Vector stores: fuzzy relevance over unstructured text
+
+A vector store — Pinecone, Weaviate, pgvector, a local FAISS index — embeds each memory as a point in high-dimensional space (see `the geometry of embeddings`) and retrieves by `cosine similarity` to the current query. This is the right tool when memories are free-text and you don't know in advance what shape a future query will take: "things this user has told me about their project," "past conversations that touched on this bug." It's the same machinery as `RAG`, applied to memories instead of documents. What it's bad at: precise facts and relationships. A vector store can tell you a memory is *semantically close* to the query, but not that fact A caused fact B, or that entity X is a subtype of entity Y — similarity is not structure, and two facts can sit close in embedding space while being logically unrelated, or far apart while being tightly connected.
+
+## Knowledge graphs: entities, relationships, multi-hop recall
+
+A knowledge graph stores memory as nodes (entities) and typed edges (relationships) — this is what tools like Zep, Mem0's graph mode, and Neo4j-backed agent memory are built on, and it's the graph-native counterpart to `GraphRAG`. This is the right structure when the value of a memory is in *how facts connect*, not just that they exist: "which projects has this user worked on, at which companies, using which stack" is a graph traversal, not a similarity search. The payoff is multi-hop recall — answering a question by walking two or three edges from what you already know — and update semantics that vector stores don't give you cleanly: when a fact changes ("no longer at that company"), you update or retire an edge instead of hoping a new embedding out-competes a stale one in similarity ranking. The cost is engineering complexity: extraction has to produce clean entities and relations, not just chunks of text, and that extraction step is itself a place hallucination can creep in.
+
+## Choosing, and mixing
+
+Most production agent-memory systems don't pick one — they layer key-value for stable settings, vector for fuzzy episodic recall, and a graph for entities and relationships that matter across sessions, matching each store to the kind of query it will actually serve. The question to ask before reaching for any of them is the one from `memory vs state`: what does this memory need to answer? A key you'll look up exactly, a "find things like this," or a "how does X connect to Y" — the answer picks the store, not the other way around.
+
+**Related:** [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state), [GraphRAG: Retrieval Over a Knowledge Graph](/learn/rag/graphrag), [Short-Term vs Long-Term Memory](/learn/agentic-ai/agent-memory-short-vs-long-term)

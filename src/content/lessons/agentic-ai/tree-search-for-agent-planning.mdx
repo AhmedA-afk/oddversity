@@ -1,0 +1,27 @@
+---
+title: "Tree of Thoughts and MCTS: Search-Based Planning for Agents"
+track: "agentic-ai"
+status: live
+summary: "Why branching over candidate action sequences and backtracking beats a single linear chain on hard planning tasks."
+duration: "5 min read"
+---
+
+A ReAct-style agent commits to one action, sees the result, and moves on. That works until an early step is subtly wrong and every later step inherits the mistake. Tree search fixes this by generating several candidate next steps at once, scoring them, and only continuing down the ones that look promising — with the option to back up and try a different branch.
+
+## Why a single path fails on hard problems
+
+Linear reasoning (plain chain-of-thought, or [ReAct](/learn/agentic-ai/react-pattern)) treats the first plausible-looking step as the committed step. On tasks with a large solution space — multi-step puzzles, code migrations with several valid orderings, planning a trip with interacting constraints — the first plausible step is often not the best one, and the model has no mechanism to notice until much later, if ever. There's no backtracking, because there's nothing to backtrack to: the transcript is one thread.
+
+Tree of Thoughts (ToT) reframes reasoning as a search problem. At each point in the plan, the model generates several candidate "thoughts" — partial next steps, not full solutions — evaluates each with a heuristic (often the model itself, asked to score or compare candidates), and keeps only the strongest ones to expand further. Weak branches get pruned instead of pursued to the end. This is breadth-first or depth-first search over a tree whose nodes are partial reasoning states, not board positions.
+
+## MCTS: search with a real cost model
+
+Monte Carlo Tree Search goes a step further and is the right tool when actions have real, measurable cost or risk — not just "does this reasoning sound right." MCTS runs a loop: select a promising node, expand it with new candidate actions, simulate forward to estimate an outcome (a rollout, or a value-model call), and backpropagate that score up the tree so future selection favors stronger paths. It's the algorithm behind AlphaGo's move search, and agent frameworks borrow it for planning problems where you can actually simulate or score a full trajectory — game-playing agents, code-repair agents that can run tests, or robotics planners with a cost function.
+
+The difference from ToT in practice: ToT typically relies on the LLM's own judgment to prune ("which of these three approaches looks more promising?"), while MCTS relies on simulated or executed outcomes ("which of these three approaches actually passed more test cases when tried?"). MCTS is more expensive and more reliable when you have a real evaluator; ToT is cheaper and applicable when you only have the model's judgment to go on.
+
+## The cost you're paying
+
+Both approaches multiply inference calls — generating and scoring several branches at each depth easily costs 5-30x a single linear pass, so they only pay for themselves when the task is genuinely hard to get right in one shot and wrong answers are expensive to ship. For anything with an obvious single good path, [planning before acting](/learn/agentic-ai/planning-and-task-decomposition) with a plain decomposition is faster and cheaper. Reach for tree search when the failure mode you're fighting is "the agent commits early and never recovers," and you can afford the extra calls to actually explore alternatives before committing.
+
+**Related:** [Planning Before Acting](/learn/agentic-ai/planning-and-task-decomposition), [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern), [Tree-of-Thought Prompting](/learn/prompt-engineering/tree-of-thought-prompting)

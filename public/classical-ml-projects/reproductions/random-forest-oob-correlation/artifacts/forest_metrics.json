@@ -1,0 +1,6 @@
+{
+  "covered_oob_rows": 12,
+  "mean_tree_correlation": 0.5460816691854632,
+  "n_trees": 31,
+  "oob_accuracy": 0.75
+}

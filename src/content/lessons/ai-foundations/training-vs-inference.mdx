@@ -1,0 +1,35 @@
+---
+title: "Training vs. Inference"
+track: "ai-foundations"
+status: live
+summary: "Training adjusts a model's weights over many passes through data; inference just runs the frozen weights on your input."
+duration: "4 min read"
+---
+
+Every time you send a prompt to a model, you're doing something fundamentally different from what happened when that model was built. One process changes the model. The other just uses it.
+
+## Training: adjusting the weights
+
+Training is how a model learns in the first place. You feed it huge amounts of data, it makes a prediction, you compare that prediction to the right answer, and you nudge millions or billions of internal numbers — the weights — a tiny bit in the direction that would have made the prediction better. Then you repeat that, billions of times, across enormous datasets.
+
+This is why training is so expensive. It needs specialized hardware (usually large clusters of GPUs or TPUs) running for weeks or months, and it produces a single artifact at the end: a fixed set of weights. Once training stops, the model is frozen. It doesn't keep learning from the conversations people have with it afterward.
+
+Under the hood, training relies on [gradient descent](/learn/maths-foundations/gradient-descent-intuition) and [backpropagation](/learn/maths-foundations/backpropagation-intuition) to figure out which direction to nudge each weight — see [how LLMs work](/learn/ai-foundations/how-llms-work) for the fuller picture of what those weights represent.
+
+## Inference: just running the numbers forward
+
+Inference is everything that happens after training is done. When you type a message and the model replies, no weights are changing. The model is taking your input, pushing it through the same fixed set of weights it ended training with, and producing an output. That's it — one forward pass (or one pass per generated token, for a chatbot).
+
+This distinction explains a lot of what you experience day to day:
+
+- **Cost and speed.** Inference is comparatively cheap and fast — milliseconds to seconds per response — because it's a fixed amount of computation through a frozen network, not an iterative search for better weights. That's also why inference is billed per token rather than per training run: see [tokens, context, and cost](/learn/ai-foundations/tokens-context-cost).
+- **Why the model doesn't "remember" you.** Nothing you say in a conversation updates the weights. Whatever the model appears to know past that is either baked in from training or supplied fresh in the [context window](/learn/llm-foundations/context-window-mechanics) for that request.
+- **Why a knowledge cutoff exists.** The model's factual knowledge is a snapshot of whatever was in its training data. Ask it about something that happened after training ended, and it genuinely has no weights encoding that event — which is part of why grounding techniques like retrieval exist at all.
+
+## Why the split matters practically
+
+If you want a model to behave differently, you generally have two options: change what you feed it at inference time (a better prompt, more relevant context, a documents to reference), or change the weights themselves through further training. The first is fast, cheap, and reversible — it's what prompting and [context engineering](/learn/context-engineering/context-engineering-vs-prompting) are built on. The second is slow and expensive, and it's the domain of fine-tuning.
+
+Most day-to-day AI development lives entirely on the inference side. Understanding that the weights are frozen — that inference is arithmetic, not learning — is what makes ideas like context windows, prompt costs, and knowledge cutoffs click into place instead of feeling like arbitrary limitations.
+
+**Related:** [How LLMs Work](/learn/ai-foundations/how-llms-work), [Tokens, Context, and Cost](/learn/ai-foundations/tokens-context-cost), [Context Window Mechanics](/learn/llm-foundations/context-window-mechanics)

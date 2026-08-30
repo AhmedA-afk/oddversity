@@ -1,0 +1,40 @@
+---
+title: "Catch Regressions with Evals in CI"
+track: "production"
+status: live
+summary: "Run a suite of prompts with expected behaviors in CI so a prompt or model change can't silently break something that used to work."
+duration: "6 min read"
+---
+
+You change one line of a system prompt to fix a tone problem, ship it, and three days later support tickets spike because the model stopped calling a tool it always used to call. Nobody caught it because nobody tested it — the fix looked safe, and "safe" was never verified. An eval-based regression suite exists to catch exactly this before it reaches users.
+
+## What goes in the suite
+
+Treat it like a test suite for behavior, not just output shape. Each case is a real (or realistic) input paired with what a correct response looks like: the right tool gets called, a required field appears in the JSON, a claim doesn't get invented, a refusal happens when it should. Pull cases from three places:
+
+- **Past incidents** — every bug that made it to production becomes a permanent case, so it can never regress silently again (this is the same idea as [building a regression suite](/learn/evals-red-teaming/building-a-regression-suite) from real failures).
+- **Known edge cases** — empty input, adversarial phrasing, ambiguous requests, the inputs your team already knows are tricky.
+- **A slice of real traffic** — sampled and reviewed, so the suite reflects what users actually send instead of only what you imagined they'd send.
+
+Each case needs a way to grade the output automatically: an exact match, a regex, a schema check, or an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) rubric for anything too fuzzy for string matching.
+
+## Wiring it into CI
+
+The suite only earns its keep if it runs on every change that could move behavior — not just code, but prompt edits, model swaps, and RAG index updates too. A minimal setup:
+
+```
+on: pull_request
+steps:
+  - run: python run_evals.py --suite regression --model $TARGET_MODEL
+  - run: python compare_to_baseline.py --threshold 0.95
+```
+
+`run_evals.py` replays every case against the candidate prompt/model and scores it. `compare_to_baseline.py` compares the new score to the last known-good baseline, case by case, not just on the aggregate — an aggregate score can hold steady while one important case flips from pass to fail underneath it. Fail the build on any regression past your threshold, and surface which specific cases broke so the diff is obvious in the PR, not buried in a dashboard.
+
+## What this catches that ad-hoc testing doesn't
+
+Manual spot-checking scales with how much you remember to check, which shrinks every time the prompt gets more complex. A regression suite doesn't forget the weird edge case from six months ago, and it runs the same way every time, so two changes made a day apart are graded on identical ground. It's also what makes [eval-driven iteration](/learn/evals-red-teaming/eval-driven-iteration) possible — you can only ship by eval diff if there's a suite producing that diff on every change.
+
+Keep the suite honest by pruning cases that no longer reflect real usage and adding new ones as fast as new failure modes show up. A regression suite that never grows stops earning its name.
+
+**Related:** [Turning Bugs into a Regression Suite](/learn/evals-red-teaming/building-a-regression-suite), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration)

@@ -1,0 +1,33 @@
+---
+title: "Background Jobs for Long-Running AI Tasks"
+track: "genai-app-dev"
+status: live
+summary: "Move slow generations off the request thread into a queue, then let the client poll or get a webhook when it's done."
+duration: "5 min read"
+---
+
+Some AI work doesn't fit in a request-response cycle. A multi-step agent run, a batch document summary, a video or long-form audio generation — anything that can take 30 seconds to several minutes needs a different shape than "call the model, return the response."
+
+## Why the request thread breaks down
+
+HTTP requests aren't built to hang open for minutes. Load balancers time out, mobile connections drop, and a browser tab that gets backgrounded can silently kill the connection. Even if none of that happens, tying up a server process or serverless invocation for the full duration of a generation is expensive — you're paying for idle wait time, not compute.
+
+The fix is to decouple "start the work" from "get the result." The request that kicks off the task returns almost immediately with a job ID. The actual generation runs in a worker process, pulling jobs off a queue (Redis, SQS, a Postgres-backed queue like `pgboss`, or a managed option like Inngest or Trigger.dev). The client is then responsible for finding out when the job is done.
+
+## Polling vs. webhooks
+
+There are two ways the client learns the job finished:
+
+**Polling** — the client requests `GET /jobs/{id}` every few seconds until the status flips from `queued` or `running` to `completed` or `failed`. Simple to implement on both ends, works through any firewall, and needs no public endpoint from the caller. The tradeoff is wasted requests and a small delay between completion and discovery — usually acceptable if you poll every 2-5 seconds with backoff.
+
+**Webhooks** — the worker calls back to a URL you provide once the job resolves. No wasted polling, near-instant notification, but it requires the caller to expose a reachable endpoint, handle retries if their endpoint is briefly down, and verify the callback is genuinely from you (a signed payload, not just a shared secret in the URL). This is the pattern most LLM batch APIs and video-generation APIs use for anything over a minute or two.
+
+A third option, useful inside your own app rather than across an API boundary, is to push a message to a connected client the moment the job finishes over [SSE or a WebSocket](/learn/genai-app-dev/sse-vs-websockets) — instant like a webhook, but scoped to a live session instead of a durable callback URL.
+
+## Designing the job record
+
+Whichever notification method you use, the job needs a durable record: an ID, a status enum, timestamps, the result (or error) once resolved, and enough of the original input to retry safely. Store it in your own database, not just the queue — queues are built to move work through, not to answer "what happened to job 4192 from yesterday." Idempotency matters too: if a worker crashes mid-job and retries, make sure re-running doesn't double-charge a user or double-send a webhook.
+
+Background jobs also change how you think about failure. A synchronous call fails loudly, in the response. A queued job can fail silently unless you build in retry limits, dead-letter handling, and — critically — a way for the user to see that their job failed instead of waiting forever on a spinner.
+
+**Related:** [SSE vs. WebSockets for Streaming LLM Output](/learn/genai-app-dev/sse-vs-websockets), [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies), [Human-in-the-Loop Review Queues](/learn/genai-app-dev/human-in-the-loop-review-queues)

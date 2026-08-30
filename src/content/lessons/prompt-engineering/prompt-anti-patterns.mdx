@@ -1,0 +1,33 @@
+---
+title: "Prompt Anti-Patterns to Stop Doing"
+track: "prompt-engineering"
+status: live
+summary: "The recurring mistakes — vague asks, buried instructions, contradictory constraints — that quietly wreck output quality."
+duration: "5 min read"
+---
+
+Most bad model output isn't a model problem. It's a handful of prompt habits that keep showing up across teams, and every one of them is fixable in the same prompt you already wrote.
+
+## Vague asks dressed up as instructions
+
+"Make this better" or "clean up this code" gives the model no target to aim at. Better and cleaner according to what — readability, performance, brevity? Without a stated goal, the model guesses, and it usually guesses toward the most generic interpretation, which is rarely what you wanted. Replace vague verbs with a concrete outcome: what should be true of the result that isn't true now. This is the same discipline behind [answer-first prompting](/learn/prompt-engineering/answer-first-prompting) — state the destination before the path.
+
+## Burying the real instruction
+
+A prompt that opens with three paragraphs of background and drops the actual task in the last sentence is fighting the model's own attention patterns. Instructions near the end of a long block compete with everything before them, and instructions in the middle get the least attention of all. Put the task up front, then supply supporting context, or use [delimiters](/learn/prompt-engineering/delimiters-and-formatting) to visually separate instructions from the content they apply to. If the prompt is doing too much at once, that's usually a sign it needs [decomposition](/learn/prompt-engineering/task-decomposition) into smaller steps rather than one longer paragraph.
+
+## Contradictory constraints
+
+"Be concise but cover every edge case." "Be creative but stick exactly to this format." Each half of these instructions is reasonable alone; together they force the model to silently pick a winner, and you don't get to see which one it picked until the output is already wrong. If two constraints trade off against each other, say which one wins, or give a number: a length cap, a fixed list of cases, a required structure. Ambiguity resolved by you costs one sentence. Ambiguity resolved by the model costs a retry.
+
+## Piling on negative instructions
+
+"Don't be verbose. Don't use jargon. Don't repeat the question." A wall of don'ts tells the model what to avoid without ever describing the target, and negations are also just harder for a model to act on reliably than positive framing — see [why "don't do X" backfires](/learn/prompt-engineering/negative-instructions-pitfall) for why. "Write two sentences in plain language, then stop" does the same job as three don'ts and is easier to satisfy.
+
+## Assuming the first draft is good enough to ship
+
+Anti-patterns are easy to spot once you're looking for them, but you're not always looking — a prompt that reads fine to its author can still be vague or contradictory to the model. Treat prompts like code: run a few real inputs through before trusting the output pattern, not just the happy-path one you had in mind while writing it. That's the whole idea behind [evaluating prompts before you ship them](/learn/prompt-engineering/prompt-evaluation-basics).
+
+None of these fixes require a cleverer prompt — they require a clearer one. State the goal, put it first, resolve your own contradictions, and say what you want instead of what you don't.
+
+**Related:** [Why "Don't Do X" Backfires](/learn/prompt-engineering/negative-instructions-pitfall), [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics)

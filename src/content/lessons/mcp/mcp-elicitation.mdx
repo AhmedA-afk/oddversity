@@ -1,0 +1,45 @@
+---
+title: "MCP Elicitation: Servers Asking the User Mid-Session"
+track: "mcp"
+status: live
+summary: "Lets an MCP server pause a tool call to ask the user a question, instead of failing or guessing."
+duration: "5 min read"
+---
+
+Most tool calls are one-shot: the client sends arguments, the server does the work, the result comes back. Elicitation breaks that pattern on purpose — it lets a server stop mid-call and ask the human a question before it finishes.
+
+## The problem it solves
+
+Say a server exposes a `book_flight` tool. The model calls it with a destination and a date but no seat preference. Without elicitation, the server has two bad options: guess a seat class, or throw a validation error back at the model and hope it re-prompts the user correctly in prose. Neither is reliable — a guess can be wrong in a way that costs money, and an error round-tripped through the model's own words often loses the specific question that needed answering.
+
+Elicitation gives the server a third option: send an `elicitation/create` request back to the client, describing exactly what it needs — a short prompt plus a JSON schema for the expected shape of the answer — and wait. The client is responsible for turning that into an actual UI: a form, a dialog, a chat prompt. The human answers, accepts, or declines, and the client sends the result back to the server, which then resumes the original tool call with that answer in hand.
+
+## What a request actually looks like
+
+The schema on an elicitation request is intentionally narrow — flat objects with primitive fields (strings, numbers, booleans, enums), not deeply nested structures. That's a deliberate constraint: the client has to render this into a generic form without knowing anything about the domain, so the server can't ask for arbitrary structured data the way a tool call can.
+
+```json
+{
+  "method": "elicitation/create",
+  "params": {
+    "message": "Which cabin class do you want for this flight?",
+    "requestedSchema": {
+      "type": "object",
+      "properties": {
+        "cabin": { "type": "string", "enum": ["economy", "premium", "business"] }
+      },
+      "required": ["cabin"]
+    }
+  }
+}
+```
+
+The response carries an action — `accept`, `decline`, or `cancel` — separate from the content itself, so the server can tell "the user said no" apart from "the user gave an empty answer."
+
+## Why this has to be a client decision, not a server one
+
+A server cannot pop its own dialog box — it usually isn't even running in the same process as the UI. Routing the question through the client is what keeps a human in the loop for exactly the servers that need it, without every server needing its own UI layer. It also means the client — not the server — controls what elicitation is allowed to ask for and how often, which matters once you're connecting to servers you don't fully trust: see [Securing MCP Servers Against Prompt Injection](/learn/mcp/securing-mcp-servers-against-prompt-injection) for why an untrusted server asking arbitrary questions is itself a risk surface worth constraining.
+
+Elicitation is easy to confuse with two neighboring ideas. It is not the same as a tool's input schema, which is filled in once, up front, by the model — elicitation happens *during* execution, after the server has already started working and discovered it's missing something. And it's not [MCP Sampling](/learn/mcp/mcp-sampling), which lets a server borrow the client's LLM to generate text; elicitation borrows the client's *user*, not its model.
+
+**Related:** [MCP Sampling: Letting a Server Borrow the Client's LLM](/learn/mcp/mcp-sampling), [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts), [Securing MCP Servers Against Prompt Injection](/learn/mcp/securing-mcp-servers-against-prompt-injection)

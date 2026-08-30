@@ -1,0 +1,39 @@
+---
+title: "The Gateway Pattern: Proxying Many MCP Servers Behind One"
+track: "mcp"
+status: live
+summary: "One endpoint that aggregates, filters, and re-exposes several backend MCP servers to a client."
+duration: "5 min read"
+---
+
+An agent with fifteen MCP servers configured doesn't have fifteen clean connections — it has fifteen processes to launch, fifteen sets of credentials to manage, and a tool list so long the model starts picking the wrong tool. The gateway pattern fixes this by putting one MCP server in front of all the others.
+
+## What a gateway actually does
+
+A gateway is itself an MCP server from the client's point of view — it speaks the protocol, exposes tools, answers `list_tools`. But instead of implementing those tools itself, it holds its own pool of MCP client connections to backend servers (a filesystem server, a database server, three internal company servers) and forwards calls through.
+
+The client sees one connection. Behind it, the gateway is doing connection pooling, credential injection, and routing — the same job an API gateway does for REST services, just speaking MCP on both sides instead of MCP on one side and HTTP on the other.
+
+This buys three things a raw multi-server setup doesn't have:
+
+- **Namespacing.** Two backend servers both expose a tool called `search`. The gateway can prefix them (`docs_search`, `tickets_search`) so the model never sees a collision.
+- **Filtering.** A backend server might expose forty tools; the gateway can re-expose twelve. This matters more than it sounds — see [MCP and the Context Window](/learn/mcp/mcp-context-window) for why every extra tool schema is tokens the model has to hold onto on every turn.
+- **Centralized auth.** Backend servers each need their own credentials. The gateway holds them once, server-side, so the client only ever authenticates to the gateway. See [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals).
+
+## Aggregation vs. pass-through
+
+There are two ways a gateway can handle a call, and they behave differently.
+
+**Pass-through** forwards the request to the matching backend and returns its response untouched. Simple, low-latency, and it preserves streaming and structured output exactly as the backend produced them.
+
+**Aggregation** is heavier: the gateway calls multiple backends for one incoming request and merges the results — for example, a single `search` tool on the gateway that fans out to a docs server and a ticket server and returns a combined result list. This is genuinely useful for the model (one tool call instead of two), but it means the gateway now owns merge logic, partial-failure handling, and its own opinion about result ranking. That's a real piece of software, not just a proxy.
+
+Most production gateways are pass-through by default and add aggregation only for the handful of tools where combining results is worth the complexity.
+
+## Where it breaks down
+
+A gateway is a single point of failure and a single point of trust. If it goes down, every backend behind it is unreachable even though the backends themselves are healthy — see [Running MCP Servers in Production](/learn/mcp/running-mcp-servers-in-production) for the operational side of that risk. And because the gateway holds credentials for everything behind it, compromising the gateway compromises the whole fleet — treat it with the same scrutiny you'd give any [sandboxed](/learn/mcp/sandboxing-untrusted-servers) boundary.
+
+The pattern also doesn't remove the need for [tool discovery](/learn/mcp/mcp-tool-discovery-and-schemas) design — it just moves the decision of what the model sees from "whatever every server happens to expose" to "whatever the gateway operator curates," which is a better place for that decision to live, but still a decision someone has to make deliberately rather than let sprawl by default.
+
+**Related:** [Orchestrating Multiple MCP Servers in One Client Session](/learn/mcp/multi-server-orchestration), [MCP and the Context Window](/learn/mcp/mcp-context-window), [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals)

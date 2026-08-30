@@ -1,0 +1,27 @@
+---
+title: "Pairwise vs. Pointwise: Two Ways to Grade Model Output"
+track: "evals-red-teaming"
+status: live
+summary: "Score each output alone or make a judge pick a winner between two — the two grading modes behave very differently in practice."
+duration: "5 min read"
+---
+
+When you turn a model loose on a judge, you have to decide what question you're actually asking it. "How good is this response, on a scale of 1 to 5?" and "Which of these two responses is better?" sound similar. They produce different failure modes, different data, and different downstream decisions.
+
+## Pointwise: one output, one score
+
+Pointwise grading hands the judge a single response (and usually a rubric) and asks for an absolute score — a number, a pass/fail, a label like "hallucinated" or "grounded." It's the natural fit when you need a score that stands on its own: a dashboard tracking quality over time, a gate in CI that fails a build below some threshold, or a per-response metric you log at scale in production.
+
+The catch is that LLM judges are bad at holding a stable internal scale. Ask for a 1–10 score and you'll see the judge cluster everything between 6 and 8, drift as the rubric wording changes, or rate the same response differently depending on what came before it in a batch. A rubric with concrete anchors for each score band helps ("3 = correct but missing a required citation"), but pointwise scores are still the noisiest signal you can get from a judge, and they're expensive to make comparable across model versions — a "7" from last month's judge run isn't guaranteed to mean the same thing as a "7" today unless you re-run everything through one consistent judge and prompt.
+
+## Pairwise: which one wins
+
+Pairwise grading shows the judge two responses to the same input — often from two model versions, two prompts, or a candidate against a fixed baseline — and asks which is better, or by how much. This is a much easier task for an LLM judge to do reliably: relative judgments ("A is more concise and equally correct") are more stable than absolute ones, because the judge doesn't need an internal scale, just a comparison. This is the mechanism behind tools like [LMSYS's Chatbot Arena](https://lmarena.ai) and most production A/B eval pipelines: run enough pairwise comparisons and you can back out an Elo-style ranking, which is far more informative than a pile of noisy absolute scores.
+
+The cost is that pairwise comparisons scale quadratically if you want to rank more than two things head-to-head, and a single comparison tells you nothing about whether either output is *actually good* — only that one beat the other. Two mediocre responses still produce a winner. And judges carry real, measurable biases in pairwise setups: position bias (favoring whichever response appears first), verbosity bias (favoring the longer answer), and self-preference (favoring output from the same model family as the judge) — worth reading about in [LLM-Judge Bias: Position, Verbosity, and Self-Preference Effects](/learn/evals-red-teaming/llm-judge-bias-and-calibration).
+
+## Picking one for the job
+
+Use pointwise when you need an absolute number you can threshold, trend, or report to stakeholders — regression gates, dashboards, per-category quality tracking. Use pairwise when the real question is comparative — did this prompt change help, is model B better than model A on your task — which is most of the time you're iterating. Many mature eval setups use both: pointwise checks for hard failures (did it hallucinate, did it violate a policy) alongside pairwise comparisons to drive the actual "should we ship this change" decision, an approach covered in [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration). If you're grading with a model at all, start with the fundamentals in [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge) — the judging mode matters less than getting the judge itself calibrated first.
+
+**Related:** [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [LLM-Judge Bias: Position, Verbosity, and Self-Preference Effects](/learn/evals-red-teaming/llm-judge-bias-and-calibration), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration)

@@ -1,0 +1,38 @@
+---
+title: "MCP Roots: Scoping a Server to a Filesystem Boundary"
+track: "mcp"
+status: live
+summary: "Tells a server which directories it may touch instead of trusting it with the whole filesystem."
+duration: "6 min read"
+---
+
+A filesystem MCP server doesn't know your project lives at `~/code/widgets` unless something tells it. Without a boundary, "list files" or "read this path" can wander anywhere the process's OS user can reach — your SSH keys, other projects, the rest of the disk. Roots are how the client fixes that boundary before a single tool call runs.
+
+## What a root actually is
+
+A root is a client-declared boundary, not a server-enforced one: a URI (almost always a `file://` path) plus a human-readable name, saying "everything the user cares about right now lives under here." The client — the host app, like an IDE or Claude Desktop — exposes a `roots/list` method. When a server wants to know its scope, it calls that method and gets back something like:
+
+```json
+{
+  "roots": [
+    { "uri": "file:///Users/ahmed/code/widgets", "name": "widgets" },
+    { "uri": "file:///Users/ahmed/code/widgets-docs", "name": "widgets-docs" }
+  ]
+}
+```
+
+A user with two folders open in their editor gets a server that knows about both — not the entire home directory. If the set changes (a folder gets added or closed), the client sends a `notifications/roots/list_changed` notification so the server can re-fetch instead of working from stale scope.
+
+## Advisory, not a sandbox
+
+The part that trips people up: roots are a *hint*, not a security boundary. Nothing stops a poorly written or malicious server from calling `read_file` with a path outside every declared root — the protocol doesn't intercept that call and block it. Roots tell a well-behaved server where the user's intent lives; they don't physically prevent a misbehaving one from reaching further.
+
+That means the real enforcement has to happen somewhere with actual OS-level teeth: run the server in a container or sandboxed process with the filesystem mounted read-only outside the intended directories, or drop privileges so the process literally cannot open files elsewhere. Roots and sandboxing solve different problems — one communicates scope, the other guarantees it. See [Sandboxing Untrusted MCP Servers](/learn/mcp/sandboxing-untrusted-servers) for how to make the boundary actually hold.
+
+## Why this beats a hardcoded path
+
+Before roots, a filesystem server either asked the user to type a path into a config file, or defaulted to something broad like the home directory. Both are worse: the config-file path goes stale the moment the user switches projects, and a broad default is exactly the "trust it with everything" problem roots exist to avoid. Because the client already knows what's open — it's the thing rendering the workspace — roots let that context flow to the server automatically, scoped down to only what's relevant to the current session.
+
+This is also why roots are a client capability, not a server one: the server declares nothing about roots in its own manifest. It just calls `roots/list` if it wants scoping information, the same way it might call a tool. A client that doesn't support roots simply won't respond to that call, and a well-written server should treat "no roots given" as "ask the user, or default to nothing" rather than falling back to scanning the whole disk.
+
+**Related:** [Sandboxing Untrusted MCP Servers](/learn/mcp/sandboxing-untrusted-servers), [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts), [MCP Architecture: Hosts, Clients, Servers](/learn/mcp/mcp-architecture-hosts-clients-servers)

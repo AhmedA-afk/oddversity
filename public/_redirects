@@ -1,0 +1,11 @@
+# Canonicalise on the apex domain. Enable once DNS for both names exists.
+# https://www.oddversity.com/*  https://oddversity.com/:splat  301!
+
+# Stable shortcuts worth keeping working if they are ever shared.
+/curriculum      /learn           301
+/docs            /reference       301
+/glossary        /reference/glossary  301
+/feed            /rss.xml         301
+/feed.xml        /rss.xml         301
+/rss             /rss.xml         301
+/security.txt    /.well-known/security.txt  301

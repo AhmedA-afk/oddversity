@@ -1,0 +1,37 @@
+---
+title: "Route Offline Workloads Through Batch APIs"
+track: "production"
+status: live
+summary: "Cut cost roughly in half on jobs nobody is waiting on by using async batch endpoints instead of the interactive API."
+duration: "5 min read"
+---
+
+If a human isn't staring at a spinner waiting for the response, you're probably paying too much for it. Batch APIs trade latency for cost: submit a pile of requests, get results back in hours instead of milliseconds, and pay roughly half the per-token price.
+
+## What actually counts as "batch work"
+
+Not every job needs a synchronous round trip. Nightly re-scoring of support tickets, bulk-classifying a backlog of documents, generating embeddings for a new corpus, re-running evals across a prompt change, backfilling summaries for old records — none of these have a user refreshing a page waiting on them. The defining trait isn't volume, it's whether a delay of minutes to a day is acceptable. If yes, it belongs in a batch queue, not your normal request path.
+
+Anthropic's Message Batches API and OpenAI's Batch API both work the same way: you upload a file of requests (each with its own `custom_id`), the provider processes them asynchronously against spare capacity, and you poll or get notified when the batch completes — typically within 24 hours, often much faster. In exchange, both charge about 50% less than the interactive endpoint for the same tokens. That discount is the entire reason this pattern exists.
+
+## Building the pipeline
+
+The mechanics are simple but the plumbing matters more than the API call itself:
+
+```
+1. Collect requests → JSONL file, one line per request, each tagged with custom_id
+2. Submit batch → get back a batch_id
+3. Poll status (or use a webhook if the provider supports one)
+4. On completion, download results → map custom_id back to your records
+5. Handle partial failures — some lines can fail independently
+```
+
+Two things trip people up. First, batches aren't guaranteed to finish in order, or even all at once — treat the whole thing as fire-and-forget with a callback, not a blocking call you `await`. Second, individual requests inside a batch can fail while the rest succeed, so your ingestion code needs to handle a results file that's a mix of successes and errors, not assume uniform output.
+
+## Where it fits next to caching and routing
+
+Batch APIs solve a different problem than [prompt caching](/learn/production/prompt-and-semantic-caching) or [model routing](/learn/production/model-routing-by-task-complexity). Caching cuts cost when you repeat the *same* context across calls; routing cuts cost by sending easy requests to a cheaper model. Batching cuts cost by relaxing the *time* constraint — same model, same prompt, just no rush. They stack: a nightly reclassification job can run on a cheap model, through the batch endpoint, with a cached system prompt, for a fraction of what the naive interactive-API version would cost.
+
+The main mistake teams make is defaulting everything to interactive calls because it's the path they already built, then wondering why the bill is high. Any workload where "results by tomorrow morning" is fine is money left on the table if it's still hitting the synchronous endpoint.
+
+**Related:** [Cache Prompts and Responses to Cut Cost](/learn/production/prompt-and-semantic-caching), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity), [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking)

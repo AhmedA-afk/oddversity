@@ -1,0 +1,40 @@
+---
+title: "Cache on Meaning, Not Just Exact Text Match"
+track: "production"
+status: live
+summary: "Use embedding similarity to catch paraphrased requests that exact-match caching misses entirely."
+duration: "5 min read"
+---
+
+A user asks "What's your refund policy?" You cache the answer. Ten minutes later another user asks "How do refunds work?" — same intent, different words. An exact-match cache treats that as a miss, sends it to the model, and pays full price for an answer you already have sitting right there.
+
+## Exact match is too literal for language
+
+Traditional caching hashes the request and looks up an identical key. That works great for deterministic systems — the same SQL query, the same API call. But LLM inputs are natural language, and natural language has near-infinite ways to say the same thing. Capitalization, word order, "please," synonyms — any of it breaks a hash-based cache, even though the model would have produced the same (or a functionally equivalent) answer either way. For high-traffic, narrow-domain features — support bots, FAQ assistants, internal tools with repetitive questions — that's a lot of avoidable spend and latency.
+
+## How semantic caching works
+
+Instead of hashing the raw string, you embed the incoming query into a vector and compare it against the embeddings of previously cached queries using [cosine similarity](/learn/maths-foundations/cosine-similarity). If the closest match clears a similarity threshold — say 0.92 — you serve the cached response instead of calling the model. If nothing clears the bar, you call the model as normal and store the new query's embedding alongside its response for next time.
+
+The pipeline looks like:
+
+```
+1. embed(incoming_query)
+2. nearest = vector_search(cache_index, embedding, k=1)
+3. if nearest.similarity >= threshold:
+     return nearest.cached_response
+4. else:
+     response = call_llm(incoming_query)
+     cache_index.add(embedding, response)
+     return response
+```
+
+In practice this is a small vector index (often the same store you'd use for [similarity search](/learn/rag/similarity-search-and-ann-indexes) in RAG) sitting in front of your LLM calls, not a full retrieval pipeline — you're matching against a handful of thousands of past queries, not a document corpus.
+
+## The threshold is the whole game
+
+Set it too low and you'll return the refund policy answer to someone asking about shipping — a confidently wrong response that's worse than a cache miss. Set it too high and you barely improve on exact match. There's no universal number; it depends on your embedding model and how semantically dense your query space is. Tune it against a labeled set of "these should match" and "these should not" pairs, and re-check it whenever you change embedding models, since similarity scores aren't comparable across models.
+
+Semantic caching also fits queries poorly when the answer depends on volatile state — user identity, current time, live data — because two similar-sounding questions can need genuinely different answers. Scope it to stable, FAQ-shaped traffic, pair it with your cost dashboards so you can see the hit rate pay off, and keep a short TTL so stale answers age out.
+
+**Related:** [Cache Prompts and Responses to Cut Cost](/learn/production/prompt-and-semantic-caching), [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)

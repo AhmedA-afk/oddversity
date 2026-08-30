@@ -1,0 +1,54 @@
+---
+title: "RAG interview questions"
+topic: "Retrieval-augmented generation"
+description: "Eight questions about retrieval, grounding, citations, and how to debug a RAG system."
+order: 3
+---
+
+## 1. What is retrieval-augmented generation?
+
+RAG retrieves relevant external content for a user request and places that content into the model's context before generation. It lets an application use changing or private information without updating the base model's parameters.
+
+RAG is a system pattern, not a guarantee of factuality. Retrieval can miss the answer, return stale material, or include hostile instructions. Start with [what RAG is and when to use it](/learn/rag/what-is-rag-and-when-to-use-it).
+
+## 2. What is an embedding?
+
+An embedding is a vector representation produced by a model. Texts with related meaning often land near one another under a chosen similarity measure, which makes embeddings useful for candidate retrieval.
+
+Similarity is not the same as relevance to a specific task. Test the embedding model and distance function on your own queries, including terminology, rare identifiers, and negative examples. See [embeddings and semantic similarity](/learn/rag/embeddings-and-semantic-similarity).
+
+## 3. How should you choose chunk size?
+
+Choose chunks that preserve enough meaning to answer a question while staying focused enough to rank well. Respect document structure where possible: headings, paragraphs, tables, and code blocks are often better boundaries than a fixed character count.
+
+Measure retrieval recall, answer quality, context size, and latency together. Overlapping every chunk is not automatically helpful. See [chunking strategies](/learn/rag/chunking-strategies-for-documents).
+
+## 4. What is hybrid search?
+
+Hybrid search combines lexical retrieval, which is strong for exact terms and identifiers, with semantic retrieval, which is strong for paraphrase and related concepts. A reranker can then score the combined candidates against the query.
+
+The right blend depends on the corpus. Product names, error codes, and policy phrases are common reasons a purely semantic index underperforms.
+
+## 5. How do you reduce hallucinations in RAG?
+
+Improve retrieval recall and precision, provide source metadata, instruct the model to distinguish evidence from inference, constrain the answer to retrieved support, and allow abstention when evidence is insufficient. Then evaluate groundedness and citation correctness on a labeled set.
+
+Prompt wording cannot compensate for missing evidence. See [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) and [evaluating RAG quality](/learn/rag/evaluating-rag-quality).
+
+## 6. What does “lost in the middle” mean?
+
+It describes the tendency for models to use information at the beginning and end of a long context more reliably than information buried in the middle. It is one reason to trim, order, and format retrieved passages deliberately.
+
+Do not assume the effect has the same size for every model or task. Test context placement with your own questions and answer locations.
+
+## 7. How do you handle document updates?
+
+Give documents stable identifiers and version metadata, make ingestion idempotent, and remove or supersede old chunks when a source changes. Store enough provenance to explain which source and version supported an answer.
+
+For urgent changes, use a freshness policy in the retriever or a direct source lookup rather than hoping a scheduled batch has completed.
+
+## 8. Which RAG metrics matter?
+
+Retrieval metrics include recall at a cutoff, precision, and ranking quality. Generation metrics include answer correctness, groundedness, citation accuracy, completeness, refusal quality, and latency or cost. Human review is still useful for ambiguous or high-impact cases.
+
+Measure the whole path. A high retrieval score with a poor answer may indicate context ordering, synthesis, or instruction problems rather than a vector-index problem.

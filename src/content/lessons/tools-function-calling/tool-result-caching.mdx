@@ -1,0 +1,41 @@
+---
+title: "Caching Tool Results Across Calls"
+track: "tools-function-calling"
+status: live
+summary: "Skip redundant tool calls by caching results on tool name plus arguments, with care about what should never be cached."
+duration: "5 min read"
+---
+
+An agent that calls `get_weather(city="Austin")` three times in one trace, or looks up the same customer record in every turn of a support conversation, is burning latency and money on work it already did. Tool result caching means keying a store on the tool name and its arguments, and serving the stored result instead of re-invoking the tool when the same call recurs.
+
+## What to key on
+
+The cache key isn't the tool name alone — it's the tool name plus a canonical form of the arguments. "Canonical" matters: `{"city": "Austin", "units": "F"}` and `{"units": "F", "city": "Austin"}` are the same call, so sort keys before hashing, or serialize through a stable JSON encoder. Miss this and you'll cache the same lookup under five different keys and wonder why the hit rate is zero.
+
+```
+key = tool_name + ":" + sha256(canonical_json(arguments))
+```
+
+Store the result alongside a timestamp and, if the tool declares one, a TTL. A stock price lookup might get a 30-second TTL; a lookup of a company's founding year might be cached indefinitely.
+
+## What not to cache
+
+Not every tool is safe to memoize. The dividing line is idempotence and freshness, not convenience:
+
+- **Side-effecting tools** — `send_email`, `create_ticket`, `charge_card` — should never be served from cache. Calling them "again" from a cached result means the action didn't actually happen, which silently breaks the agent's model of the world.
+- **Time-sensitive reads** — `get_current_time`, `get_stock_price`, `check_inventory` — need a short TTL or no caching at all, since a stale answer here is actively wrong, not just outdated.
+- **User- or session-scoped reads** — a "current user's permissions" lookup should be keyed with the user or session in the cache key, never shared globally across users.
+
+A good default: mark each tool schema with a `cacheable: boolean` and, when true, a `ttl_seconds`. Let the harness enforce it rather than trusting the model to decide per call — the model doesn't reliably know which of its own tools are safe to skip.
+
+## Within a session vs. across sessions
+
+Within a single agent run, an in-memory dict keyed on the call signature is enough — it catches the common case of an agent re-deriving the same lookup two reasoning steps later after losing track of what it already knows. This is cheap and low-risk since the cache dies with the process.
+
+Caching *across* sessions — a Redis or SQLite-backed store that persists between conversations — pays off for expensive, stable calls: a web search that returns the same top results within a few hours, a database schema introspection that only changes on deploy, or a document parse that's pure given the same file hash. The cost here isn't just staleness — it's that a cross-session cache decouples the result from the tool's live guarantees, so returning results should note they came from cache in the [tool result payload](/learn/tools-function-calling/returning-tool-results-to-the-model) if the model's downstream reasoning depends on recency.
+
+## Invalidation is the real problem
+
+The classic line applies: caching is easy, knowing when to throw the cache away is not. Prefer explicit invalidation triggers over TTL guessing wherever you can get one — invalidate a "list files in repo" cache on a webhook when the repo changes, rather than picking an arbitrary 5-minute window and hoping. Where no signal exists, a short TTL that's wrong in the safe direction (serving fresh too often) beats a long one that's wrong in the dangerous direction (serving stale silently).
+
+**Related:** [Returning Tool Results to the Model](/learn/tools-function-calling/returning-tool-results-to-the-model), [Tool Output Deduplication: Stopping Repeated Results from Eating the Budget](/learn/context-engineering/tool-output-deduplication), [Cache on Meaning, Not Just Exact Text Match](/learn/production/semantic-caching-beyond-exact-match)

@@ -1,0 +1,40 @@
+---
+title: "Prompt Versioning: Treating Prompts Like Code"
+track: "prompt-engineering"
+status: live
+summary: "Diff, changelog, and roll back prompts the same way you'd manage a code release."
+duration: "5 min read"
+---
+
+A prompt that works today can quietly break next week — not because you touched it, but because someone else did, or because a model swap changed how it's read. Treat prompts as versioned artifacts, not throwaway strings, and that whole class of surprise goes away.
+
+## Why prompts rot silently
+
+Code has a compiler and a test suite standing between a bad change and production. A prompt has neither. Someone tweaks a system prompt to fix one complaint, ships it, and three other use cases degrade without a single error or stack trace — the model still returns 200, it just answers worse. Without a record of what changed and when, you're stuck guessing which of the last five edits caused a regression, or worse, not noticing until a user complains.
+
+The fix isn't exotic tooling. It's applying habits you already use for code: every prompt lives in version control, every change is a diff, every diff has a reason attached.
+
+## What to version, concretely
+
+Store each prompt as its own file — not buried in a Python string or a database row — so `git diff` shows exactly what changed between versions:
+
+```diff
+- Answer the user's question directly.
++ Answer the user's question directly. If the answer depends on
++ information not in the provided context, say so explicitly
++ rather than guessing.
+```
+
+Tag each version (`v1`, `v2`, `v12-fix-hedging`) and keep a short changelog entry: what changed, why, and what eval score it produced. That last part matters most — a prompt version without a score attached is a version you can't compare against anything. See [shipping changes by eval diff](/learn/evals-red-teaming/eval-driven-iteration) for how that comparison actually works in practice.
+
+## Rollback needs to be instant
+
+The real payoff of versioning shows up during an incident. If a new system prompt causes a spike in refusals or hallucinations, you want to revert to the last known-good version in seconds — not re-derive it from memory or dig through Slack. That means production should read the active prompt from a versioned store (a config service, a database row with a version column, a feature flag) rather than from whatever's hardcoded in the deployed binary. The lesson on [prompt versioning and safe rollbacks](/learn/genai-app-dev/prompt-versioning-rollback) covers wiring this into an actual app; [treating prompts as versioned config](/learn/production/prompts-as-versioned-config) covers why embedding them in source code specifically causes this pain in production.
+
+## Change management, not just change tracking
+
+Versioning tells you what changed. Change *management* is the process around it: no prompt reaches production without running against your eval set first, every change ships with a before/after score, and every regression traces back to a specific diff. Pair this with [A/B testing prompts against real traffic](/learn/prompt-engineering/ab-testing-prompts-in-production) for changes where offline evals aren't conclusive enough to ship blind.
+
+None of this requires heavyweight infrastructure to start — a `prompts/` directory in your repo, one file per prompt, commit messages that say why, and a habit of running your eval suite before merging. The discipline is the same one that makes code review work; prompts have just been getting a pass on it for too long.
+
+**Related:** [Prompt Versioning and Safe Rollbacks](/learn/genai-app-dev/prompt-versioning-rollback), [Treat Prompts as Versioned Config, Not Embedded Strings](/learn/production/prompts-as-versioned-config), [A/B Testing Prompts Against Real Traffic](/learn/prompt-engineering/ab-testing-prompts-in-production)

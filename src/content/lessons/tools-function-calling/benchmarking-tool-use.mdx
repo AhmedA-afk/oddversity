@@ -1,0 +1,38 @@
+---
+title: "Benchmarking Tool Use: BFCL and Function-Calling Evals"
+track: "tools-function-calling"
+status: live
+summary: "How to measure whether a model actually picks the right tool and fills arguments correctly, not just sounds plausible."
+duration: "6 min read"
+---
+
+A model that writes a fluent explanation of which tool to call is not the same as a model that calls the right tool with the right arguments. Tool-use benchmarks exist because that gap is easy to miss in a demo and expensive to discover in production.
+
+## Why free-text evals don't work here
+
+Standard LLM evals — BLEU-style overlap, or an LLM judge reading a paragraph — assume the output is prose. A tool call is structured: a function name plus a JSON object of arguments, evaluated against a live or simulated environment. Grading it means checking three separate things that can each fail independently: did the model call a tool at all when one was needed, did it pick the *correct* tool among the available options, and did it fill every required argument with a value of the right type and value. A model can get two of three right and still produce a call that crashes on execution — a rounded date string where an API wants ISO 8601, or a valid tool name with a missing required field.
+
+## What BFCL actually tests
+
+The Berkeley Function-Calling Leaderboard (BFCL), from the Gorilla project at UC Berkeley, is the closest thing the field has to a standard for this. It breaks tool use into categories instead of one aggregate score, because "can call a tool" hides very different failure modes:
+
+- **Simple** — one tool, one call, straightforward arguments.
+- **Multiple** — several tools are offered; the model must pick the right one and ignore the rest.
+- **Parallel** — one query requires several tool calls issued together (see [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls)).
+- **Parallel multiple** — parallel calls drawn from a larger tool set, combining both harder cases.
+- **Irrelevance / relevance detection** — no available tool actually answers the query, and the right move is to say so instead of forcing a call.
+- **Multi-turn** — state carries across turns, so an earlier tool result has to inform a later call.
+
+Later BFCL versions added an "executable" track that actually runs the generated call against a real API or sandbox rather than just diffing it against a reference string — catching calls that look syntactically fine but fail at execution. That distinction matters: a model can match the reference JSON exactly and still be wrong if the reference itself was underspecified, or match nothing exactly and still work.
+
+## Building your own eval when BFCL doesn't fit
+
+Public benchmarks measure general tool-calling competence, not whether a model calls *your* tools correctly. Your schemas, your naming conventions, your domain-specific arguments — none of that is in BFCL's tool set. A practical eval for your own agent needs:
+
+1. **A tool-selection metric** — given a query and a list of available tools, did the model choose the correct one (or correctly choose none)? Exact match on the invoked function name against a labeled test set works well here.
+2. **An argument-correctness metric** — for each required field, does the value match expected type and semantics? Loose string equality overpenalizes; a rewritten but equivalent date or a reordered list item shouldn't fail the check.
+3. **An execution check where possible** — actually run the call against a sandbox or mock and assert on the result, not just the call shape. This is what catches the crashes that argument-shape checks miss.
+
+Build this the same way you'd build any [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset): real or realistic queries, labeled with the expected tool and arguments, run on every prompt or schema change. It's the same discipline as [testing and debugging tool calls](/learn/tools-function-calling/testing-and-debugging-tool-calls) during development, just formalized into something you can run in CI and track over time — because the [common failure modes](/learn/tools-function-calling/common-tool-calling-failure-modes) that show up in production are exactly what a good tool-use eval catches before shipping.
+
+**Related:** [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes), [Testing and Debugging Tool Calls](/learn/tools-function-calling/testing-and-debugging-tool-calls), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)

@@ -1,0 +1,45 @@
+---
+title: "Confidence Intervals and Sample Size for Eval Scores"
+track: "evals-red-teaming"
+status: live
+summary: "Why an eval score is a noisy estimate, not a fact, and how to tell a real regression from sampling noise."
+duration: "6 min read"
+---
+
+Your eval says 82% this run and 84% last run. Did the change help, or would you get that same 2-point wobble just by rerunning the identical code twice? On a 100-example eval, you would — and treating that swing as signal is one of the most common ways teams fool themselves.
+
+## An eval score is a sample, not a measurement
+
+A pass/fail eval score is a proportion estimated from a finite sample of test cases. Like any sample proportion, it has variance. The standard error of a proportion is roughly the square root of p times (1 minus p), divided by n. Plug in p = 0.82 and n = 100, and the standard error is about 3.8 percentage points. A 95% confidence interval is roughly plus or minus two standard errors, so your "82%" is really "somewhere around 74% to 90%." A 2-point change is nowhere near enough to distinguish from noise at that sample size.
+
+This is the Wilson or normal-approximation interval for a binomial proportion — the same math behind political polling margins of error. You don't need to derive it by hand; the point is to internalize that n matters as much as the score itself.
+
+## How many examples do you actually need
+
+The interval shrinks with the square root of n, so cutting the margin of error in half takes 4x the examples, not 2x. Rough rule of thumb: to reliably detect a 5-point difference between two versions with a few hundred test cases, you typically need low hundreds of examples per arm at minimum; to detect a 1-2 point difference, you need thousands. Most teams don't have that many good test cases, which means most teams should not trust small differences between versions at all.
+
+A practical shortcut: compute the confidence interval for your current n before you ship a change based on the score. If your interval width is wider than the improvement you're claiming, you don't have evidence yet — you have a coin flip that landed heads.
+
+```
+# Rough 95% CI for a proportion (normal approximation)
+import math
+
+def eval_ci(successes, n):
+    p = successes / n
+    se = math.sqrt(p * (1 - p) / n)
+    margin = 1.96 * se
+    return p - margin, p + margin
+
+eval_ci(82, 100)
+# -> (0.745, 0.895)  -- an 82% score with n=100 has a ~15-point-wide interval
+```
+
+## Paired comparisons cut the noise dramatically
+
+If you're comparing model A against model B on the *same* set of examples, don't compute two independent confidence intervals and eyeball the overlap — that throws away information and understates your power. Instead, look at the paired differences: for each example, did A win, lose, or tie against B? A paired test (McNemar's test for binary pass/fail, or a paired t-test/bootstrap for continuous scores) only cares about the examples where the two versions disagreed, which is usually a small fraction of the set — so it detects real differences with far fewer examples than two unpaired intervals would need. This is the statistical version of what [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration) is doing operationally: comparing the same cases before and after, not summary scores in isolation.
+
+## What this means day to day
+
+Report scores with an interval or an n, not a bare percentage — "82% (n=100, ±8)" is honest, "82%" alone invites false confidence. When a score moves by less than the interval width, treat it as unchanged and look for a real signal instead, such as which specific cases flipped. And if your [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) is too small to resolve the differences you care about, the fix isn't fancier statistics — it's more examples, ideally sourced from real failures via a [regression suite](/learn/evals-red-teaming/building-a-regression-suite).
+
+**Related:** [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Taming Flaky Evals](/learn/evals-red-teaming/flaky-eval-mitigation)

@@ -1,0 +1,35 @@
+---
+title: "Multi-Vector and Late-Interaction Retrieval (ColBERT)"
+track: "rag"
+status: live
+summary: "Match queries against retrieved text token by token instead of squashing everything into one vector."
+duration: "6 min read"
+---
+
+Standard [embeddings](/learn/llm-foundations/what-are-embeddings) compress a whole chunk into one vector, so a query about "database indexing" and a chunk about "database backups" can land close together just because they share the word "database." Late-interaction retrieval keeps every token's own vector and compares them individually, so relevance is judged on which specific tokens actually line up.
+
+## Why one vector loses information
+
+A dense retriever embeds a 200-word chunk into a single 768- or 1024-dimensional vector. That vector is an average, and averages erase detail. A chunk that's mostly about pricing with one sentence about refunds gets a vector dominated by "pricing" — a query about refunds may miss it even though the answer is right there. This is the same lossy-compression problem you'd expect from squashing a paragraph into a point in space, per [the geometry of embeddings](/learn/maths-foundations/the-geometry-of-embeddings).
+
+Cross-encoders fix this by feeding the query and document through a transformer together and letting full attention compare every token pair — but that means re-running the model for every candidate, which is too slow to use as your first-pass retriever over millions of chunks. You only get to run a cross-encoder on a short list, which is exactly what [reranking](/learn/rag/reranking-retrieved-results) does.
+
+## How late interaction splits the difference
+
+ColBERT (Contextualized Late Interaction over BERT) keeps a per-token embedding for every token in the document, computed once and cached in the index — no query needed yet, so it's still fast. At query time, it embeds the query's tokens too, then scores a document with **MaxSim**: for each query token, find the document token with the highest [cosine similarity](/learn/maths-foundations/cosine-similarity), then sum those maximums across all query tokens.
+
+```
+score(query, doc) = Σ_over_query_tokens  max_over_doc_tokens( cosine(q_i, d_j) )
+```
+
+That sum-of-max structure is the trick: it lets each query token independently find its best match anywhere in the document, instead of forcing one blended vector to represent the whole thing. A query token like "refund" can match a single sentence buried in an otherwise pricing-focused chunk, and that match isn't diluted by the surrounding tokens.
+
+## The cost you're trading for it
+
+Late interaction isn't free. Instead of one vector per chunk, you're storing one vector per token — a 200-token chunk needs roughly 200 vectors, not one. That's typically compressed (ColBERTv2 quantizes residuals to cut storage dramatically), but it's still a meaningfully larger index than single-vector search, and MaxSim scoring costs more compute per candidate than a plain dot product. In practice, teams run it as a strong first-stage retriever or a cheaper stand-in for a cross-encoder reranker — better than single-vector [similarity search](/learn/rag/similarity-search-and-ann-indexes) on precision, still faster than full cross-attention.
+
+## Where it fits in a pipeline
+
+Late interaction sits between plain vector search and full reranking on the precision-versus-cost curve. If your single-vector retriever keeps missing chunks where the relevant part is a small fraction of the text — long documents, dense reference tables, mixed-topic chunks — that's the signal to reach for it, either as your primary index (via a library like RAGatouille) or as a mid-pipeline reranking stage before a final cross-encoder pass.
+
+**Related:** [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Similarity Search and ANN Indexes](/learn/rag/similarity-search-and-ann-indexes), [Hybrid Search: Lexical and Vector Combined](/learn/rag/hybrid-search-lexical-and-vector)

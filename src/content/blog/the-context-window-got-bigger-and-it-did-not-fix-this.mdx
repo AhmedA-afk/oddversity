@@ -1,0 +1,42 @@
+---
+title: "The context window got bigger. It didn't fix what you think."
+description: "Longer contexts removed one constraint and left three in place — attention, cost, and the fact that more context is often worse context."
+published: "2026-08-30"
+tags: ["Context engineering", "Reliability", "Cost"]
+---
+
+Every jump in context length brings the same claim: retrieval is obsolete now, just put everything in the prompt. Every time, the same three problems remain, and they are the ones that were actually causing the trouble.
+
+## What did get fixed
+
+One real constraint went away: you no longer have to chunk a moderately sized document to fit it in. A long policy, an entire codebase file, a full transcript — these can go in whole. That genuinely simplifies a class of application, and it is a legitimate architecture. If your reference material fits, is small, and rarely changes, pasting it into a cached system prompt is simpler than a retrieval pipeline and you should do it.
+
+That is a real win. It is also the smallest of the three problems.
+
+## What did not get fixed
+
+**Attention is not uniform across the window.** Material at the start and end of a long context is used more reliably than material in the middle. The effect has been reproduced repeatedly across models and is stubborn enough to plan around. The failure mode is nasty because it is silent: you get a fluent answer that quietly ignored the paragraph you cared about, and nothing in the response indicates that the paragraph was skipped.
+
+The practical consequence is that *position is a design decision*. If a fact is load-bearing, do not bury it at token 80,000 of 200,000.
+
+**Cost and latency scale with what you send.** A long context is not free because it fits. Sending 100,000 tokens of documents to answer a question about one paragraph is paying full price for 99% waste on every single request. Prompt caching helps enormously when the prefix is stable, and helps not at all when the material varies per request — which is exactly the case in the "just put the documents in" architecture.
+
+**Irrelevant context actively degrades answers.** This is the counterintuitive one and the most important. It is not that extra material is merely wasteful; past a point it makes output worse. More candidate passages means more opportunities to anchor on something superficially related. Anyone who has increased top-k from 5 to 20 and watched quality drop has seen this directly.
+
+Retrieval, in that light, is not a workaround for a small window. It is a relevance filter — and relevance filtering keeps mattering after the size constraint disappears.
+
+## The parts that were never about size
+
+Two more reasons the "just use a big context" argument does not close.
+
+**Permissions.** Different users are allowed to see different documents. That is a filter on a retrieval step. There is no version of "put everything in the prompt" that enforces per-user access control, and no amount of instruction makes a model a reliable authorisation layer.
+
+**Citations.** In support, legal, medical and compliance settings the requirement is not a good answer, it is a good answer with a source a human can check. Retrieval gives you a passage to point at. A 200,000-token dump gives you an answer and a shrug.
+
+## The honest guidance
+
+Small, stable, shared-by-everyone reference material: put it in the prompt, cache the prefix, skip the pipeline. You will ship faster and debug less.
+
+Large, changing, permission-scoped, or citation-requiring material: retrieve. The window size was never the reason.
+
+And in both cases, treat context as something you curate rather than fill. The [context window anatomy lesson](/learn/context-engineering/context-window-anatomy) covers the mechanics, [lost in the middle](/learn/context-engineering/lost-in-the-middle) covers the attention effect, and [retrieval versus context stuffing](/learn/context-engineering/retrieval-vs-context-stuffing) works through the decision with the numbers.

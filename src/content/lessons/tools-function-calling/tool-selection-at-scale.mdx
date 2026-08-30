@@ -1,0 +1,35 @@
+---
+title: "Tool Selection at Scale: When You Have Hundreds of Tools"
+track: "tools-function-calling"
+status: live
+summary: "Retrieves a relevant subset of tools per request instead of dumping every schema into context."
+duration: "5 min read"
+---
+
+A model with 10 tools reads every schema and picks well. A model with 400 tools — the reality once you've wired up a dozen MCP servers — starts confusing similarly-named functions, ignoring the right one buried at position 380, and burning tens of thousands of tokens on schemas before it's read a single word of your actual request. The fix isn't a smarter model. It's not showing it 400 tools in the first place.
+
+## Why more tools makes every call worse
+
+Two things degrade as the tool list grows. First, cost and latency: each schema (name, description, parameters, examples) is real input tokens, paid on every single turn regardless of whether that tool gets called. Second, and worse, accuracy: models pick the wrong tool more often as the candidate set grows, especially when several tools have overlapping purposes — `search_users` vs `find_customer` vs `lookup_account`. This is the same crowding problem as [context rot](/learn/context-engineering/context-rot) — the window isn't full, but the signal-to-noise ratio inside it has collapsed.
+
+## Retrieve tools like you retrieve documents
+
+The standard fix treats your tool catalog the way a [RAG](/learn/rag/what-is-rag-and-when-to-use-it) pipeline treats a document store: don't load it all, retrieve the relevant slice per request.
+
+- **Embed each tool's name + description** once, offline, the same way you'd embed a document chunk.
+- **At request time**, embed the user's query (or the agent's current subgoal) and run [similarity search](/learn/rag/similarity-search-and-ann-indexes) against the tool embeddings.
+- **Pass only the top-k tools** (commonly 10-30) into that turn's API call, plus any tools the agent explicitly asked to see more of.
+
+This is a straight application of [relevance filtering](/learn/context-engineering/relevance-filtering): the question isn't "what could this agent conceivably need" but "what does it need right now." A lighter-weight variant skips embeddings entirely and uses BM25 or keyword matching over tool names and descriptions — cruder, but cheap and often good enough when tool names are descriptive.
+
+## Layer with categories and a meta-tool
+
+Flat retrieval breaks down when tools cluster into distinct domains (billing, search, deployment, calendar). A common pattern adds a routing layer: give the model a small set of category tools first ("billing_tools", "search_tools"), and only load the detailed schemas for a category once the model picks it. This is effectively hierarchical tool disclosure — a coarse decision, then a fine one — and it composes well with [progressive tool disclosure](/learn/context-engineering/progressive-tool-disclosure), where tools are hidden by default and surfaced only as the agent's task narrows.
+
+Some agent frameworks push this further with a single `search_tools(query)` meta-tool: instead of you pre-retrieving before the call, the model calls this itself mid-conversation to discover what's available, then calls the tool it found. This trades a slightly longer round trip for letting the model steer its own retrieval query, which tends to help when the right tool depends on reasoning the model has already done in-context.
+
+## What breaks if you get retrieval wrong
+
+Under-retrieving is the dangerous failure: if the one correct tool doesn't make the top-k cut, the model either fails silently, picks the nearest wrong match, or hallucinates a plausible-sounding tool call — a variant of [tool-call hallucination](/learn/hallucinations/tool-call-hallucination). Mitigate it the way you would any recall problem — widen k, add hybrid keyword matching alongside embeddings, and log every retrieval so you can eval which real queries missed their tool, the same discipline you'd apply to [evaluating RAG quality](/learn/rag/evaluating-rag-quality).
+
+**Related:** [The Token Cost of Tool Schemas](/learn/tools-function-calling/token-cost-of-tool-schemas), [Progressive Tool Disclosure](/learn/context-engineering/progressive-tool-disclosure), [Tool-Call Hallucination](/learn/hallucinations/tool-call-hallucination)

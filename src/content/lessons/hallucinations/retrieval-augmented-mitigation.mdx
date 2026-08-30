@@ -1,0 +1,27 @@
+---
+title: "RAG as Hallucination Mitigation"
+track: "hallucinations"
+status: live
+summary: "Retrieval gives the model real text to answer from, turning recall from memory into reading comprehension."
+duration: "5 min read"
+---
+
+Ask a base model "what's our refund policy for orders over 90 days" and it has to guess from whatever patterns it absorbed in training — there's no refund policy in there. Hand it your actual policy document in the prompt and it just has to read. That shift, from recall to reading comprehension, is why retrieval-augmented generation is one of the most effective hallucination fixes available.
+
+## Why retrieval helps
+
+Most fabrication happens because the model is asked a question its training data doesn't actually answer, and it fills the gap with something plausible-sounding instead of admitting the gap exists. RAG attacks this directly: before the model generates anything, a retrieval step pulls the relevant passages from your own documents, database, or knowledge base and drops them into context. The model's job changes from "recall a fact" to "summarize what's in front of you" — a task it's dramatically better and more honest at. This is the same mechanism covered in [grounding with source documents](/learn/hallucinations/grounding-with-source-documents), except RAG automates the step of finding which sources belong in front of the model in the first place.
+
+It doesn't eliminate hallucination. A model can still misread a retrieved passage, blend two chunks incorrectly, or answer confidently when the retrieved chunks don't actually contain the answer. RAG lowers the rate of fabricated facts; it doesn't guarantee correctness, which is why pairing it with [citations and attribution](/learn/hallucinations/citations-and-attribution) matters — if every claim points back to a specific retrieved chunk, a reader can verify it, and a missing citation is itself a signal something was invented.
+
+## Where it breaks down
+
+Retrieval quality sets a hard ceiling on how much this helps. If your [chunking strategy](/learn/rag/chunking-strategies-for-documents) splits a document mid-sentence, or your [similarity search](/learn/rag/similarity-search-and-ann-indexes) surfaces near-misses instead of the actual answer, the model is now grounded in the *wrong* material — and it will still answer confidently, just from bad sources instead of no sources. This is arguably worse than an ungrounded guess, because the output looks sourced and trustworthy when it isn't.
+
+The other common failure: the retriever returns nothing relevant, but the prompt doesn't tell the model that's an acceptable outcome to report. A model instructed to "answer using the provided context" will often answer anyway, stretching thin or irrelevant chunks to cover a question they don't address. The fix is explicit — instruct the model to say it doesn't know when the retrieved context doesn't contain the answer, the same discipline covered in [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know).
+
+## When RAG isn't the right tool
+
+RAG mitigates a specific failure mode: fabrication from missing knowledge. It does nothing for hallucinations caused by [leading or adversarial prompts](/learn/hallucinations/adversarial-and-leading-prompts), and it's overkill for tasks that don't depend on your private or current data at all — reasoning, math, or code generation don't get more accurate by injecting documents. Know [when RAG is the wrong tool](/learn/rag/when-rag-is-the-wrong-tool) before reaching for it as a default hallucination patch.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Citations: Making Every Claim Traceable to a Source](/learn/hallucinations/citations-and-attribution), [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it)

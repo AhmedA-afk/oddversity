@@ -1,0 +1,28 @@
+---
+title: "A support assistant that must show its work"
+scenario: "Support assistant"
+description: "Design a helpdesk assistant that drafts grounded answers without quietly inventing policy."
+order: 1
+---
+
+## The situation
+
+You are building an assistant for a SaaS support team. It can search product documentation and draft a reply, but it must not invent a refund policy or send a message without review.
+
+## The first decision
+
+Start with a retrieval-backed draft workflow, not an autonomous support agent. The assistant should classify the request, retrieve approved documents with the user's product and plan context, draft an answer with source links, and route uncertain or policy-sensitive cases to a person.
+
+## Guided reasoning
+
+1. Define the supported intents and the escalation conditions before writing a prompt.
+2. Give the retriever stable document versions and apply access rules before content enters the model context.
+3. Ask for a structured result with answer, cited source IDs, confidence signal, and escalation reason.
+4. Validate the source IDs and policy fields in application code.
+5. Measure groundedness, escalation accuracy, resolution quality, latency, and cost.
+
+The important boundary is between drafting and sending. A fluent draft can be helpful; a sent policy claim is an external action. See [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) and [permission and approval systems](/learn/harness-design/permission-and-approval-systems).
+
+## What to test first
+
+Test outdated articles, conflicting plan rules, missing evidence, angry messages, requests for account data, and a customer who asks the assistant to ignore its instructions. Keep these cases in a held-out regression set.

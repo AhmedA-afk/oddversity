@@ -1,0 +1,37 @@
+---
+title: "Access-Controlled Retrieval: Per-User Permissions in RAG"
+track: "rag"
+status: live
+summary: "Filters retrieval results by what the requesting user is actually allowed to see."
+duration: "5 min read"
+---
+
+A RAG pipeline that ignores permissions is a search engine over everyone's secrets. The moment your index spans more than one user's documents — a shared drive, a support ticket system, a multi-tenant SaaS product — retrieval has to know not just what's relevant, but who's asking.
+
+## The leak is in retrieval, not generation
+
+Teams often reach for a system prompt fix: "only answer using documents the user is allowed to see." That doesn't work, because by the time the model sees those documents, they're already in context. A chunk from a confidential doc that gets retrieved has already been read by the model — the prompt instruction only affects whether it repeats it back, and a clever enough query, or a model that's simply imprecise, will leak it anyway.
+
+The fix has to happen in retrieval, before anything reaches the prompt: the search itself must never surface a chunk the requester can't see.
+
+## Two ways to enforce it
+
+**Pre-filter (recommended default).** Attach access-control metadata to every chunk at index time — owner ID, group IDs, ACL list, tenant ID — and pass the requesting user's permissions as a filter on the vector search itself, the same mechanism used in [metadata filtering](/learn/rag/metadata-filtering-in-retrieval). Most vector databases support this natively: Pinecone namespaces or metadata filters, Weaviate's `where` clauses, pgvector combined with Postgres row-level security. The ANN index only ever searches within the allowed subset, so restricted chunks are never candidates — not filtered out later, never seen.
+
+**Post-filter (avoid as your only layer).** Retrieve top-k normally, then drop results the user can't access. This is simpler to bolt onto an existing pipeline but has a real flaw: if permissions correlate with relevance — a user's own private notes are often the most relevant match for their own question — post-filtering can silently gut your top-k, leaving too few or zero results after the drop. It also does nothing to stop a timing or count-based side channel (if it took retrieval longer to return the same top-k, that alone leaks something). Use it only as a defense-in-depth backstop behind a pre-filter, never as the primary mechanism.
+
+## Model permissions the way your app already does
+
+Don't reinvent an access model in your retrieval layer — mirror whatever authorization system your application already trusts:
+
+- **Flat ACLs**: each chunk stores a list of user or group IDs allowed to read it; filter is `allowed_ids CONTAINS user.id OR user.groups`.
+- **Hierarchical/inherited**: permissions cascade from folder to document to chunk, mirroring something like Google Drive sharing — resolve the effective ACL at index time so retrieval doesn't need to walk a tree per query.
+- **Attribute-based (ABAC)**: filters like `tenant_id = X AND clearance <= user.clearance`, useful when access depends on roles or classification levels rather than explicit grants.
+
+Whatever the model, keep permission checks in sync with the source system. A document that gets unshared needs its index metadata updated — or better, needs the underlying permission check re-evaluated live at query time rather than cached stale in the vector store, since [keeping an index fresh](/learn/rag/incremental-indexing-freshness) applies to permissions changes just as much as content changes.
+
+## Watch the edges
+
+Two failure modes are easy to miss. First, **reranking** — if a [reranker](/learn/rag/reranking-retrieved-results) runs after retrieval, make sure it only ever sees the already-filtered set; never rerank the unfiltered top-k and truncate after. Second, **citations** — if you show source snippets alongside an answer per [grounding answers with citations](/learn/rag/grounding-answers-with-citations), the citation itself must respect the same filter, or you've built a second leak path that bypasses the first fix entirely.
+
+**Related:** [Metadata Filtering in Retrieval](/learn/rag/metadata-filtering-in-retrieval), [Incremental Indexing and Keeping an Index Fresh](/learn/rag/incremental-indexing-freshness), [Grounding Answers with Citations](/learn/rag/grounding-answers-with-citations)

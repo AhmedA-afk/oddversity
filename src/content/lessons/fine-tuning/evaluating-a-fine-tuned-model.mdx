@@ -1,0 +1,34 @@
+---
+title: "Evaluate a Fine-Tuned Model Before Shipping"
+track: "fine-tuning"
+status: live
+summary: "Check task performance and regressions against the base model with the same eval suite, before a fine-tune goes live."
+duration: "6 min read"
+---
+
+A fine-tune that scores well on the metric you optimized for can still be worse than the model you started with. The only way to know is to run the same eval suite against both, on data the training run never saw.
+
+## Build a held-out eval set, not a training re-check
+
+Never grade a fine-tune on examples it trained on — SFT and DPO/RLHF runs (see [SFT vs Preference Tuning](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning)) will happily memorize them, and a high score there tells you nothing about generalization. Carve out a held-out slice before training starts, matching the distribution of real traffic: same task types, same length range, same edge cases (ambiguous inputs, adversarial phrasing, empty or malformed fields). If you generated training data synthetically (see [Generate Synthetic Training Data](/learn/fine-tuning/synthetic-data-generation)), pull the eval set from a separate batch or from real production logs — grading a model on its own synthetic siblings inflates scores.
+
+Score with the same method you'd use in any eval pipeline: exact-match or rubric-based scoring for structured tasks, and [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) for open-ended generation quality. Keep the judge prompt and rubric fixed across every model version you compare, or the numbers stop being comparable.
+
+## Compare against the base model, not just a bar
+
+A fine-tune report needs three numbers side by side: the base model, the fine-tune, and (if relevant) the strongest prompted baseline. This catches two different failure modes:
+
+- **No real lift.** The fine-tune matches the base model within noise — the juice wasn't worth the training run, and a better prompt might have gotten you there for free (see [Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag)).
+- **Regression on the target task.** The fine-tune beats the base on your primary metric but does *worse* on adjacent capabilities the base model handled fine — instruction following, refusals, formatting, general knowledge outside the training domain. This is the fine-tuning-specific failure to watch for, and it's exactly what a single narrow metric will hide.
+
+Run a broad battery, not one number: your task-specific eval, a general capability check (something like MMLU-style or your own smoke tests for instruction following), and a safety/refusal check if the base model had guardrails you didn't intentionally retrain away. This is the practical face of [catastrophic forgetting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting) — it shows up as a metric drop, not a training-loss spike, so loss curves alone won't catch it.
+
+## Watch for narrow overfitting that broad benchmarks miss
+
+A model can nail your eval set and still fail in production if the eval set is narrower than real traffic — same phrasing patterns, same input lengths, same one or two domains repeated. Stress-test with inputs that are adjacent to but outside the training distribution: longer documents, different formatting, a user who phrases the request unusually. If scores fall off a cliff outside the exact training shape, you've overfit to surface patterns, not the task. [Benchmarks and what they miss](/learn/ai-foundations/benchmarks-and-what-they-miss) applies doubly here, since a fine-tune's eval set is usually far smaller and more homogeneous than a public benchmark.
+
+## Ship with a rollback path
+
+Even a model that clears every eval should ship behind a flag or canary, not a hard cutover — see [Canary and Shadow-Test Prompt or Model Changes](/learn/production/canary-and-shadow-releases). Evals are a sample of behavior, not a guarantee; production traffic will find distribution shifts your held-out set didn't cover. Log outputs from both models on live traffic for a window before fully switching over, and keep the base model's weights or endpoint ready to swap back in.
+
+**Related:** [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting), [LLM-as-Judge](/learn/evals-red-teaming/llm-as-judge), [Canary and Shadow-Test Prompt or Model Changes](/learn/production/canary-and-shadow-releases)

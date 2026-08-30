@@ -1,0 +1,32 @@
+---
+title: "Why 'Don't Do X' Backfires"
+track: "prompt-engineering"
+status: live
+summary: "Telling a model what not to do is less reliable than describing what you actually want it to do."
+duration: "4 min read"
+---
+
+Tell someone "don't think about a pink elephant" and you know what happens. Language models have a milder version of the same problem: a negative instruction still puts the forbidden content in the context, and the model has to do extra work to turn "mention X" into "avoid X." Positive instructions skip that step entirely.
+
+## Why the model struggles with "don't"
+
+A prompt like "don't use bullet points" or "don't mention pricing" gives the model a concept (bullet points, pricing) without a replacement. The model has seen bullet points and pricing discussions constantly in training, so those patterns stay highly available even while it's told to suppress them. Under load — a long system prompt, a complicated task, several negative rules stacked together — suppression is the first thing that slips, and the forbidden behavior leaks back in.
+
+This gets worse the more negatives you pile on. Five "don't" rules ask the model to hold five absences in mind simultaneously, each one a gap it has to actively police. Three positive rules just describe the shape of the answer directly, which is a much easier target to hit.
+
+## Turning a negative into a positive
+
+The fix is almost always mechanical: name the behavior you want instead of the one you don't.
+
+- "Don't use jargon" becomes "Write for a reader with no technical background."
+- "Don't be verbose" becomes "Answer in three sentences or fewer."
+- "Don't mention competitors" becomes "Only discuss our product's own features."
+- "Don't say 'I cannot help with that'" becomes "If you can't help, explain the specific limitation and suggest one alternative."
+
+Notice the positive versions are also more testable. "Don't be verbose" has no clear pass/fail line; "three sentences or fewer" does. That's not a coincidence — a well-formed positive instruction usually doubles as an implicit spec you could check output against, which is exactly what you want when you get to [evaluating prompts before you ship them](/learn/prompt-engineering/prompt-evaluation-basics).
+
+## When "don't" is still the right call
+
+Negative instructions aren't useless — they're a genuine safety net for the rare case that must never happen, like "never output raw SQL" in a tool-calling flow. Keep those, but keep them few. If you find yourself writing more than one or two "don't" rules, that's usually a sign the actual failure mode should be described directly instead, or handled with [delimiters](/learn/prompt-engineering/delimiters-and-formatting) that separate instructions from content so there's less to instruct away in the first place. Reserve negatives for hard boundaries, and spend positive instructions on everything that's actually about shaping quality.
+
+**Related:** [Prompt Anti-Patterns to Stop Doing](/learn/prompt-engineering/prompt-anti-patterns), [Answer-First Prompting](/learn/prompt-engineering/answer-first-prompting), [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics)

@@ -1,0 +1,29 @@
+---
+title: "An MCP server for a small engineering team"
+scenario: "MCP team server"
+description: "Expose issue and repository context through MCP while keeping actions reviewable."
+order: 4
+---
+
+## The situation
+
+Your team wants multiple AI hosts to inspect issues, read build logs, and open a draft pull request. The server will run with access to internal systems and will be used by people with different roles.
+
+## The first decision
+
+Expose focused read tools and resources first. Make opening a pull request a separate, explicit tool that creates a draft only, with repository and branch authorization checked on the server.
+
+## Guided reasoning
+
+1. Define which host and user identity is allowed to connect.
+2. Keep tools, resources, and user-invoked prompts conceptually separate.
+3. Return bounded results with stable IDs and links rather than dumping an entire repository.
+4. Validate tool arguments and re-check permissions on every request.
+5. Log calls without leaking tokens or sensitive issue content.
+6. Test capability negotiation and clear behavior when a client lacks a feature.
+
+MCP is an interoperability layer, not a reason to widen permissions. Read [MCP architecture](/learn/mcp/mcp-architecture-hosts-clients-servers) and the [official server tools specification](https://modelcontextprotocol.io/specification/2025-06-18/server/tools).
+
+## What to test first
+
+Test an unauthorized repository, a malicious issue body, a huge log result, a deleted branch, a client with partial capabilities, and a repeated draft-creation request.

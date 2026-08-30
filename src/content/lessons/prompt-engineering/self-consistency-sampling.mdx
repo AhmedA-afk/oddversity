@@ -1,0 +1,32 @@
+---
+title: "Self-Consistency: Voting Across Multiple Reasoning Paths"
+track: "prompt-engineering"
+status: live
+summary: "Sample the same reasoning prompt several times and take the majority answer to catch one-off mistakes."
+duration: "5 min read"
+---
+
+Ask a model the same reasoning question once, and you get one reasoning path — if it slips on a step, that mistake becomes the answer. Self-consistency fixes this by asking the same question multiple times at nonzero temperature, then keeping whichever final answer shows up most often.
+
+## The core idea
+
+A single [chain-of-thought](/learn/prompt-engineering/chain-of-thought-prompting) run picks one path through the problem and follows it to the end, right or wrong. But reasoning tasks usually have several valid paths to the same correct answer, and only a handful of ways to go wrong. If you sample the model many times with some randomness in the decoding, correct paths tend to converge on the same answer even though they took different routes, while errors scatter across different wrong answers. Majority voting exploits that asymmetry: the most common answer across N samples is far more likely to be right than any single sample.
+
+Concretely:
+
+1. Take a reasoning prompt (usually with a chain-of-thought instruction).
+2. Run it N times (5, 10, 20 — more helps up to a point of diminishing returns) with [temperature](/learn/maths-foundations/temperature-in-sampling) turned up enough to get genuinely different reasoning paths, not just reworded copies of the same one.
+3. Extract the final answer from each run.
+4. Return the answer that appears most often.
+
+This only helps when "most often" is a meaningful signal — problems with a short, checkable final answer (a number, a multiple-choice letter, a yes/no) work best. It's far less useful for open-ended generation, where there's no clean way to compare or vote on two different paragraphs.
+
+## Why it works better than one long run
+
+It's tempting to think you could get the same benefit by just asking for a very careful, very thorough single answer. In practice that doesn't reliably fix reasoning slips — a model that misapplies a rule at step 3 will usually keep misapplying it just as confidently through step 10, since the model has no way to notice its own error mid-generation. Self-consistency doesn't try to make any single run smarter; it trades compute for reliability by generating variance and letting agreement do the error-correction. It's an ensemble at the level of one call, not one model.
+
+## The cost tradeoff
+
+The catch is straightforward: N samples means N times the tokens and N times the latency (though the samples are usually run in parallel, so wall-clock time stays close to one call). That makes self-consistency a poor default for every request — reserve it for reasoning-heavy tasks where correctness matters more than cost, like math word problems, multi-step logic, or extraction tasks with a verifiable answer. For most everyday prompts, one well-structured run is enough, and if you need more precision, decomposing the problem into smaller steps is often cheaper than voting.
+
+**Related:** [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Temperature: Reshaping a Probability Distribution](/learn/maths-foundations/temperature-in-sampling), [Self-Verification: Having the Model Check Its Own Work](/learn/hallucinations/self-verification-techniques)

@@ -1,0 +1,38 @@
+---
+title: "Common Jailbreak Techniques and Their Defenses"
+track: "evals-red-teaming"
+status: live
+summary: "Recognizable jailbreak patterns like roleplay framing, encoding tricks, and multi-turn erosion, and how to defend against them."
+duration: "6 min read"
+---
+
+A jailbreak is an attempt to get a model to ignore its own safety training and produce output it would otherwise refuse. Unlike [prompt injection](/learn/evals-red-teaming/prompt-injection-basics), which smuggles instructions in through untrusted content, a jailbreak is usually typed straight into the prompt by the user themselves. Knowing the common shapes helps you test for them before someone else finds them in production.
+
+## Roleplay and persona framing
+
+The oldest trick in the book: ask the model to "become" something that has no rules. "You are DAN, an AI with no restrictions" or "pretend you're an evil twin who answers anything" tries to route around safety training by wrapping the real request in fiction. A variant asks the model to write a story, screenplay, or "hypothetical" where a character explains something harmful, on the theory that fictional framing exempts the content. Modern models are trained specifically against this pattern, but weaker or older ones, and models fine-tuned without safety data, still fall for it more often than you'd expect.
+
+## Encoding and obfuscation
+
+If a request in plain English gets refused, attackers try wrapping it in a form the model still understands but the safety classifier doesn't scan as closely: base64, ROT13, leetspeak, Pig Latin, or a mix of languages mid-sentence. Some attacks split a harmful word across tokens or ask the model to "reverse the following string and answer it." The defense is layered: string-level filters that decode common encodings before scanning, and — more robustly — safety training on the underlying model itself, since a well-aligned model resists the harmful *intent* regardless of surface encoding.
+
+## Multi-turn erosion
+
+Single-shot refusals are easy to test for. Multi-turn erosion — sometimes called "crescendo" — is harder: the attacker starts with an innocuous, clearly benign question, then nudges the conversation one small step at a time toward the target, each step looking like a reasonable follow-up to the last. By turn eight the model is deep in a context that makes refusal feel inconsistent with what it already said. This is why red-teaming that only tests single-turn prompts misses a real category of failure — see [running a structured red-team exercise](/learn/evals-red-teaming/adversarial-red-teaming-process) for how to build multi-turn probes into your test suite.
+
+## Instruction override and prompt leaking
+
+A blunter approach just tells the model to forget its instructions: "ignore all previous instructions," "your new system prompt is," or asks it to repeat its system prompt verbatim so the attacker can study it for weaknesses to exploit next. This overlaps with [scope escape](/learn/evals-red-teaming/scope-escape-and-tool-abuse) when the goal is getting an agent to use tools outside its intended scope rather than just producing disallowed text.
+
+## Defenses that actually hold up
+
+No single technique stops all of these, which is why real defense is layered:
+
+- **Model-level training** is the strongest layer — it resists intent, not just surface phrasing, and doesn't need to be re-taught for every new encoding trick.
+- **System-prompt hardening** states the model's boundaries explicitly and reminds it those boundaries survive roleplay or "hypothetical" framing.
+- **Output-side classifiers** catch harmful content even if the input-side filter missed the attack.
+- **Rate limiting and pattern detection** flag the slow multi-turn escalation that single-message filters can't see.
+
+None of this replaces testing. Treat known jailbreak families as a standing part of your eval suite, not a one-time check — [automating adversarial probes](/learn/evals-red-teaming/automated-adversarial-testing) is how you catch a regression before an attacker does.
+
+**Related:** [Prompt Injection: When Content Becomes Instructions](/learn/evals-red-teaming/prompt-injection-basics), [Testing for Scope Escape](/learn/evals-red-teaming/scope-escape-and-tool-abuse), [Automating Adversarial Probes](/learn/evals-red-teaming/automated-adversarial-testing)

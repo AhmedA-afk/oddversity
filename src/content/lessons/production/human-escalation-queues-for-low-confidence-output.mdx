@@ -1,0 +1,36 @@
+---
+title: "Build an Escalation Queue for Low-Confidence Output"
+track: "production"
+status: live
+summary: "Route flagged or uncertain responses into a human review queue with its own SLA before they reach users."
+duration: "5 min read"
+---
+
+Not every model response should go straight to the user. Some should stop at a human first — and that only works if the stop is a real system with a queue, an SLA, and an owner, not a Slack channel someone checks when they remember.
+
+## What triggers escalation
+
+You need a rule that decides, per request, whether a human sees it before the user does. Common triggers: a confidence or entropy score below a threshold, a classifier flagging the topic as high-stakes (medical, legal, refunds above a dollar amount), the model itself emitting an "I'm not sure" signal, or a guardrail catching something odd in the output. Combine a couple of these rather than relying on one — raw token-probability confidence is often miscalibrated, so pairing it with a rules-based check (dollar thresholds, keyword lists, category tags) catches more real risk than either alone.
+
+The trigger decision has to happen inline, before the response ships — not in an async audit that finds the bad answer after the user already acted on it.
+
+## Design the queue itself
+
+An escalation queue is infrastructure, not an inbox. It needs:
+
+- **A holding state.** The user sees "checking this with a specialist" or similar, not silence. Decide up front whether the flow blocks (user waits) or degrades (a safe fallback answer ships now, a human corrects it after).
+- **Routing.** Not every flagged item goes to the same person — split by category (billing vs. safety vs. factual) so reviewers aren't context-switching across domains.
+- **An SLA with teeth.** "A human within 4 hours" is meaningless unless something pages someone when it's about to breach. Treat the SLA like any other production metric — alert on it, dashboard it.
+- **A resolution path back to the user or system.** The reviewer's answer has to actually reach the pending request, not just get logged somewhere.
+
+## Close the loop into the model
+
+The real payoff of an escalation queue isn't just catching bad answers — it's the corrected cases becoming a feedback source. Log the original output, the trigger reason, and the human's correction together. That set is exactly what feeds a [regression suite](/learn/evals-red-teaming/building-a-regression-suite) or a fine-tuning pass later. Without that logging, every escalation is a one-off fix and the model keeps making the same low-confidence mistake next week.
+
+Watch the escalation rate itself as a signal. If it creeps up, that's often a symptom of a bigger problem — a prompt regression, a data drift, or a provider change — worth checking against your [latency, cost, and quality SLOs](/learn/production/latency-and-cost-slos) rather than just staffing more reviewers.
+
+## Avoid the two failure modes
+
+Too sensitive, and reviewers drown in noise and start rubber-stamping — which defeats the purpose. Too loose, and the queue misses the cases it exists for. Tune the threshold against real outcomes, not intuition, and revisit it whenever the underlying uncertainty signal changes — see [Escalation Design: Handing Off to a Human When Confidence Drops](/learn/hallucinations/escalation-design-for-uncertain-answers) for how to build the confidence signal that feeds this queue in the first place.
+
+**Related:** [Escalation Design: Handing Off to a Human When Confidence Drops](/learn/hallucinations/escalation-design-for-uncertain-answers), [Human-in-the-Loop Review Queues](/learn/genai-app-dev/human-in-the-loop-review-queues), [Set SLOs for Latency, Cost, and Quality](/learn/production/latency-and-cost-slos)

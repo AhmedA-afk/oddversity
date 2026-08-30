@@ -1,0 +1,41 @@
+---
+title: "Cost Budgets and Usage Tracking"
+track: "genai-app-dev"
+status: live
+summary: "Estimate per-request cost up front and instrument usage so spend doesn't surprise you in production."
+duration: "6 min read"
+---
+
+A demo that works is not the same as a feature you can afford to ship. LLM APIs bill per token, and token counts swing wildly with input length, conversation history, and output verbosity — so the only way to avoid a shocking bill is to estimate cost before you launch and measure it continuously after.
+
+## Estimate before you build
+
+Before writing a line of product code, sketch a back-of-envelope cost model: input tokens per request (system prompt plus user content plus any retrieved context), expected output tokens, and requests per user per day. Multiply by the provider's per-token price for input and output separately — output tokens are usually priced several times higher than input, so a chatty response format costs more than a terse one. Multiply by expected daily active users and you have a rough daily and monthly figure.
+
+This estimate is what turns "let's add AI to this feature" into an actual decision. A summarization button a user clicks twice a month costs pennies. A live coding assistant re-sending a growing conversation on every keystroke can cost dollars per user per day if you're not careful — which is exactly why trimming conversation history and reaching for prompt caching matter early, not as an afterthought.
+
+## Instrument every call
+
+Every provider response includes a usage object with input and output token counts — capture it on every single call, not just in a debug log. At minimum, record per request: the model used, input tokens, output tokens, computed cost, the feature or endpoint that triggered it, and a user or account identifier. Store this as structured rows in a real table, not scattered log lines you'd have to grep.
+
+```
+{
+  "timestamp": "2026-08-29T14:02:11Z",
+  "feature": "chat-summary",
+  "model": "claude-sonnet-5",
+  "user_id": "u_9f21",
+  "input_tokens": 1840,
+  "output_tokens": 312,
+  "cost_usd": 0.0091
+}
+```
+
+This data answers questions your estimate couldn't: which feature actually dominates spend, which users are outliers, and whether a prompt change silently doubled your token count. It's also the raw material for per-user or per-org budgets if you ever need to cap usage.
+
+## Set a budget, not just a dashboard
+
+A number on a chart doesn't stop a bill from surprising you — a threshold that triggers an action does. Decide, per feature, what the acceptable cost-per-request and cost-per-user-per-day ceilings are, then alert (or degrade gracefully — cheaper model, shorter output, cached response) when you approach them. Treat this the same way you'd treat a [latency budget](/learn/genai-app-dev/latency-budgets-for-llm-features): a target set before launch, checked against reality after.
+
+Keep separate views for two audiences. Engineering needs per-request granularity to catch regressions fast. Finance needs daily or monthly rollups by feature to reconcile against the provider invoice. Building both from the same raw usage rows keeps them from drifting apart.
+
+**Related:** [Setting Latency Budgets for LLM Features](/learn/genai-app-dev/latency-budgets-for-llm-features), [Prompt Caching for Speed and Cost](/learn/genai-app-dev/prompt-caching-for-speed-and-cost), [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking)

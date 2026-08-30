@@ -1,0 +1,29 @@
+---
+title: "Speculative Decoding: Generating Tokens Faster"
+track: "llm-foundations"
+status: live
+summary: "A small draft model guesses several tokens ahead; the big model verifies them all in one forward pass instead of one token at a time."
+duration: "6 min read"
+---
+
+Autoregressive generation is slow because it's serial: to produce token N, the model needs token N-1 already in its context. One forward pass, one token, repeat. Speculative decoding breaks that bottleneck without changing a single output token.
+
+## The core trick
+
+Pair the big model (the "target") with a much smaller, faster model (the "draft"). The draft model rapidly generates a handful of candidate tokens — say 4 or 5 — guessing what comes next. Then the target model runs a single forward pass over all of those candidates at once and checks each one: does the target model agree this token was the most likely (or an acceptable sample) at that position?
+
+Wherever the draft and target agree, you keep the token — for free, essentially, since the draft model is cheap to run. The moment they disagree, you discard the draft's guess and everything after it, and take the target model's own token instead. Then the draft model starts guessing again from that corrected point.
+
+This works because checking N tokens in one pass costs roughly the same as generating 1 token in one pass — the expensive part of a forward pass is loading the model's weights, not the number of tokens scored against them. So verifying 5 guesses costs about as much as generating 1 token normally, and if 3 or 4 of the 5 guesses are correct, you've just gotten multiple tokens for the price of one target-model pass.
+
+## Why the output doesn't change
+
+The important guarantee: this is not a quality tradeoff. The target model's [sampling](/learn/llm-foundations/sampling-temperature-top-p) rule decides which draft tokens survive. For greedy decoding, a token is accepted only if it matches what the target would have picked itself. For sampled decoding, there's a rejection-sampling scheme that preserves the target's exact output distribution — a candidate token gets accepted with a probability derived from comparing the draft's and target's probabilities for it, and rejected tokens get resampled from a corrected distribution. Either way, the sequence you end up with is statistically identical to what the target model would have produced generating token-by-token on its own. Speculative decoding is a latency optimization, not an approximation.
+
+## What decides the speedup
+
+The win depends on how often the draft model's guesses survive verification — its "acceptance rate." A draft model that's a good stylistic match for the target (same tokenizer, similar training data, sometimes a distilled or smaller version of the same model family) gets accepted more often than a mismatched one. Easy, predictable text — boilerplate code, common phrases — speeds up the most, since the draft model nails those. Novel or highly technical text speeds up less, because the draft model's guesses miss more often and you fall back to one-at-a-time generation for those spans.
+
+In practice this is one of the standard levers production inference stacks pull alongside the [KV cache](/learn/llm-foundations/the-kv-cache) and [grouped-query attention](/learn/llm-foundations/grouped-query-attention) — none of them change what the model says, only how fast the hardware can say it.
+
+**Related:** [The KV Cache: How LLMs Avoid Recomputing the Past](/learn/llm-foundations/the-kv-cache), [Sampling: Temperature, Top-k, and Top-p](/learn/llm-foundations/sampling-temperature-top-p), [Reasoning Models and Test-Time Compute](/learn/llm-foundations/reasoning-models-test-time-compute)

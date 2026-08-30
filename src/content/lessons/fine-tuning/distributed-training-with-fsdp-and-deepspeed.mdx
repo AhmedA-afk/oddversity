@@ -1,0 +1,34 @@
+---
+title: "Train Across GPUs with FSDP and DeepSpeed ZeRO"
+track: "fine-tuning"
+status: live
+summary: "When a model doesn't fit on one GPU, shard the weights, gradients, and optimizer state across many instead of copying them."
+duration: "6 min read"
+---
+
+Data parallelism copies the full model onto every GPU and only splits the batch. That works until the model itself doesn't fit on one card. FSDP and DeepSpeed ZeRO solve a different problem: they shard the model's weights, gradients, and optimizer state across GPUs so no single device ever holds the whole thing.
+
+## The memory problem they both solve
+
+Training with Adam on a model of size N needs roughly the weights, the gradients, and two optimizer moment buffers — about 4x the parameter memory in mixed precision, before activations. A 70B-parameter model in this scheme needs several hundred gigabytes just for state, far past what one GPU holds. Ordinary data parallelism (DDP) doesn't help, because every replica still carries a full copy of everything.
+
+ZeRO (Zero Redundancy Optimizer), introduced by DeepSpeed, breaks this into stages. ZeRO-1 shards only the optimizer state across GPUs. ZeRO-2 adds sharding of gradients. ZeRO-3 shards the model weights themselves, so each GPU holds only a slice of every layer at rest and reconstructs full layers on the fly, just before they're needed, then discards them again. Each stage trades more communication for less memory per device.
+
+FSDP (Fully Sharded Data Parallel), PyTorch's native implementation, works on the same principle as ZeRO-3: parameters, gradients, and optimizer state are all sharded, and full parameter shards are gathered layer-by-layer during the forward and backward passes.
+
+## How the mechanics differ
+
+The two aren't really competing ideas — FSDP is PyTorch's built-in answer to what DeepSpeed pioneered as ZeRO-3. In practice the choice mostly comes down to ecosystem:
+
+- **FSDP** ships in PyTorch itself, so it integrates cleanly with `torch.compile`, native mixed precision, and Hugging Face's `Trainer` or `accelerate` with minimal extra configuration. FSDP2 (the current version) uses per-parameter sharding (`DTensor`) rather than the flat-buffer approach of FSDP1, which makes it easier to mix with techniques like LoRA on top of a sharded base model.
+- **DeepSpeed** is a separate library with its own launcher and JSON config, but it offers finer-grained control — ZeRO-Infinity can offload sharded state to CPU RAM or even NVMe when GPU memory alone still isn't enough, and its ZeRO++ variant reduces communication volume for slower interconnects.
+
+Both need a fast GPU-to-GPU link (NVLink or InfiniBand) to stay efficient — the constant gather-and-discard of sharded parameters is communication-heavy, and on a weak interconnect that overhead can dominate training time.
+
+## Choosing between them, and what to pair them with
+
+Reach for FSDP if you're already in a PyTorch-native or Hugging Face stack and want the path of least friction — most training frameworks like [Axolotl and torchtune](/learn/fine-tuning/choosing-a-training-framework) default to it. Reach for DeepSpeed when you need offloading to fit a model that's genuinely too large even for sharded GPU memory, or when you're working from an existing DeepSpeed config.
+
+Neither technique replaces the other memory-saving tricks in a training run — they compose with them. [Gradient checkpointing and Flash Attention](/learn/fine-tuning/memory-optimization-gradient-checkpointing-flash-attention) cut activation memory, which is separate from the weight/gradient/optimizer memory that FSDP and ZeRO shard. And if you're doing PEFT rather than full fine-tuning, check [LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning) first — a low-rank adapter on a mid-size model often fits on a single GPU, making distributed sharding unnecessary in the first place. FSDP and ZeRO earn their complexity specifically when the base model's full parameter count is the bottleneck: large full fine-tunes, or PEFT runs on models too big to hold even once.
+
+**Related:** [Fit Bigger Batches with Gradient Checkpointing and Flash Attention](/learn/fine-tuning/memory-optimization-gradient-checkpointing-flash-attention), [Choose a Fine-Tuning Framework: Axolotl, Unsloth, TRL, torchtune](/learn/fine-tuning/choosing-a-training-framework), [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning)

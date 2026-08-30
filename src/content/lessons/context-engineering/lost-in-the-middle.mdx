@@ -1,0 +1,33 @@
+---
+title: "Lost in the Middle: Why Position Beats Presence"
+track: "context-engineering"
+status: live
+summary: "A fact being in the context isn't the same as the model using it — position in the window changes retrieval odds."
+duration: "6 min read"
+---
+
+Put a fact at the very start or very end of a long prompt and a model will find it reliably. Bury the same fact in the middle of a 20-document context and accuracy drops noticeably, even though nothing about the fact itself changed. This is the "lost in the middle" effect, and it means presence in context is not the same as usable context.
+
+## The U-shaped curve
+
+Researchers testing retrieval-style question answering across long contexts found a consistent pattern: performance is highest when the relevant passage sits near the beginning, drops through the middle of the context, and recovers somewhat near the end. Plot accuracy against the position of the answer-bearing passage and you get a U shape, not a flat line. The model isn't failing to "see" the middle tokens — attention still processes them — it's failing to prioritize them the way it prioritizes the edges.
+
+This tracks with how these models are built. Recency and primacy effects show up because early tokens get reinforced by everything that attends back to them, and the most recent tokens are, well, recent — closest to the generation step where the model commits to an answer. Content sandwiched between the two gets comparatively less signal pulling it into the output, a dynamic related to what shows up in [context ordering and recency effects](/learn/context-engineering/context-ordering-and-recency-effects).
+
+## It gets worse with more distractors, not just more length
+
+The effect isn't purely about token count — it's about how much competing content surrounds the target fact. A 3,000-token context with one relevant passage and two distractors degrades less than a 3,000-token context with one relevant passage and fifteen distractors, even at the same total length. Every additional plausible-looking passage the model has to rule out adds noise around the true answer, and noise concentrated in the middle is exactly where the model's positional bias already makes it weakest. This is one reason naive retrieval-augmented setups that dump ten or twenty chunks into the prompt can underperform ones that retrieve fewer, better-ranked chunks — see [context window testing and eval](/learn/context-engineering/context-window-testing-and-eval) for how to actually measure this instead of assuming it.
+
+## What to actually do about it
+
+You can't fully engineer around a model's attention pattern, but you can work with it instead of against it:
+
+- **Put the most important material at the edges.** If you control ordering — retrieved documents, tool outputs, prior turns — place the passage most likely to answer the query first or last, not buried at position 8 of 15.
+- **Re-rank before you concatenate.** Retrieval systems that fetch by similarity and then reorder by relevance before insertion consistently beat ones that insert in raw retrieval order.
+- **Cut, don't just append.** Fewer, higher-quality passages beat more passages with the good one somewhere in the pile. See [relevance filtering](/learn/context-engineering/relevance-filtering) for how to decide what doesn't make the cut.
+- **Repeat critical instructions at the end.** For system-level constraints that must survive a long context, restating them right before generation is a cheap, reliable hedge against the middle-of-context drop-off.
+- **Test at your actual context lengths.** The effect's severity varies by model and by how many distractors are present — don't assume a fix that worked at 4K tokens still holds at 100K; measure it directly.
+
+None of this is exotic — it's the practical upshot of treating context position as a resource to allocate deliberately, not an afterthought of however retrieval or concatenation happened to order things.
+
+**Related:** [Context Ordering: Why Position Changes What the Model Notices](/learn/context-engineering/context-ordering-and-recency-effects), [Relevance Filtering: Deciding What Doesn't Make the Cut](/learn/context-engineering/relevance-filtering), [Testing Whether More Context Actually Helps](/learn/context-engineering/context-window-testing-and-eval)

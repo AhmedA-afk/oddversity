@@ -1,0 +1,31 @@
+---
+title: "SVD: Decomposing a Matrix Into Its Building Blocks"
+track: "maths-foundations"
+status: live
+summary: "Every matrix factors into rotate, scale, rotate — the idea underneath PCA, LoRA, and low-rank model compression."
+duration: "6 min read"
+---
+
+Any matrix, no matter how messy, can be split into three simple operations: a rotation, an axis-aligned stretch, and another rotation. That factorization is the singular value decomposition, and it's one of the most reused ideas in applied machine learning.
+
+## The rotate-scale-rotate picture
+
+A matrix `A` (size m x n) factors as `A = U Σ Vᵀ`. `V` is an orthogonal matrix whose columns are directions in the input space — think of them as the matrix's preferred input axes. `U` is an orthogonal matrix whose columns are directions in the output space. `Σ` is diagonal, holding non-negative numbers called singular values, sorted largest to smallest.
+
+Read it right to left: `Vᵀ` rotates your input onto a new set of axes, `Σ` stretches each axis by its singular value, and `U` rotates the result into the output space. No matter how tangled `A` looks, geometrically it's never doing more than that — it never shears or bends space; it just rotates, stretches, rotates.
+
+The singular values in `Σ` tell you how much each direction matters. A large singular value means that direction carries a lot of the matrix's "energy" — feed it a unit vector along the matching `V` column and you get a long output vector. A singular value near zero means that direction is nearly ignored: inputs along it barely affect the output at all.
+
+## Why this gives you compression for free
+
+Because the singular values are sorted, you can keep only the top `k` and drop the rest — reconstructing `A` as `Aₖ = Uₖ Σₖ Vₖᵀ` using just the first `k` columns of `U` and `V`. This is provably the best possible rank-`k` approximation of `A` in a least-squares sense (the Eckart-Young theorem). If a 1000x1000 matrix's singular values fall off fast, its top 20 or so might capture nearly all of it — turning a million-parameter matrix into roughly 40,000 numbers.
+
+This is exactly the mechanism behind [LoRA adapters](/learn/fine-tuning/lora-and-qlora-fine-tuning): instead of updating a full weight matrix during fine-tuning, LoRA learns a low-rank update `BA` where `B` and `A` are thin — implicitly assuming the *useful* update lives in a small number of singular directions, so you only need to learn those. It's also why classic PCA is "SVD in a trench coat": running SVD on a centered data matrix gives you the principal components directly as the columns of `V`, ranked by how much variance (squared singular value) each one explains.
+
+## Where else it shows up
+
+Beyond compression, SVD is the standard way to compute a matrix's [eigenvalues](/learn/maths-foundations/eigenvalues-and-eigenvectors) when the matrix isn't square or isn't symmetric — eigendecomposition only works cleanly for square matrices, but SVD works for any shape. It's also the numerically stable way to solve least-squares problems and to compute a matrix's pseudo-inverse, both common in classical ML pipelines sitting alongside neural nets.
+
+The intuition to keep: whenever you hear "low-rank approximation," "top-k components," or "compress this weight matrix," someone is quietly leaning on SVD's guarantee that a handful of the right directions can stand in for the whole thing.
+
+**Related:** [Eigenvalues and Eigenvectors, Intuitively](/learn/maths-foundations/eigenvalues-and-eigenvectors), [Matrices as Transformations](/learn/maths-foundations/matrices-as-transformations), [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning)

@@ -1,0 +1,35 @@
+---
+title: "A/B Testing Prompts Against Real Traffic"
+track: "prompt-engineering"
+status: live
+summary: "Why the prompt that wins your eval set can still lose in production, and how to test variants against real traffic instead."
+duration: "5 min read"
+---
+
+A prompt rewrite that scores better on your eval set can still make things worse for real users. The only way to know is to run both versions against live traffic and measure what actually changes.
+
+## Why offline evals aren't enough
+
+Eval sets are a fixed, curated snapshot. Production traffic is messier: longer inputs, weirder phrasing, edge cases nobody wrote a test case for. A prompt that adds more caveats might raise your eval accuracy by getting careful on the hard cases you sampled, while quietly making the model slower and more hedging on the easy 90% that make up most real requests. You won't see that tradeoff until it's running against the full distribution.
+
+This is the same reason you can't judge a prompt change by "it feels better" in a handful of manual tries — see [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics) for why vibes-based checking breaks down even before you get to production.
+
+## Setting up the split
+
+The mechanics look like any other A/B test: route a percentage of requests to variant A (your current prompt) and the rest to variant B (the candidate), keep the split stable per user so nobody flips between versions mid-session, and log which variant served each request alongside the outcome you care about.
+
+The part that's specific to prompts is picking that outcome. "Which output do I like more" isn't a metric — it doesn't scale past reading a few dozen examples yourself. Pick something you can compute from user behavior or downstream signal instead:
+
+- **Task success** — did the user stop retrying, accept the generated code, close the ticket without escalating
+- **Engagement** — regeneration rate, edit distance between the draft and what the user actually sent, session abandonment
+- **Cost and latency** — a prompt that's 2% better but triples token usage is rarely worth shipping
+
+Where you can, pair this with an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) scoring a sample of outputs from both arms on a fixed rubric — it catches quality regressions that behavioral metrics miss, like a prompt that's technically completing the task but degrading tone.
+
+## Reading the result honestly
+
+Production traffic is noisy, so a 2% lift on a few hundred requests is not a result — it's a coin flip. Decide your sample size and minimum detectable effect before you look at the data, not after, and hold out for statistical significance rather than calling the test the moment the numbers lean your way. Watch for Simpson's-paradox-style traps too: a variant that wins overall but loses for your highest-value user segment isn't a clean win.
+
+Once a variant wins, promote it deliberately rather than silently swapping the code. Tag the winning prompt with a version, record why it won and against what baseline, and keep the losing variant retrievable — you'll want it if a later regression shows the "improvement" broke something the test didn't measure. That discipline is what [Prompt Versioning: Treating Prompts Like Code](/learn/prompt-engineering/prompt-versioning-and-change-management) is about, and it's what makes this whole loop repeatable instead of a one-off experiment.
+
+**Related:** [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics), [Prompt Versioning: Treating Prompts Like Code](/learn/prompt-engineering/prompt-versioning-and-change-management), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge)

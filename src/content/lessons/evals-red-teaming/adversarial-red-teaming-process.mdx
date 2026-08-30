@@ -1,0 +1,31 @@
+---
+title: "Running a Structured Red-Team Exercise"
+track: "evals-red-teaming"
+status: live
+summary: "Threat-model your agent, build attack trees, and run a red-team pass the way a security team would."
+duration: "6 min read"
+---
+
+Ad-hoc jailbreak attempts find the easy bugs and miss everything else. A structured red-team exercise treats your agent like an attack surface: you enumerate what could go wrong before you start typing prompts, then work the list systematically.
+
+## Start with a threat model, not a prompt list
+
+Before writing a single adversarial input, write down what you're actually protecting. Ask three questions for your agent: what data can it read, what actions can it take, and who can talk to it. An agent with read-only access to public docs has a small threat model. An agent that can send emails, run code, or read a shared inbox has a much bigger one, because the cost of a successful attack goes up.
+
+For each capability, ask who benefits if it's misused. A support bot that can issue refunds is worth attacking for free money. A coding agent with shell access is worth attacking for a foothold on the host machine. Rank capabilities by blast radius, and spend your red-team hours on the top of that list, not evenly across all of it.
+
+## Build attack trees from the threat model
+
+An attack tree turns each threat into a branching set of concrete attempts. Take one goal — say, "make the refund bot issue an unauthorized refund" — and branch it into the ways an attacker could get there: a crafted user message, a poisoned document the bot retrieves via [RAG](/learn/rag/what-is-rag-and-when-to-use-it), a malicious tool result, or a multi-turn setup that establishes false context before the ask. Each branch becomes its own test case.
+
+This is where general jailbreak patterns (see [common jailbreak techniques](/learn/evals-red-teaming/jailbreak-techniques-and-defenses)) meet your specific system. A generic "ignore previous instructions" probe tells you little; a probe built from your actual attack tree tells you whether *this* agent, with *these* tools, fails in a way that matters. If your agent uses tools at all, also test [scope escape](/learn/evals-red-teaming/scope-escape-and-tool-abuse) — can an attacker get it to call a tool it shouldn't, or call an allowed tool with attacker-controlled arguments.
+
+## Run the exercise and log everything
+
+Work through the tree systematically: one row per attempt, with the input, the expected safe behavior, the actual output, and a pass/fail call. Don't stop at the first successful attack on a branch — variations often reveal different root causes even when the surface symptom looks the same. Manual probing here doesn't replace [automated adversarial testing](/learn/evals-red-teaming/automated-adversarial-testing); it's how you build the seed cases that automation later runs at scale.
+
+## Write it up like a security team would
+
+A red-team report that just lists "broke it 4 times" is not actionable. For each confirmed finding, include: the exact input, the vulnerable component (prompt, tool, retrieval layer), severity based on blast radius from your threat model, and a suggested fix or mitigation. Route findings that recur into your [regression suite](/learn/evals-red-teaming/building-a-regression-suite) so a fix can never silently regress, and feed the healthy ones into ongoing [eval and safety dashboards](/learn/evals-red-teaming/eval-and-safety-metrics-dashboards) so you can see whether new model versions reopen old wounds.
+
+**Related:** [Common Jailbreak Techniques and Their Defenses](/learn/evals-red-teaming/jailbreak-techniques-and-defenses), [Testing for Scope Escape](/learn/evals-red-teaming/scope-escape-and-tool-abuse), [Turning Bugs into a Regression Suite](/learn/evals-red-teaming/building-a-regression-suite)

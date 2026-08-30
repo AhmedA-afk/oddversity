@@ -1,0 +1,49 @@
+---
+title: "Error Handling for LLM Calls"
+track: "genai-app-dev"
+status: live
+summary: "Provider errors, content filters, and malformed output all fail differently — handle each one on purpose."
+duration: "6 min read"
+---
+
+An LLM call fails in more ways than a normal API call does. Some failures are the provider's fault, some are the model's, and some only show up once you try to use the output. Lumping them into one `try/catch` means every failure gets the same generic "something went wrong" message, which is the wrong answer for at least two of the three.
+
+## Three different failures, three different fixes
+
+**Provider errors** are the ones you already know: rate limits (429), timeouts, overloaded servers (529), auth failures. These are transient or infrastructure-level. The fix is retries with backoff, and for 429s specifically, respecting the provider's retry-after signal rather than guessing — see [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies). Retrying a malformed-output error, by contrast, just burns tokens reproducing the same mistake.
+
+**Content filter refusals** happen when the model (or a moderation layer in front of it) declines to answer — a flagged prompt, a policy-sensitive topic, an ambiguous request it won't guess at. This isn't a bug and retrying with the same input won't help. The right move is to detect the refusal (providers usually expose a stop reason like `content_filter` distinct from `end_turn`) and show the user something honest, not a spinner that times out.
+
+**Malformed output** is the sneaky one, because the API call itself succeeds — HTTP 200, tokens streamed back fine — but the content doesn't satisfy what your code needs: invalid JSON when you expected structured output, a truncated response that hit `max_tokens` mid-sentence, or a schema mismatch. This category needs validation *after* the call returns, not exception handling around it. If you're relying on the model for structured data, pair this with [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair) so a bad parse triggers a targeted retry instead of a full failure.
+
+## A shape that separates the cases
+
+```python
+try:
+    response = client.messages.create(...)
+except RateLimitError:
+    return retry_with_backoff()
+except APIConnectionError:
+    return retry_with_backoff()
+except AuthenticationError:
+    raise  # config problem, don't retry, page someone
+
+if response.stop_reason == "content_filter":
+    return user_facing_refusal_message()
+
+if response.stop_reason == "max_tokens":
+    return handle_truncation()  # widen budget, retry, or degrade gracefully
+
+try:
+    data = json.loads(response.content)
+except json.JSONDecodeError:
+    return repair_or_retry(response.content)
+```
+
+Each branch fails toward a different outcome: retry, honest refusal, or repair. That's the whole point — one `except Exception` collapses all three into "try again later," which is actively wrong for a content filter and slow for malformed JSON.
+
+## Design the fallback, not just the catch
+
+The harder design question isn't catching the error — it's deciding what the user sees. A chat UI can show "I can't help with that" for a refusal and a quiet auto-retry for a rate limit, with no visible difference in latency if the retry is fast. A background job can queue and retry provider errors but should dead-letter malformed-output failures for review rather than looping forever. Build this alongside your general [Guardrails and Input Validation](/learn/genai-app-dev/guardrails-and-input-validation) so the same error taxonomy covers both bad input going in and bad output coming out.
+
+**Related:** [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies), [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), [Guardrails and Input Validation](/learn/genai-app-dev/guardrails-and-input-validation)

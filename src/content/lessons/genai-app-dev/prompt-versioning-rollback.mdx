@@ -1,0 +1,36 @@
+---
+title: "Prompt Versioning and Safe Rollbacks"
+track: "genai-app-dev"
+status: live
+summary: "Treats prompts like code with versioned deploys and a fast revert path when one ships broken."
+duration: "5 min read"
+---
+
+A prompt edited in a dashboard and shipped straight to production is a deploy with no diff, no history, and no undo. When it goes wrong, "who changed the prompt and what did it say before" becomes a support ticket instead of a `git log`.
+
+## Store prompts like code, deploy them like config
+
+Every prompt that reaches production needs an identity: a version number or content hash, a timestamp, who changed it, and why. The cleanest setup keeps prompt text in version control alongside the code that calls it, so a prompt change goes through the same review and diff process as anything else — see [Prompt Versioning: Treating Prompts Like Code](/learn/prompt-engineering/prompt-versioning-and-change-management) for how to structure that layer. Where this lesson picks up is what happens once that versioned prompt is live: a request needs to record *which* version answered it, not just which prompt file exists in the repo. Log the version ID alongside every model call, next to the [structured log entry](/learn/production/structured-logging-for-llm-calls) you're already writing for cost and latency. Without that link, a spike in bad outputs has no way to point back at the prompt that caused it.
+
+## Decouple "new prompt written" from "new prompt live"
+
+The failure mode versioning alone doesn't fix: a prompt edit merges, and the next deploy pushes it to 100% of traffic at once. If it regresses — a rewritten instruction that quietly drops a constraint, a formatting change that breaks a downstream parser — every user hits it before anyone notices.
+
+Route prompt selection through a flag or config service instead of hardcoding the active version in application code, using the same mechanism you'd use for any [gradual feature rollout](/learn/genai-app-dev/feature-flagging-ai-features). Ship the new prompt version disabled, then move traffic to it in stages: an internal account first, then 5%, then 50%, watching quality and cost metrics at each step. Because the old version is still deployed and just not receiving traffic, "roll back" means flipping the flag back, not re-running a deploy pipeline. That's the whole point — the revert path has to be faster than the outage it's undoing, on the order of seconds, not a rebuild-and-redeploy cycle measured in minutes.
+
+```json
+{
+  "prompt_id": "support-triage",
+  "active_version": "v14",
+  "canary_version": "v15",
+  "canary_traffic_pct": 5
+}
+```
+
+## What "safe" actually requires
+
+A rollback is only as good as your ability to detect that you need one. Pair every prompt change with an automated check — a small [eval suite](/learn/evals-red-teaming/eval-driven-iteration) run against the new version before it takes any real traffic, and a live comparison against the old version's metrics once it does. Tie an alert to the metrics that matter for that feature: error rate, refusal rate, latency, or a task-specific score. A prompt that passes offline evals can still regress in production because real traffic has inputs your eval set never anticipated — that's what the canary stage catches.
+
+Keep at least the last few known-good versions readily selectable, not just the current one — a regression sometimes surfaces days after a rollout finishes, once the input distribution shifts (a new week, a new customer segment), so "current minus one" isn't always the safe target.
+
+**Related:** [Prompt Versioning: Treating Prompts Like Code](/learn/prompt-engineering/prompt-versioning-and-change-management), [Feature-Flagging and Gradual Rollouts for AI Features](/learn/genai-app-dev/feature-flagging-ai-features), [Treat Prompts as Versioned Config, Not Embedded Strings](/learn/production/prompts-as-versioned-config)

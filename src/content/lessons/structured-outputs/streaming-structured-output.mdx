@@ -1,0 +1,35 @@
+---
+title: "Streaming Structured Output: Parsing Before the Response Finishes"
+track: "structured-outputs"
+status: live
+summary: "Parse JSON fields as they stream in instead of waiting for the whole response to land."
+duration: "5 min read"
+---
+
+Waiting for a full JSON response before doing anything with it throws away the point of streaming. A model generating a 2,000-token report can take several seconds — if your UI shows nothing until the closing brace arrives, the user just watched a spinner the whole time. Streaming structured output means parsing the fields as they arrive, so a title or summary field can render the instant the model finishes writing it.
+
+## The core problem: partial JSON isn't valid JSON
+
+A standard JSON parser fails on a half-written object. Feed `JSON.parse` this:
+
+```json
+{"title": "Weekly Rep
+```
+
+and you get a syntax error, every single time, until the closing quote and brace show up. But an LLM streaming a response emits exactly this kind of incomplete fragment on every token. You need a parser built for the incomplete case, not the `JSON.parse` most developers reach for by habit.
+
+## Two ways to handle it
+
+**Partial JSON parsers.** Libraries like `partial-json` (JS) or `json-repair` walk an incomplete string and return the best valid object they can construct — closing open strings, arrays, and objects on the fly. As tokens stream in, you re-run the parser on the growing buffer and get back a progressively more complete object. This is the simplest option and works with any schema shape, though it means re-parsing the whole buffer on every chunk.
+
+**Provider streaming events.** Anthropic's API, when you stream a tool call or structured response, emits incremental `input_json_delta` events — small JSON string fragments you append to a buffer per field, rather than re-parsing everything from scratch. OpenAI's function-calling streams work similarly. This is more efficient at scale but ties you to the provider's event format, so switching providers means rewriting the parsing layer. See [Tool Schemas as a Structured-Extraction Mechanism](/learn/structured-outputs/tool-function-schemas) for how these calls are shaped in the first place.
+
+## What you can safely render early
+
+Not every field is safe to show mid-stream. A `title` or `status` field that appears early and won't change is fine to render as soon as it closes. An array field like `items` is trickier — you can render completed items as they close, but the last, still-open item should stay hidden or marked as loading until its closing bracket arrives, or you'll flash a truncated string on screen. Design your schema with this in mind: put fields you want to show first — like a headline or a one-line summary — earlier in the schema than fields you're fine showing later, since models tend to fill schemas roughly in field order. This connects directly to [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability).
+
+## Validate only at the end
+
+Partial objects will violate your schema constantly — a `required` field that hasn't streamed in yet, an enum value that's only half-written. Run full schema validation only once the stream reports completion; use the partial parse purely for progressive rendering, not correctness checks. If validation fails at the end, fall back to the same repair logic you'd use for any malformed output, covered in [Validation and Auto-Repair: Catching and Fixing Bad Output](/learn/structured-outputs/validation-and-auto-repair).
+
+**Related:** [Tool Schemas as a Structured-Extraction Mechanism](/learn/structured-outputs/tool-function-schemas), [Validation and Auto-Repair: Catching and Fixing Bad Output](/learn/structured-outputs/validation-and-auto-repair), [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui)

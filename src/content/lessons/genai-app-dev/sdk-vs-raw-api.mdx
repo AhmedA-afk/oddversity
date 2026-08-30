@@ -1,0 +1,39 @@
+---
+title: "Choosing an SDK: Vercel AI SDK, LangChain, or the Raw API"
+track: "genai-app-dev"
+status: live
+summary: "How to pick between the raw provider API, the Vercel AI SDK, and LangChain before you write your first call."
+duration: "6 min read"
+---
+
+Before you write [your first LLM API call](/learn/genai-app-dev/your-first-llm-api-call), you have to pick what sits between your code and the model. The three real options — the provider's raw SDK, the Vercel AI SDK, or LangChain — trade convenience for control in different places, and the wrong pick shows up later as either boilerplate you didn't need or an abstraction you have to fight.
+
+## The raw API
+
+Every provider ships an official SDK (`@anthropic-ai/sdk`, `openai`) that's a thin wrapper over HTTP. You send messages, get a response or a stream back, and everything about the request shape, retries, and error handling is yours to write.
+
+This is the right choice when you're building on one provider, want to understand exactly what's being sent, or are past the point of wanting a framework's opinions baked into your app. It's also the easiest to debug — there's no intermediate layer translating your call into something else before it hits the wire. The cost is that streaming state, tool-call loops, and multi-provider support are all things you build by hand.
+
+## Vercel AI SDK
+
+The Vercel AI SDK sits one layer up: it normalizes the request/response shape across providers, handles [streaming to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui) with framework hooks for React, Vue, and Svelte, and gives you a consistent tool-calling interface regardless of which model is answering. It's not a general orchestration framework — it doesn't try to manage long agent loops or retrieval pipelines — it's focused on the app-development surface: get tokens on screen, call tools, swap models.
+
+Pick it when you're building a chat or streaming UI and want the plumbing between provider and frontend handled for you, especially if you're already in a JS/TS framework it integrates with. You give up a little visibility into the raw request in exchange for not re-implementing stream parsing and UI state management yourself.
+
+## LangChain
+
+LangChain is the broadest of the three: chains, agents, memory, retrievers, and integrations with dozens of vector stores and tools, wrapped in its own abstractions (`Runnable`, `Chain`, `AgentExecutor`). It buys you the most out-of-the-box coverage if you're assembling something with several moving parts — retrieval plus tool use plus multi-step reasoning — and don't want to wire each integration by hand.
+
+The tradeoff is real: LangChain's abstractions add a layer between you and the actual API call, which makes debugging a failed request or an unexpected prompt harder — you're often stepping through framework internals, not your own code. Its API has also changed significantly across major versions, so code from a year-old tutorial may not run as written. It earns its keep for prototyping breadth and for teams standardizing on one framework across many integrations; it costs you the direct line of sight the raw API gives you.
+
+## How to actually decide
+
+Match the tool to what's varying in your project, not to what's popular:
+
+- **One provider, full control, simple flow** → raw API. You'll write more code but always know what's happening.
+- **Streaming chat UI, want to swap models easily** → Vercel AI SDK. It's purpose-built for exactly that surface.
+- **Multi-step pipelines with retrieval, memory, or many integrations** → LangChain, if the abstraction cost is worth the assembled coverage.
+
+None of this is permanent — plenty of teams start with the raw API to learn the shape of the problem, then reach for a framework once the boilerplate becomes real (or migrate off one once its abstractions stop fitting). The choice mostly affects how much of the [provider abstraction layer](/learn/genai-app-dev/provider-abstraction-layers) and streaming plumbing you're building yourself versus inheriting.
+
+**Related:** [Your First LLM API Call](/learn/genai-app-dev/your-first-llm-api-call), [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Building a Provider Abstraction Layer](/learn/genai-app-dev/provider-abstraction-layers)

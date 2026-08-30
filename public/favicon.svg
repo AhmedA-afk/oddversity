@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Oddversity">
+  <defs>
+    <clipPath id="r"><rect width="32" height="32" rx="7"/></clipPath>
+  </defs>
+  <g clip-path="url(#r)">
+    <rect width="32" height="32" fill="#3B54A3"/>
+    <rect y="23.7" width="32" height="8.3" fill="#A8741C"/>
+    <path d="M10.6 20.2V5.6h9.9v2.7h-6.3v3.4h5.5v2.7h-5.5v3.1h6.5v2.7z" fill="#FBFAF8"/>
+  </g>
+</svg>

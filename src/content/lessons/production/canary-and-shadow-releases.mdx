@@ -1,0 +1,35 @@
+---
+title: "Canary and Shadow-Test Prompt or Model Changes"
+track: "production"
+status: live
+summary: "Roll a new prompt or model to a slice of traffic, or run it silently in parallel, before you trust it with everyone."
+duration: "6 min read"
+---
+
+A new system prompt passed every eval you wrote. That's not the same as knowing it will behave on the traffic you didn't think to test. Canary and shadow releases are how you find out with real requests, before a bad prompt or model swap becomes everyone's problem at once.
+
+## Canary: let a slice of users feel it first
+
+A canary release routes a small, defined percentage of live traffic — say 5% — to the new prompt or model version while everyone else stays on the current one. You watch the canary's metrics (error rate, latency, cost per request, user-visible signals like thumbs-down or retry rate) against the control group in real time.
+
+The key discipline is picking numbers before you look at results: what metric, what threshold, how long you'll run it. "We'll bump to 25% if the canary's cost-per-request stays within 10% of control and thumbs-down rate doesn't rise" is a plan. "Let's see how it feels" is not — it invites you to rationalize a bad signal after the fact.
+
+Canaries are cheap to reason about because the group is real: real users, real conversations, real edge cases your eval set didn't anticipate. The tradeoff is that some of those users get a worse experience if the new version is actually worse — which is exactly why the slice starts small and the rollback has to be instant. This only works if you've already wired up a [kill switch](/learn/production/feature-flags-and-kill-switches) — the canary is the test, the kill switch is the emergency brake.
+
+## Shadow testing: run it, but don't show it
+
+A shadow release goes a step further in safety: the new version runs on live traffic *in parallel* with production, but its output is never shown to the user. Production's response ships as normal; the shadow version's response is logged, scored, and compared, then thrown away.
+
+This decouples "does the new version behave well on real inputs" from "does the new version behave well when users can see it," which matters because some prompt regressions only show up as absolute quality problems (worse answers, hallucinated details) rather than metrics that move a business number. Shadow mode is the place to run those quality checks — often an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) comparing old vs. new output on the same input — with zero user risk.
+
+The cost is real, though literal, not reputational: you're paying for two inferences per request instead of one, and you need somewhere to route and diff the parallel output. For a model swap that changes latency or cost per token significantly, shadow testing is often how you first see the real numbers under production load, not synthetic benchmarks.
+
+## Picking between them, or using both
+
+Shadow first, canary second is the common sequence: shadow mode tells you the new version doesn't obviously break on real traffic, without any user ever seeing its output. Once shadow metrics look clean, a canary tells you how it performs when it's the one actually answering — including effects a shadow test can't see, like whether users engage differently with its tone or length.
+
+Skip straight to canary only when the change is small and you're confident behavioral risk is low — a minor prompt tweak, not a model family swap. For anything that changes cost, latency, or output shape meaningfully, shadow first is worth the extra inference spend.
+
+Either way, the release is only as good as what you're watching. Decide your [latency, cost, and quality thresholds](/learn/production/latency-and-cost-slos) before traffic starts flowing, not while you're staring at a dashboard trying to decide if a number looks bad.
+
+**Related:** [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches), [Set SLOs for Latency, Cost, and Quality](/learn/production/latency-and-cost-slos), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge)

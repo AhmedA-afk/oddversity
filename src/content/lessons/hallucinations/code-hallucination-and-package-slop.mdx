@@ -1,0 +1,38 @@
+---
+title: "Code Hallucination and Package Slop: Invented APIs, Real Supply-Chain Risk"
+track: "hallucinations"
+status: live
+summary: "Models invent plausible-sounding functions and packages; attackers now register the fake ones so your install command becomes their payload."
+duration: "5 min read"
+---
+
+Ask a model for a quick script and it will sometimes hand you code that imports a package that doesn't exist, or calls a method that was never part of the library's API. That's not a typo — it's the model pattern-matching on what a package *should* be named, given everything else it has seen. The gap between "sounds right" and "is real" is where the risk lives.
+
+## Why code hallucinates the same way prose does
+
+A model predicts the next token, not the next fact. For code, that means it learns the *shape* of an ecosystem: `requests` has a `.get`, ORMs have a `.filter`, npm packages that do image resizing tend to be named `sharp-something` or `fast-image-resize`. When you ask for a niche capability — a rare AWS SDK call, a less common pandas method, a Rust crate for a specific parsing task — the model fills the gap with something statistically plausible rather than admitting it doesn't know. This is the same failure mode covered in [why models hallucinate](/learn/hallucinations/why-models-hallucinate): confident completion is the default behavior, not a bug that only shows up in prose.
+
+The result comes in two flavors:
+
+- **API hallucination** — a real library, but an invented method, parameter, or return shape (`response.get_json_safe()` when the actual method is `.json()`).
+- **Package hallucination** — an entire dependency that doesn't exist on PyPI, npm, or crates.io, but reads exactly like something that should.
+
+## Slopsquatting: when the fake package becomes real
+
+Package hallucination stopped being a harmless annoyance once attackers started watching for it. The pattern, now commonly called **slopsquatting**, works like this: researchers and attackers run large batches of coding prompts against popular models, collect the invented package names that show up repeatedly, and register those exact names on the real package registry — loaded with malware. Because coding assistants tend to hallucinate the *same* fake names for the *same* kinds of prompts, a squatted name doesn't need to fool one developer once. It sits there waiting for the next hundred developers whose assistant suggests it.
+
+This is classic typosquatting's successor, except the attacker doesn't have to guess a misspelling — the model does the targeting for free. A generated `pip install` or `npm install` line is a supply-chain decision, not a suggestion to skim past.
+
+## What actually stops it
+
+The fixes are boring and that's the point:
+
+- **Never pipe generated install commands straight into a shell.** Read the package name first.
+- **Verify existence and provenance before installing** — check the registry page, download counts, publish date, and maintainer history. A package "published two weeks ago with 40 downloads" that a model suggested for a common task is a signal, not a coincidence.
+- **Pin and lockfile everything**, so a hallucinated name can't silently slide into a future `npm install` after someone else registers it.
+- **Prefer grounding for anything library-specific** — paste the actual docs or let the model use a tool that can check the real package index, rather than relying on parametric memory of every API surface. See [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) for the general technique.
+- **In CI, run a dependency-existence check** as a gate, the same way you'd run a linter — catching an invented import before merge is far cheaper than after.
+
+None of this requires distrusting the model's code wholesale. It requires treating the dependency list the way you'd treat any other unverified claim it makes: plausible until confirmed, never installed on the strength of the model sounding sure of itself.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Tool-Call Hallucination](/learn/hallucinations/tool-call-hallucination)

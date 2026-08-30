@@ -1,0 +1,46 @@
+---
+title: "Prefilling Responses to Steer Output Format"
+track: "prompt-engineering"
+status: live
+summary: "Seed the start of the assistant's turn to force a format, skip preamble, or lock in a persona before generation begins."
+duration: "5 min read"
+---
+
+Most prompting techniques shape what you send. Prefilling shapes where the model starts answering — you write the opening of the assistant's turn yourself, and the model continues from there instead of starting from a blank line.
+
+## Why it works
+
+A chat model generates one token at a time, each conditioned on everything before it — including its own prior tokens. Normally "everything before it" ends at your user message, so the model's first move is to decide how to open: with a greeting, a disclaimer, a restatement of the question. Prefilling removes that decision. If the assistant turn already begins with `{`, the model can't produce "Sure, here's the JSON you asked for" — that token position is already spent, and the only coherent continuation is more JSON. You're not asking the model to skip the preamble; you're making the preamble structurally impossible.
+
+This is different from just instructing "don't add commentary, output only JSON." Instructions compete with the model's learned habits and can lose, especially under pressure from a long or unusual prompt. A prefill doesn't compete with anything — it's already committed text the model must build on.
+
+## Where to use it
+
+**Forcing a format.** Prefill with a single `{` to force JSON, an opening code fence to force a code block, or an opening `<answer>` tag to force XML — the response then starts exactly there, with no "Here is the code:" preamble to strip out downstream.
+
+**Skipping refusal preambles or hedging.** Prefilling the start of a real answer (not bypassing genuine safety boundaries) can cut throat-clearing like "As an AI, I should note that..." before it has a chance to start.
+
+**Locking in a persona or continuing a scene.** In creative or role-play use, prefilling with a character's name and a colon keeps the model in-voice from token one, rather than drifting back to a narrator's summary.
+
+**Resuming a cut-off generation.** If a response hit a token limit mid-sentence, you can prefill the next call with the truncated tail and let the model pick the thread back up — cheaper than regenerating the whole answer.
+
+A minimal example, using the Anthropic Messages API, where the assistant turn is just seeded and left open for the model to continue:
+
+```python
+response = client.messages.create(
+    model="claude-sonnet-4-5",
+    max_tokens=200,
+    messages=[
+        {"role": "user", "content": "List three testing frameworks as JSON."},
+        {"role": "assistant", "content": "{"},
+    ],
+)
+```
+
+The model's reply picks up right after that opening brace, so you concatenate the prefill and the completion yourself to get valid JSON.
+
+## The catch
+
+Prefilling only steers what the model writes — it doesn't validate it. A prefilled `{` still needs a JSON parser and a retry path for malformed output, the same as any other structured-output approach (see [Why Structured Output](/learn/structured-outputs/why-structured-output)). And a prefill that fights the actual content — forcing a persona the model has strong reason to break character on — tends to produce worse answers wrapped in the right wrapper, not better ones. Use it to lock in shape, not to override substance.
+
+**Related:** [Answer-First Prompting](/learn/prompt-engineering/answer-first-prompting), [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Why Structured Output: Free Text vs Machine-Parseable Data](/learn/structured-outputs/why-structured-output)

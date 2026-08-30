@@ -1,0 +1,44 @@
+---
+title: "Handling Multimodal Input: Images, Audio, and Files"
+track: "genai-app-dev"
+status: live
+summary: "Accept images, audio, and files from users and turn them into a format the model can actually read."
+duration: "6 min read"
+---
+
+A multimodal model call rarely starts with tidy input. It starts with a file a user dropped into a chat box — a phone photo of a whiteboard, a 40-page PDF, a voice memo — and your job is to get that file into a shape the API accepts before you ever think about the prompt.
+
+## Images: encode, resize, and mind the token cost
+
+Most providers accept images as base64-encoded data or a hosted URL, alongside the text content in the same message. The practical work happens before the API call:
+
+- **Resize on the client or server.** Sending a 12MB phone photo wastes bandwidth and tokens — most models internally downscale to a max dimension anyway, so pre-resizing to roughly 1568px on the long edge (a common ceiling) costs nothing in quality and saves real money.
+- **Know that images cost tokens.** A large image can consume more of the context window than a page of text. If you're processing many images in one call, budget for it the same way you'd budget for a long document — see [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking).
+- **Strip EXIF and validate MIME type** before encoding. A rotated image with orientation metadata the model ignores is a common source of "the model read it upside down" bug reports.
+
+```
+// rough shape of a multimodal message
+{
+  role: "user",
+  content: [
+    { type: "text", text: "What's wrong with this chart?" },
+    { type: "image", source: { type: "base64", media_type: "image/png", data: "<...>" } }
+  ]
+}
+```
+
+## Audio: transcribe first, don't assume native input
+
+Not every model accepts raw audio, and even ones that do often perform better on a clean text transcript than on the waveform itself. The reliable pattern is a two-stage pipeline: a dedicated speech-to-text step (Whisper or a provider's transcription endpoint) produces text, and that text goes into your normal prompt. This also gives you a transcript to log, search, and show the user — which raw audio bytes don't.
+
+If you do send audio directly to a model that supports it, treat file size and duration limits the same way you treat image size limits: check them before the call, not after a 400 error in production.
+
+## Files and documents: extraction beats raw bytes
+
+PDFs, spreadsheets, and slide decks are the trickiest case because "the file" and "the content" aren't the same thing. Some model APIs now accept PDFs natively and read both text and layout — genuinely useful for a scanned invoice or a chart-heavy report. But for anything that's mostly text, extracting it yourself (with a PDF parser or an OCR step) and passing clean text is usually cheaper, more debuggable, and lets you chunk long documents instead of hitting a size ceiling. This is the same tradeoff covered in [Parsing PDFs, Tables, and Scanned Documents for RAG](/learn/rag/parsing-documents-for-rag) — multimodal input and RAG ingestion are the same problem wearing different hats.
+
+## Validate before you spend a call
+
+Every input type needs the same guardrail: check file type, size, and (where possible) content *before* it reaches the model. Rejecting a 200MB file or an unsupported codec at the edge is free; discovering the same problem after a failed, billed API call is not. Pair this with the general input checks in [Guardrails and Input Validation](/learn/genai-app-dev/guardrails-and-input-validation) — multimodal inputs need the same skepticism as user text, just with different failure modes (corrupt files, wrong encodings, mismatched MIME types).
+
+**Related:** [Guardrails and Input Validation](/learn/genai-app-dev/guardrails-and-input-validation), [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking), [Parsing PDFs, Tables, and Scanned Documents for RAG](/learn/rag/parsing-documents-for-rag)

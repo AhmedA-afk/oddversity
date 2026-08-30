@@ -1,0 +1,32 @@
+---
+title: "Context Ordering: Why Position Changes What the Model Notices"
+track: "context-engineering"
+status: live
+summary: "Content near the start and end of a prompt gets more attention than content buried in the middle."
+duration: "5 min read"
+---
+
+Put the same fact at the top, the middle, and the bottom of a long prompt, and the model uses it differently depending on where it landed. Position isn't neutral — it's a real variable in how much a model actually notices something.
+
+## The lost-in-the-middle effect
+
+Researchers testing long-context models on retrieval tasks found a consistent U-shaped curve: accuracy is highest when the answer sits near the start or end of the context, and drops noticeably when it's buried in the middle. This shows up even in models advertised as having huge context windows — a bigger window doesn't mean uniform attention across it. The model isn't reading your context like a human skimming a document; it's weighting tokens, and that weighting favors the edges.
+
+This matters directly for anything you build with retrieval or tool results in the loop. If you're stuffing five retrieved chunks into a prompt, the third one in isn't treated the same as the first or last, even though nothing about its content changed. See [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing) for the related question of whether that chunk should be there at all.
+
+## Recency bias in conversation
+
+The same shape shows up in multi-turn conversations. Instructions from early in a session tend to fade in influence as more turns get added, while the last few messages carry disproportionate weight. This is one reason an agent seems to "forget" a constraint you set fifteen turns ago even though it's technically still in the context — it's not gone, it's just outweighed by everything that came after it. [Sliding Windows](/learn/context-engineering/sliding-window-context-management) and [Compaction](/learn/context-engineering/summarization-for-compaction) are two different responses to this same underlying pressure: neither can hold everything with equal weight forever, so both make an explicit choice about what stays close to the model's attention.
+
+## Designing around it, not against it
+
+You can't fight the shape of attention, but you can place things deliberately instead of letting order be an accident of pipeline order:
+
+- Put your most important instructions and constraints at the very start or very end of the prompt, never buried mid-context.
+- When you must include a long list of retrieved documents, put the most relevant one first or last, not wherever the retriever happened to rank it internally.
+- For system prompts, treat the last few sentences as prime real estate — a model that drifts from earlier instructions is more likely to still respect ones stated right before it starts generating.
+- Re-state critical constraints near the end of long conversations rather than assuming a rule set once still has full force.
+
+None of this is about writing less context — it's about recognizing that where you put something is as much a design decision as what you put there. A well-ordered prompt with the same information can outperform a haphazard one, which is the same instinct behind [Structured Context Injection](/learn/context-engineering/structured-context-injection): structure isn't decoration, it's how the model finds what matters.
+
+**Related:** [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing), [Sliding Windows: Rolling Off Old Turns](/learn/context-engineering/sliding-window-context-management), [Context Rot](/learn/context-engineering/context-rot)

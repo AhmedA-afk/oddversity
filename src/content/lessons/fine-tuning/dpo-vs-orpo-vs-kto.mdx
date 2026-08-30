@@ -1,0 +1,37 @@
+---
+title: "DPO vs. ORPO vs. KTO: Choosing a Preference-Tuning Method"
+track: "fine-tuning"
+status: live
+summary: "Compare the newer direct preference-optimization variants on data requirements, stability, and cost."
+duration: "6 min read"
+---
+
+All three methods push a model toward outputs humans prefer, without the reward-model-plus-PPO machinery of classic RLHF. They differ in what data they need and how much they cost to run — and that's what should actually drive your pick.
+
+## DPO: pairs, and a frozen reference model
+
+DPO (Direct Preference Optimization) takes the RLHF objective and rewrites it as a simple classification loss: given a prompt and a chosen/rejected pair, increase the log-probability gap between them. No reward model, no rollouts. But DPO still needs a **reference model** — a frozen copy of the starting checkpoint — kept in memory during training to compute the KL penalty that stops the policy from drifting too far. That doubles your GPU memory footprint versus plain SFT.
+
+The data requirement is strict: every training example must be a **pair** — same prompt, one chosen response, one rejected response. If your feedback is scores, thumbs-up/down on single responses, or edits, you have to manufacture pairs, which is where a lot of DPO datasets go wrong (near-duplicate pairs, or pairs where the "reject" is just short and off-topic, both add noise instead of signal).
+
+## ORPO: skip the reference model, skip the SFT stage
+
+ORPO (Odds Ratio Preference Optimization) folds preference tuning and supervised fine-tuning into one stage. It adds an odds-ratio penalty term directly to the standard SFT cross-entropy loss — no separate SFT checkpoint required first, and no reference model at all, so memory and step count both drop versus DPO. That makes ORPO the pragmatic choice when compute is tight or when you don't already have a solid SFT model to fine-tune from.
+
+The tradeoff: because it's one combined loss instead of a dedicated preference objective, ORPO tends to be more sensitive to the *quality* of the chosen response — it's simultaneously teaching the model to write like the chosen answer and to prefer it over the rejected one. Weak chosen responses hurt more here than in DPO.
+
+## KTO: no pairs at all
+
+KTO (Kahneman-Tversky Optimization) drops the pairing requirement entirely. It trains on **single** responses labeled desirable or undesirable — closer to how real product feedback actually arrives (thumbs up/down, accept/reject on a single output) than curated chosen/rejected pairs. Under the hood it borrows loss-aversion framing from prospect theory: it weights the model's response more heavily than exactly matching preferred to non-preferred counts.
+
+This matters practically: if you're mining preference signal from production logs — user accepted a suggestion, user regenerated it — you already have KTO-shaped data. Building strict pairs from those same logs for DPO usually means throwing data away or fabricating weak pairings.
+
+## Picking one
+
+- **Have a strong SFT model and clean paired preference data** (e.g. from a labeling vendor)? Use DPO — it's the best-studied of the three, with the most tooling and prior art to lean on.
+- **Compute or a separate SFT stage is the bottleneck**? Use ORPO — one training run instead of two.
+- **Your feedback is naturally unpaired** — logs, ratings, accept/reject events — and pairing it up would mean discarding most of it? Use KTO.
+
+All three are supported directly in TRL, so the actual switching cost between them is usually a config change, not a rewrite — worth trying more than one if your eval budget allows it. Whichever you pick, this is only reachable once you've decided preference tuning is the right layer at all, and remember the classic reward-model-plus-PPO path these methods replace still shows up in some production stacks.
+
+**Related:** [SFT vs Preference Tuning (DPO/RLHF)](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning), [Reward Modeling and PPO: What's Inside 'RLHF'](/learn/fine-tuning/rlhf-reward-modeling-and-ppo), [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset)

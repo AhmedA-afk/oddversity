@@ -1,0 +1,32 @@
+---
+title: "Escalation Design: Handing Off to a Human When Confidence Drops"
+track: "hallucinations"
+status: live
+summary: "How to build the threshold and handoff path that routes uncertain answers to a person instead of shipping them."
+duration: "5 min read"
+---
+
+Teaching a model to say "I don't know" only helps if something happens after it says that. Escalation design is the plumbing: the threshold that decides an answer is too uncertain to ship, and the path that gets it to a human instead of silently returning a shaky guess.
+
+## Pick a signal, not a vibe
+
+You can't escalate on "the model seemed unsure." You need a measurable trigger. Common ones, roughly in order of how much infrastructure they cost:
+
+- **Self-reported confidence.** Ask the model to rate its own certainty or explicitly output "insufficient information." Cheap, but self-reports are poorly calibrated — a model can be confidently wrong just as easily as honestly uncertain.
+- **Retrieval coverage.** In a RAG system, if the retrieved chunks don't actually contain the answer (low similarity scores, empty results, or a check that the answer isn't grounded in the sources), that's a strong, cheap escalation signal — see [grounding](/learn/hallucinations/grounding-with-source-documents).
+- **Sampling disagreement.** Run the same prompt two or three times, or at higher temperature, and compare answers. Divergent answers mean the model is guessing. This is the practical version of [semantic entropy](/learn/hallucinations/semantic-entropy-and-uncertainty-quantification), without needing a full entropy calculation.
+- **A verifier or judge pass.** A second model call (or fact-checking step) scores the first answer's plausibility against sources or known constraints, and low scores route to escalation.
+
+Combine two of these rather than trusting one. Self-reported confidence alone is the weakest single signal you can pick.
+
+## Design the threshold as a business decision, not a model parameter
+
+The confidence cutoff is not something you tune purely on an eval curve — it's a tradeoff between two costs: the cost of a wrong answer shipping, and the cost of a human reviewing something the model actually had right. A medical or legal summarizer should escalate aggressively, tolerating a lot of unnecessary human review. A recipe substitution suggestion can ship almost everything and escalate rarely. Set the threshold with the people who own that cost, and revisit it as you gather data — most teams start too conservative or too permissive and adjust after seeing real escalation volume.
+
+## Build the handoff, not just the flag
+
+A flagged-but-unrouted uncertain answer is worse than no flag at all, because it creates a queue nobody owns. The handoff needs: a place the escalated case lands (a review queue, a ticket, a Slack alert), a person or team with the context to actually resolve it, and a way the resolution gets back to the user without a dead-air delay. Also log what triggered the escalation — that data is what lets you retune the threshold later instead of guessing.
+
+Escalation isn't a fallback bolted on when things fail. It's a deliberate second path your system routes to on purpose, and it should be tested as its own flow, not just left as a theoretical branch.
+
+**Related:** [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know), [Confidence Signals: What Model Certainty Actually Reflects](/learn/hallucinations/confidence-and-uncertainty-signals), [Build an Escalation Queue for Low-Confidence Output](/learn/production/human-escalation-queues-for-low-confidence-output)

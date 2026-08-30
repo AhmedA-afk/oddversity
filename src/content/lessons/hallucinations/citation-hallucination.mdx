@@ -1,0 +1,38 @@
+---
+title: "Citation Hallucination: Fabricated Sources That Look Completely Real"
+track: "hallucinations"
+status: live
+summary: "Why models invent case law, papers, and URLs with perfect formatting, and how to catch a citation that was never real."
+duration: "5 min read"
+---
+
+A lawyer files a brief citing six court cases. The formatting is flawless, the case names sound plausible, the docket numbers are the right shape. None of the cases exist. This has happened in real courtrooms more than once, and the mechanism behind it is worth understanding on its own — separate from hallucination in general.
+
+## Why citations specifically break
+
+A model trained on text learns the *shape* of a citation extremely well: author, year, journal, volume, page range, or for case law, party names, court, docket number. That shape is one of the most rigidly patterned things in its training data, so the model reproduces it fluently. What it did not reliably learn is the mapping from a specific claim to one specific real document — that mapping requires exact recall of a rare fact, not pattern completion. So the model does the part it's good at (format) and guesses the part it's bad at (the actual reference), and the two blend seamlessly. A fabricated citation looks *more* trustworthy than a hedge, because polish reads as confidence.
+
+This is why citation hallucination is more dangerous than a hallucinated fact in prose. A wrong claim in a paragraph can be checked against what you already know. A wrong citation is checked against nothing — its entire job is to be the thing you didn't have to verify yourself, which is exactly the property that makes an invented one so costly.
+
+## What makes a fake citation convincing
+
+Three patterns show up repeatedly:
+
+- **Right format, wrong paper.** A real author, a real journal, a plausible-sounding title that isn't the paper's actual title, and a page range that doesn't exist.
+- **Merged sources.** Two real papers get blended into one citation — the authors of paper A, the findings of paper B, the DOI of neither.
+- **Confident placement.** The citation sits attached to the exact claim it's supposedly supporting, which makes it read as verified when it's actually just co-located.
+
+None of these show up as uncertainty in the output. There's no hedge word, no "I believe," no lower-confidence phrasing — see [confidence and uncertainty signals](/learn/hallucinations/confidence-and-uncertainty-signals) for why fluency and accuracy are largely decoupled in the first place.
+
+## Catching it before it ships
+
+The only reliable check is resolution, not inspection — you cannot tell a fabricated citation from a real one by reading it, because the model didn't leave a tell.
+
+- **Resolve every reference.** Look up the DOI, pull the arXiv ID, hit the URL. If it 404s, doesn't match the title, or the paper exists but says something different, it's fabricated or misattributed.
+- **Ground the model instead of trusting recall.** If you supply the actual source documents and constrain the model to quote or cite only from what's in context, you convert an open-book memory problem into a closed-book lookup problem — see [grounding with source documents](/learn/hallucinations/grounding-with-source-documents).
+- **Require quote-then-cite.** Ask the model to pull the exact sentence it's citing before it writes the citation. A model can't quote a paper it invented, so this surfaces fabrications the citation format alone hides.
+- **Treat this as one instance of a broader failure.** The same "correct shape, fabricated content" pattern shows up in [tool-call hallucination](/learn/hallucinations/tool-call-hallucination) and [code hallucination and package slop](/learn/hallucinations/code-hallucination-and-package-slop) — anywhere a model can pattern-complete a structured reference without actually resolving it.
+
+Citations are a trust shortcut by design — the reader isn't supposed to verify them, that's the point of citing. A model that fabricates them fluently breaks that shortcut silently, which is why resolving every one, every time, isn't paranoia here — it's the only check that actually works.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Citations: Making Every Claim Traceable to a Source](/learn/hallucinations/citations-and-attribution), [Code Hallucination and Package Slop](/learn/hallucinations/code-hallucination-and-package-slop)

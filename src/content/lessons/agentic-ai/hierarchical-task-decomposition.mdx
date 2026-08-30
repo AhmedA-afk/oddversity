@@ -1,0 +1,29 @@
+---
+title: "Plan-and-Execute vs. ReAct: Hierarchical Task Decomposition"
+track: "agentic-ai"
+status: live
+summary: "Two ways to break a big goal into subtasks: plan the whole thing upfront, or think one step at a time as you go."
+duration: "6 min read"
+---
+
+ReAct decides the next step after seeing the last result. Plan-and-Execute decides all the steps before taking any of them. Most real agents end up somewhere between the two, and knowing why tells you when to reach for which.
+
+## Two ways to break down a goal
+
+[ReAct](/learn/agentic-ai/react-pattern) interleaves reasoning and acting: think, call a tool, observe the result, think again. There's no separate planning phase — the "plan" is implicit, one step at a time, re-derived from scratch after every observation. This makes ReAct naturally adaptive: if a search returns nothing useful, the next thought can pivot immediately.
+
+Plan-and-Execute splits the work into two phases. A planner first decomposes the goal into an explicit list of subtasks — "1. find the current spec, 2. check it against the existing schema, 3. draft the migration, 4. write tests" — and only then does an executor start working through that list, one item at a time, usually with its own ReAct-style loop inside each step. The plan is a first-class artifact you can inspect, edit, or hand to a person before any tool runs.
+
+The tradeoff is the classic one between deliberation and reaction. ReAct spends a full reasoning turn on every single action, which is expensive and can wander — an agent debugging a flaky test can burn dozens of turns down a dead end because nothing above the loop is asking "does this still serve the goal?" Plan-and-Execute pays that cost once, up front, then executes cheaply, but the plan can go stale: subtask 3 assumed the schema in subtask 2 would look one way, and it didn't.
+
+## Why hierarchy helps
+
+The real fix isn't "planning" vs. "no planning" — it's giving the agent more than one level to think at. A flat ReAct loop treats "read the file" and "ship the feature" as steps of the same size, which is why long ReAct runs drift: there's no larger structure holding the thread. A hierarchical setup keeps a high-level plan stable while letting execution be locally reactive — each subtask runs its own ReAct loop, but that loop can't wander past its subtask's boundary, and failures get reported back up to the planner rather than silently reshaping the whole run.
+
+This is also why frameworks like [LangGraph](/learn/agentic-ai/choosing-an-agent-framework) model agents as graphs rather than a single loop: a planner node, an executor node, and a re-plan node that fires when execution invalidates an assumption. Re-planning is the piece that keeps Plan-and-Execute from being brittle — if step 3 discovers the schema is wrong, the run doesn't have to fail, it goes back to the planner with that new information and gets a revised plan for the remaining steps.
+
+## When to reach for which
+
+Use flat ReAct for short, exploratory tasks where you can't know the steps until you've seen intermediate results — debugging, open-ended research, anything where step 2 genuinely depends on what step 1 returned. Use Plan-and-Execute when the task is long enough that an explicit plan is worth writing down: multi-file refactors, anything you want a human to approve before execution starts, or anywhere step count and cost need to be predictable in advance. For genuinely large goals, add re-planning so the upfront plan isn't a promise the agent can't keep.
+
+**Related:** [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern), [Planning Before Acting](/learn/agentic-ai/planning-and-task-decomposition), [Tree of Thoughts and MCTS: Search-Based Planning for Agents](/learn/agentic-ai/tree-search-for-agent-planning)

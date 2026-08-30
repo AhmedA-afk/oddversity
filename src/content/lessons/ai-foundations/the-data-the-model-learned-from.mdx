@@ -1,0 +1,33 @@
+---
+title: "The Data the Model Learned From"
+track: "ai-foundations"
+status: live
+summary: "A model's knowledge, gaps, and biases all trace back to one thing: what it read during training."
+duration: "5 min read"
+---
+
+Ask a model something it's never been near, and it doesn't say "I don't know" — it guesses, fluently. To understand when to trust an answer and when to double-check it, you need to understand where the answer came from in the first place: a giant scrape of text, not a database, not a search engine.
+
+## What actually goes in
+
+Large language models are trained on a mixture of web pages, books, code repositories, forums, encyclopedias, and licensed datasets — mostly text that was already public, filtered and deduplicated at scale. This process is covered in more depth in [Pretraining: Learning From the Whole Internet](/learn/llm-foundations/pretraining-explained), but the key point here is simpler: the model doesn't "know" facts the way a database stores rows. It has absorbed statistical patterns from that text, which is why it can write fluently about things it never truly verified.
+
+## The knowledge cutoff
+
+Every model has a training cutoff date — the point after which nothing entered its dataset. Ask about an event from after that date, and the model may confidently describe an outdated version of reality, or make something up entirely rather than flag the gap. This isn't a bug you can prompt your way around; it's a structural consequence of how training works. The fix, when currency matters, is giving the model current information at inference time — through search tools, retrieval, or pasted context — rather than trusting its internal knowledge.
+
+## Blind spots aren't random
+
+Training data reflects who publishes text online, in what language, and about what. That means:
+
+- **Recency skew** — well-documented, widely discussed topics (popular programming languages, major news events) are overrepresented; niche or emerging topics are thin.
+- **Language and geography skew** — English-language, Western-sourced content dominates most training sets, so the model is often less reliable on topics that are well-documented in other languages but not in English.
+- **Popularity bias** — the mainstream, majority view on a contested topic tends to be echoed more confidently than a minority-but-correct one, simply because it appears more often in the data.
+
+None of this shows up as an error message. It shows up as a plausible-sounding answer that happens to be shallow, dated, or wrong.
+
+## What this means for how you use it
+
+Treat training data as the model's only source of "knowledge," and treat that source as a snapshot with known holes. For anything time-sensitive, niche, or high-stakes, don't rely on the model's memory — ground it. This is exactly the gap that [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents) and [RAG as Hallucination Mitigation](/learn/hallucinations/retrieval-augmented-mitigation) exist to close: instead of asking the model to recall, you hand it the current, relevant material directly and ask it to reason over that. The model is still doing the same next-token prediction underneath — but now it's predicting from what you gave it, not from what it happened to read months or years ago.
+
+**Related:** [Pretraining: Learning From the Whole Internet](/learn/llm-foundations/pretraining-explained), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [What a Hallucination Actually Is](/learn/hallucinations/what-is-a-hallucination)

@@ -1,0 +1,34 @@
+---
+title: "Relevance Filtering: Deciding What Doesn't Make the Cut"
+track: "context-engineering"
+status: live
+summary: "The context window is finite and every irrelevant token pushed in pushes something useful out."
+duration: "5 min read"
+---
+
+A support agent has access to a customer's full account history, every past ticket, the product docs, and the current conversation. If you hand all of it to the model on every turn, you haven't given it more information — you've buried the two sentences that actually matter under a pile of noise the model has to read through first. Relevance filtering is the discipline of deciding, before anything reaches the prompt, what earns a seat.
+
+## Why "just include it" fails
+
+It's tempting to treat context like storage: more is safer, the model can "figure out what matters." In practice this backfires two ways. First, it costs money and latency — every token you send gets processed and paid for whether the model uses it or not. Second, and more insidious, it degrades quality. Models weight recent and prominent tokens more heavily than a block of forty barely-relevant paragraphs (see [context ordering](/learn/context-engineering/context-ordering-and-recency-effects)), and stuffing the window with marginal material is a direct cause of [context rot](/learn/context-engineering/context-rot) — the well-documented pattern where accuracy quietly drops as irrelevant tokens pile up, even when the window technically has room left.
+
+The fix isn't a bigger window. It's a filter that runs before the prompt is assembled, deciding what's in and what's cut.
+
+## What "relevant" actually means
+
+Relevance isn't a property of a document — it's a property of a document *given this specific query, at this specific turn*. A refund policy is highly relevant when a customer asks about a refund and dead weight when they ask about shipping speed. That's why relevance filtering is usually implemented as retrieval plus a score, not a static whitelist:
+
+- **Semantic match** — how close is this chunk to the current query, typically via [cosine similarity](/learn/maths-foundations/cosine-similarity) over embeddings
+- **Recency** — a ticket from yesterday usually outweighs one from two years ago
+- **Structural signal** — metadata like ticket status, document type, or user role can filter out whole categories before similarity scoring even runs (see [metadata filtering](/learn/rag/metadata-filtering-in-retrieval))
+- **Explicit relevance to the task** — a coding agent doesn't need the marketing docs open, no matter how semantically close a keyword match makes them look
+
+None of these signals is sufficient alone. A keyword-only filter misses paraphrases; a pure embedding filter can be fooled by surface similarity on an off-topic passage. Production systems usually combine retrieval score with a small set of hard rules — filters that exclude, not just rank.
+
+## Filtering is a budget decision, not a purity test
+
+The goal isn't a perfectly curated context — it's the best use of a fixed number of tokens. Once you've scored candidates for relevance, you're really solving a budgeting problem: given N tokens of room, which top-scored items do you keep, and where do the cut lines fall (see [token budgeting](/learn/context-engineering/token-budgeting-strategies))? A document that's 70% relevant but huge may cost you more than three documents that are each 95% relevant and short.
+
+This is also why relevance filtering and [retrieval](/learn/context-engineering/retrieval-vs-context-stuffing) are often the same system wearing two hats: retrieval decides what's fetchable, filtering decides what's worth spending tokens on right now. Treat them as one pipeline — fetch broad, score honestly, then cut hard — and the context window stops being a junk drawer and starts being an argument for why the model should get this answer right.
+
+**Related:** [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Retrieval vs Stuffing: Fetch Just-in-Time or Load It All](/learn/context-engineering/retrieval-vs-context-stuffing), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies)

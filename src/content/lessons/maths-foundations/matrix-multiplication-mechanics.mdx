@@ -1,0 +1,37 @@
+---
+title: "Matrix Multiplication, Step by Step"
+track: "maths-foundations"
+status: live
+summary: "The row-by-column mechanics behind the one operation an LLM spends nearly all its compute on."
+duration: "5 min read"
+---
+
+Every forward pass through a transformer is, mechanically, a long chain of matrix multiplications. Attention weights, the feed-forward block, the final projection to vocabulary logits — all of it reduces to the same operation, repeated at massive scale. If you can multiply two small matrices by hand, you can read what a model is actually doing.
+
+## The rule: row dot column
+
+To multiply matrix A (shape m x n) by matrix B (shape n x p), each entry of the result comes from taking the dot product of a row of A with a column of B. The inner dimensions have to match — A's columns must equal B's rows — and that shared number is the one that disappears in the output, which ends up shape m x p.
+
+Take a concrete 2x2 example:
+
+```
+A = [1  2]      B = [5  6]
+    [3  4]          [7  8]
+
+A @ B = [1*5+2*7   1*6+2*8]   = [19  22]
+        [3*5+4*7   3*6+4*8]     [43  50]
+```
+
+Entry (row 1, col 1) of the result is row 1 of A dotted with column 1 of B: 1×5 + 2×7 = 19. Every other entry follows the same pattern — pick a row, pick a column, dot them, place the number. See [The Dot Product, Explained](/learn/maths-foundations/dot-product-explained) if that step itself feels shaky.
+
+## Why shapes are the whole game
+
+Matrix multiplication is not commutative (A @ B usually doesn't equal B @ A), and it's only defined when inner dimensions match. In practice, debugging a model's forward pass is largely shape debugging: a weight matrix of shape (d_model, d_ff) multiplying an activation of shape (batch, seq_len, d_model) has to line up on that shared d_model dimension or the operation is undefined. Every "how do I get the query, key, and value vectors" step in attention is just an input embedding multiplied against a learned weight matrix — see [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained) for how those matrices are used.
+
+## Why this is where the compute goes
+
+A single matrix multiply of an (m, n) matrix by an (n, p) matrix takes roughly m×n×p multiply-add operations. Transformer weight matrices commonly have dimensions in the thousands, and there are dozens of layers, each running several of these multiplies per token. That's why GPUs — which are built to do huge numbers of these row-times-column operations in parallel — are the hardware LLMs run on, and why "how many FLOPs did that cost" almost always reduces to counting matrix multiplies.
+
+Matrix multiplication generalizes the dot product from one calculation into a stack of them. Once that clicks, terms like "projection," "linear layer," and "weight matrix" stop being abstractions and start being concrete row-by-column arithmetic you can trace by hand.
+
+**Related:** [The Dot Product, Explained](/learn/maths-foundations/dot-product-explained), [Matrices as Transformations](/learn/maths-foundations/matrices-as-transformations), [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained)

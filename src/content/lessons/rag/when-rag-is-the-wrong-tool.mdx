@@ -1,0 +1,35 @@
+---
+title: "When RAG Is the Wrong Tool"
+track: "rag"
+status: live
+summary: "Recognize when long context, fine-tuning, or plain search beats a retrieval pipeline you don't need to build."
+duration: "5 min read"
+---
+
+RAG became the default answer to "the model doesn't know my data," and now teams reach for it even when a simpler tool would work better. Retrieval is a pipeline with real cost — chunking, embeddings, a vector store, evals — and that cost only pays off when the problem actually matches the pattern.
+
+## The tell: what kind of problem is this?
+
+Before building retrieval, ask what's actually missing.
+
+- **Missing facts** the model needs *this specific answer* → RAG's home turf.
+- **Missing behavior** — a tone, a format, a domain vocabulary the model should produce by default → that's [fine-tuning](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag) territory, not retrieval. RAG can hand a model facts; it can't teach it to write like your style guide.
+- **Missing nothing** — the knowledge already fits in the prompt → just paste it in. A ten-page contract or a single API spec doesn't need a vector database; it needs a text box.
+
+Retrieval solves a scale problem: too much material to fit in context, so you fetch only the relevant slice. If there's no scale problem, there's nothing for retrieval to solve.
+
+## Long context is quietly eating RAG's easy cases
+
+Context windows that comfortably hold hundreds of thousands of tokens changed the calculus. If your entire knowledge base — one product's docs, one team's wiki, one codebase module — fits in a single call, [stuffing it into context](/learn/context-engineering/retrieval-vs-context-stuffing) beats building a retrieval pipeline: no chunking decisions, no missed-chunk failures, no index to keep in sync. You pay more per call in tokens, but you skip an entire subsystem and its failure modes.
+
+Long context isn't free either — costs scale with size, latency grows, and [very large contexts can degrade a model's attention to what actually matters](/learn/context-engineering/context-rot) rather than improve it. The honest comparison isn't "RAG vs. dumping everything in" — it's "does this corpus fit at all, and does the model still reason well at that size?" When the answer to both is yes, skip retrieval. When the corpus is millions of documents or changes hourly, no context window absorbs that, and RAG remains the only tool that scales.
+
+## When plain search is enough
+
+Not every "find the answer" problem needs semantic retrieval feeding a generation step. If a user just needs the right document, a keyword search or a lookup table gets there faster and with zero hallucination risk — you're not asking a model to synthesize anything, so don't put one in the loop. RAG earns its complexity when the answer requires *reading and combining* multiple sources, not just locating one.
+
+## A quick gut check
+
+Before starting a RAG build, ask: is the knowledge large, does it change often, and does answering require synthesis across sources? If you answered no to any of those, you're probably reaching for RAG out of habit rather than need — go back to [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it) and match the tool to the actual shape of the problem.
+
+**Related:** [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it), [Retrieval vs Stuffing: Fetch Just-in-Time or Load It All](/learn/context-engineering/retrieval-vs-context-stuffing), [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag)

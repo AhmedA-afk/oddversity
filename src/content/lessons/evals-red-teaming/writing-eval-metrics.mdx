@@ -1,0 +1,33 @@
+---
+title: "Choosing Metrics That Actually Measure Success"
+track: "evals-red-teaming"
+status: live
+summary: "Match your metric to the failure mode you're hunting: exact match, rubric scoring, and task success each catch different bugs."
+duration: "5 min read"
+---
+
+A metric is a bet about what "wrong" looks like. Pick the wrong bet and your eval will show green scores while the product quietly fails users — so the real skill isn't running evals, it's choosing what to measure.
+
+## Exact match: for outputs with one right answer
+
+Exact match checks whether the output is character-for-character (or field-for-field) identical to a reference answer. It's cheap, deterministic, and has zero judgment calls — which makes it perfect for narrow tasks: extracting a phone number, classifying an email as spam or not, returning a specific SQL value.
+
+It's the wrong tool the moment there's more than one acceptable phrasing. "Paris" and "Paris, France" are both correct answers to "what's the capital of France," but naive exact match fails the second one. Use it only when the task genuinely has one valid output, or when you can normalize aggressively (lowercase, strip punctuation, parse into structured fields) before comparing.
+
+## Rubric scoring: for open-ended quality
+
+Most agent and chat outputs don't have a single correct string — they have qualities you care about: is the tone right, did it cite a source, did it avoid a specific mistake. A rubric breaks that judgment into a short checklist of yes/no or 1-5 criteria, scored either by a human or by [an LLM acting as judge](/learn/evals-red-teaming/llm-as-judge).
+
+The discipline here is writing the rubric *before* looking at outputs, and keeping each item binary and checkable rather than vague ("is this good?" is not a rubric item; "does the response include at least one citation to the provided document?" is). A rubric that's too loose just launders your gut feeling through a spreadsheet — it feels more rigorous than vibes-based iteration without actually being more rigorous. See [why vibes-based iteration breaks down](/learn/evals-red-teaming/why-evals-matter) for the failure mode this is meant to fix.
+
+## Task success rate: for multi-step agents
+
+For an agent that books a flight or fixes a bug, no single output field tells you if it worked — you have to check whether the end state is correct: did the flight get booked for the right dates, does the test suite pass. Task success rate runs the full trajectory and checks a final condition, often programmatically (query the database, run the tests) rather than by inspecting text.
+
+This is the metric that best matches what users actually experience, but it's also the most expensive to compute and the slowest to iterate on, since it usually requires a live or sandboxed environment rather than a static reference answer.
+
+## Matching metric to failure mode
+
+Before picking a metric, name the failure you're trying to catch. Wrong-fact-in-an-otherwise-fluent-answer calls for rubric or citation checks, not exact match. Silent task failure (agent says "done" but didn't do it) calls for task success rate, not text similarity. Format drift calls for exact match or schema validation. Most real eval suites blend two or three of these rather than picking one — start from [building a golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) with known failure cases, then pick the cheapest metric that would have caught each one.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Why Vibes-Based Iteration Breaks Down](/learn/evals-red-teaming/why-evals-matter)

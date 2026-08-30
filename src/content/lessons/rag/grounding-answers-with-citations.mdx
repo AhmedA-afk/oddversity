@@ -1,0 +1,42 @@
+---
+title: "Grounding Answers with Citations"
+track: "rag"
+status: live
+summary: "Attach retrieved sources to generated answers so users and evaluators can verify every claim."
+duration: "5 min read"
+---
+
+A RAG pipeline that retrieves great chunks and reranks them well can still ship an answer nobody can verify. Citations close that gap: they turn "trust me" into "check chunk 3, paragraph 2."
+
+## Why citations aren't optional
+
+Retrieval reduces hallucination, but it doesn't eliminate it — the model can still paraphrase past the source, blend two chunks into a claim neither supports, or answer from parked-in pretraining knowledge instead of what you handed it. A citation is the difference between "grounded" and "grounded, allegedly." Without one, a wrong answer and a right answer look identical to the user. With one, a reader (or an automated checker) can click through and confirm the claim actually lives in the source text. This is the practical core of [grounding](/learn/hallucinations/grounding-with-source-documents) and [citations and attribution](/learn/hallucinations/citations-and-attribution) as hallucination mitigations.
+
+## How to get the model to cite
+
+The most reliable pattern is to tag each retrieved chunk with an id before it enters the prompt, then instruct the model to cite that id inline after every factual sentence.
+
+```text
+[doc1] Refunds are processed within 5-7 business days.
+[doc2] Refunds require the original receipt.
+
+Answer the question using only the documents above.
+Cite the source id in brackets after each claim, like [doc1].
+```
+
+The model then produces something like: "Refunds take 5-7 business days [doc1] and require your original receipt [doc2]." Structuring the instruction this way — rather than "please cite your sources" as a vague aside — matters; see [structured context injection](/learn/context-engineering/structured-context-injection) for why explicit formatting beats loose prose instructions. For applications that need citations as a parseable field rather than inline brackets, define a schema with a `claim` and a `source_ids` array and use [tool schemas](/learn/structured-outputs/tool-function-schemas) or JSON mode to force the shape.
+
+## Validating citations, don't just display them
+
+A cited answer isn't automatically a correct one — models can cite a real chunk id next to a claim that chunk doesn't actually support. Two checks catch this before it reaches a user:
+
+- **Existence check**: does the cited id correspond to a chunk that was actually retrieved? Cheap, catches outright fabricated ids.
+- **Entailment check**: does the cited chunk's text actually support the claim? This usually means a second, smaller model call — or an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) — comparing claim against source.
+
+Run the entailment check in your eval suite, not just at serve time; it's one of the highest-signal metrics for [evaluating RAG quality](/learn/rag/evaluating-rag-quality) because it measures faithfulness directly instead of inferring it from answer relevance.
+
+## UI matters as much as the model prompt
+
+Citations that exist but aren't clickable don't get checked. Render each bracketed id as a link or hover card that jumps to the exact chunk (ideally the exact highlighted span, not just the source document). This is what turns citations from a compliance checkbox into something users actually use to build trust in the system.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

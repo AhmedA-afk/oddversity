@@ -1,0 +1,41 @@
+---
+title: "Entropy and Cross-Entropy: Measuring Surprise"
+track: "maths-foundations"
+status: live
+summary: "Shannon entropy as expected surprise, and cross-entropy as the loss nearly every LLM is trained on."
+duration: "6 min read"
+---
+
+Entropy is a number that answers one question: on average, how surprised should you be by the next symbol from some distribution? Cross-entropy answers a related one: how surprised is a *model* that thinks the distribution looks like `q`, when reality is actually `p`? That second question is the loss function training nearly every language model on Earth.
+
+## Surprise, quantified
+
+If an event has probability `p`, define its "surprise" as `-log(p)`. A coin flip that always lands heads (`p = 1`) gives zero surprise — you already knew. An event with `p = 0.01` gives a lot of surprise. Logs turn small probabilities into large surprise values and make independent events add instead of multiply — see [Logarithms for Machine Learning](/learn/maths-foundations/logarithms-for-ml).
+
+Shannon entropy is just the expected surprise, averaged over every outcome weighted by how likely it is:
+
+```
+H(p) = -Σ p(x) · log(p(x))
+```
+
+A fair coin has `H = 1` bit: maximum uncertainty, you genuinely can't predict it. A coin that lands heads 99% of the time has low entropy — mostly no surprise, occasionally a jolt. A distribution with all its mass on one outcome has `H = 0`. Entropy is a property of the true distribution `p` alone; it doesn't need a model.
+
+## Cross-entropy: when your guess isn't reality
+
+Now suppose you don't know `p`. You have a model's guess, `q`, and you measure surprise using `q`'s probabilities while the events actually get drawn from `p`. That's cross-entropy:
+
+```
+H(p, q) = -Σ p(x) · log(q(x))
+```
+
+This is exactly what happens every time a language model predicts the next token. The true distribution `p` is a one-hot spike on the actual next token in the training data — probability 1 on the right answer, 0 everywhere else. The model's predicted distribution `q` comes out of a [softmax](/learn/maths-foundations/the-softmax-function) over the vocabulary. Because `p` is one-hot, the sum collapses to a single term: `-log(q(correct token))`. That's the cross-entropy loss you'll see in every training loop — it's just "take the log-probability the model assigned to the token that actually came next, and penalize being wrong about it."
+
+If the model assigns the right token `q = 0.9`, loss is small (`-log(0.9) ≈ 0.105`). If it assigns `q = 0.001`, loss is large (`≈ 6.9`). The loss explodes as the model's confidence in the correct answer collapses — which is exactly the behavior you want from a training signal: get it right and confident, get punished sharply for being confidently wrong.
+
+## Why cross-entropy is never below entropy
+
+A useful fact: `H(p, q) ≥ H(p)`, always, with equality only when `q = p` exactly. Cross-entropy is entropy plus a penalty for the model's distribution being wrong — that penalty is [KL divergence](/learn/maths-foundations/kl-divergence), `H(p, q) = H(p) + KL(p || q)`. Since the true distribution over next tokens is one-hot, `H(p) = 0` for language modeling, so training loss *is* the KL divergence between the model and reality. Minimizing cross-entropy loss is, mathematically, nothing but minimizing that gap.
+
+This is also where [perplexity](/learn/maths-foundations/perplexity-explained) comes from — it's cross-entropy loss exponentiated back into a more intuitive "effective number of choices the model was confused between" scale.
+
+**Related:** [Logarithms for Machine Learning](/learn/maths-foundations/logarithms-for-ml), [The Softmax Function](/learn/maths-foundations/the-softmax-function), [KL Divergence: Comparing Two Probability Distributions](/learn/maths-foundations/kl-divergence)

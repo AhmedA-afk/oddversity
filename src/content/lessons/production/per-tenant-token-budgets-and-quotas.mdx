@@ -1,0 +1,42 @@
+---
+title: "Set Per-Tenant Token Budgets and Quotas"
+track: "production"
+status: live
+summary: "Cap spend per customer or API key so one noisy tenant can't blow the shared cost or rate limit."
+duration: "5 min read"
+---
+
+Rate limiting protects your infrastructure from a burst; a token budget protects your *bill* from a tenant. They're different controls — a customer can stay well under your requests-per-minute cap and still run up a five-figure monthly invoice by feeding a long document through an agent loop a thousand times. Budgets and quotas are how multi-tenant AI products keep one account's usage from eating the margin (or the shared capacity) that every other account depends on.
+
+## Budget by tenant, not by request
+
+A single request's cost is rarely the problem — it's the aggregate over a billing period, or over a burst of agentic tool calls, that surprises you. Per-tenant budgets track cumulative spend (or token count) against a limit scoped to that tenant, refilled on a cadence that matches your pricing: daily for a free tier, monthly for a paid plan, or a rolling window if you want to smooth out end-of-period cliffs. This builds directly on [cost budgets and usage tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking) — you need per-request cost attribution before you can sum it into a per-tenant ledger.
+
+```python
+def check_budget(tenant_id, estimated_tokens):
+    spent = ledger.get_period_usage(tenant_id)
+    limit = plans.get_token_limit(tenant_id)
+    if spent + estimated_tokens > limit:
+        raise BudgetExceeded(tenant_id, spent, limit)
+    ledger.reserve(tenant_id, estimated_tokens)
+```
+
+Reserve tokens *before* the call, not after — if you only decrement the ledger on completion, a burst of concurrent requests can all pass the check simultaneously and blow past the limit together. Reconcile the reservation against actual usage once the response streams back, since your pre-call estimate (from input length and a max-output guess) won't match the real token count exactly.
+
+## Hard caps vs. soft throttling
+
+A hard cap — reject once the budget is exhausted — is simple and predictable, but it's a bad experience for a paying customer who hits it mid-task. Most production systems use a tiered response instead: warn at 80%, throttle (route to a cheaper model, add latency, or shrink context) at 100%, and hard-block only past a second, higher ceiling meant to catch abuse or a runaway agent rather than normal heavy use. This is the same shape as [load shedding](/learn/production/load-shedding-and-graceful-degradation) applied per-tenant instead of system-wide — degrade before you refuse.
+
+Distinguish overage-as-a-feature from overage-as-a-bug. A tenant who wants to pay for more should be able to (an auto-upgrade prompt, a metered overage rate); a tenant whose usage spiked because of a bug in their integration — a retry loop with no backoff, say — should be blocked and notified, not billed for your incident.
+
+## Where the quota lives
+
+Enforce the budget check in your [LLM gateway](/learn/production/llm-gateway-and-provider-abstraction), not scattered across individual feature code — every call path funnels through one place, so a new feature can't accidentally bypass the check by calling the provider directly. The gateway is also where you already have the tenant identity and per-request cost attribution needed to make the check cheap: one ledger read, not a fan-out query per call.
+
+Keep the ledger itself somewhere fast and consistent enough to survive concurrent writes — a counter in Redis with atomic increment, or a database row with an optimistic lock — since a race in the accounting is exactly the gap a noisy tenant will find. And expose the numbers back to the tenant: a dashboard or API endpoint showing current usage against the cap turns a surprise rejection into an expected one.
+
+## What to alert on
+
+Track two different signals, not one: tenants approaching their cap (a product/billing concern — reach out about an upgrade) and tenants who *keep* hitting the cap right after a reset (an abuse or bug signal — investigate the traffic pattern, don't just raise the limit). The two look identical in a raw usage graph and need different responses, so tag them separately in your [SLO dashboards](/learn/production/latency-and-cost-slos).
+
+**Related:** [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking), [Put an LLM Gateway in Front of Every Provider](/learn/production/llm-gateway-and-provider-abstraction), [Shed Load Gracefully Instead of Falling Over](/learn/production/load-shedding-and-graceful-degradation)

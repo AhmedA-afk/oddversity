@@ -1,0 +1,44 @@
+---
+title: "Corrective and Self-RAG: Grading Retrieval Before Answering"
+track: "rag"
+status: live
+summary: "Have the model grade its own retrieved chunks and re-retrieve, rewrite the query, or abstain when they're weak."
+duration: "6 min read"
+---
+
+Standard RAG trusts whatever the retriever hands back and generates from it, even if every chunk is irrelevant. Corrective RAG (CRAG) and Self-RAG fix this by making retrieval quality a checked step, not an assumption.
+
+## The core idea: grade before you generate
+
+After retrieval, insert a grading pass. A lightweight LLM call (or a small trained classifier) scores each chunk as relevant, ambiguous, or irrelevant to the query. That score decides what happens next, instead of every chunk going straight into the prompt.
+
+CRAG, from the 2024 paper "Corrective Retrieval Augmented Generation," structures the outcomes into three branches:
+
+- **Correct** — at least one chunk is clearly relevant. Keep it, optionally strip out noisy sentences within it, and generate normally.
+- **Incorrect** — nothing retrieved is usable. Discard the set and fall back to a broader search, commonly a live web search, rather than forcing an answer from bad context.
+- **Ambiguous** — mixed signal. Combine the usable pieces from retrieval with the fallback search results before generating.
+
+This is a direct extension of [what RAG is for](/learn/rag/what-is-rag-and-when-to-use-it): grounding answers in real documents only works if the documents you retrieved are actually the right ones.
+
+## Self-RAG: the model critiques itself at generation time
+
+Self-RAG, from Asai et al. (2023), pushes the check further by training a model to emit special "reflection tokens" inline with its own output. Rather than a separate grader model bolted on afterward, the generator itself decides:
+
+- whether to retrieve at all for this query
+- whether each retrieved passage is relevant ("ISREL")
+- whether its own draft answer is actually supported by that passage ("ISSUP")
+- whether the answer is useful as a response ("ISUSE")
+
+Because these judgments are learned during fine-tuning rather than prompted, Self-RAG needs a model trained specifically for it — you can't just ask an off-the-shelf model to emit calibrated reflection tokens and expect the same reliability. CRAG is the more practical starting point for most teams because it works as a wrapper around any retriever and any generator model, using prompted grading rather than a custom fine-tune.
+
+## Why "abstain or re-retrieve" beats "always answer"
+
+The failure mode both approaches target is the same one covered in [why models hallucinate](/learn/hallucinations/why-models-hallucinate): an LLM given irrelevant context doesn't reliably say "this doesn't answer the question" — it often blends the noise into a plausible-sounding but wrong answer. Grading retrieval before generation gives the pipeline an explicit off-ramp: re-retrieve with a rewritten query, expand to web search, or return "I don't have enough information" instead of guessing.
+
+The tradeoff is latency and cost — grading adds at least one extra model call, and the corrective fallback path can add a full second retrieval round. That makes this pattern most worth adding where wrong answers are expensive: support bots grounded in a knowledge base, internal tools over policy documents, anything closer to [agentic RAG](/learn/rag/agentic-rag) where the system is expected to notice when it needs to look further rather than stop at the first retrieval.
+
+## When to reach for this
+
+Add a grading step once you've measured that irrelevant retrievals are actually reaching your generator — check this with the retrieval-precision metrics from [evaluating RAG quality](/learn/rag/evaluating-rag-quality) before adding the extra hop. If your retriever is already precise (tight metadata filters, a well-tuned reranker), the grading step mostly costs latency for little gain. It earns its place when queries are open-ended, the corpus is noisy, or an outdated-looking answer is worse than an honest "I don't know."
+
+**Related:** [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Agentic RAG: Iterative, Multi-Hop Retrieval](/learn/rag/agentic-rag), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

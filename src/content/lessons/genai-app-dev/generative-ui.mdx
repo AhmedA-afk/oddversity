@@ -1,0 +1,47 @@
+---
+title: "Generative UI: Rendering Components from Model Output"
+track: "genai-app-dev"
+status: live
+summary: "Have the model choose which UI component to render, not just what text to say."
+duration: "6 min read"
+---
+
+A chatbot that only ever returns paragraphs is leaving product value on the table. If a user asks "what's the weather in Austin," the useful answer is a small weather card, not three sentences describing one. Generative UI is the pattern of letting the model pick a component and its props, and letting your frontend render that component instead of raw text.
+
+## The core mechanism: tool calls as UI intents
+
+You don't ask the model to write HTML or JSX — that's slow, unstyled, and a prompt-injection risk if the output is ever untrusted. Instead you give the model a tool schema per component, the same way you'd define a tool for a database lookup, and let normal [tool calling](/learn/tools-function-calling/what-is-tool-calling) select it:
+
+```json
+{
+  "name": "render_weather_card",
+  "description": "Show current weather for a location",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": { "type": "string" },
+      "tempF": { "type": "number" },
+      "condition": { "type": "string" }
+    },
+    "required": ["location", "tempF", "condition"]
+  }
+}
+```
+
+The model doesn't generate markup. It generates a structured call: `render_weather_card({location: "Austin", tempF: 89, condition: "sunny"})`. Your app owns a lookup table — `{render_weather_card: WeatherCard, render_stock_chart: StockChart, ...}` — and maps the tool name to a real, already-styled, already-accessible React (or Vue, or Svelte) component. This is the same discipline as [structured output vs. tool calls](/learn/tools-function-calling/structured-output-vs-tool-calls): you're constraining the model to a fixed vocabulary of *intents*, then letting deterministic code do the rendering.
+
+## Why not just have the model emit JSX or HTML directly
+
+Three reasons this fails in practice. First, models are inconsistent at hitting your exact design system's class names and prop conventions — you'll get plausible-looking but broken markup. Second, if any of the content in context comes from outside your control (search results, tool output, another user's message), letting the model emit raw markup is an XSS vector the moment you render it unsanitized. Third, you lose the ability to version your components independently of the model — ship a redesigned `WeatherCard` and every past and future model response benefits automatically, because the model only ever named the component, never built it.
+
+## Handling ambiguity and fallback
+
+Not every response maps to a component. Register a plain-text fallback path and treat component selection as optional, not mandatory — if the model doesn't call a UI tool, stream the text response as usual. This keeps the system additive: you're layering rich UI on top of a working [chat UX](/learn/genai-app-dev/designing-chat-ux), not replacing it.
+
+For multi-part answers, allow multiple tool calls in one turn (e.g., a `render_weather_card` plus a followup sentence) and render them in the order they were emitted. If you're streaming the response, buffer tool-call arguments until they're complete JSON before mounting the component — a half-parsed prop object will crash or flicker.
+
+## Validate before you render
+
+Treat every generated call as untrusted input to your render layer, not just to your model. Run the arguments through the same schema you gave the model — a mismatched type, an out-of-range value, or a missing required field should fall back to text rather than crash a component. This is the same validate-and-repair discipline covered in [structured output failure modes](/learn/structured-outputs/structured-output-failure-modes), just applied one layer downstream at the UI boundary instead of the data boundary.
+
+**Related:** [Designing Chat UX That Doesn't Feel Broken](/learn/genai-app-dev/designing-chat-ux), [Structured Output vs. Tool Calls](/learn/tools-function-calling/structured-output-vs-tool-calls), [Structured Output Failure Modes and How to Spot Them](/learn/structured-outputs/structured-output-failure-modes)

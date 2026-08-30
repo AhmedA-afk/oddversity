@@ -1,0 +1,42 @@
+---
+title: "Routing Tool Calls to Real Code"
+track: "harness-design"
+status: live
+summary: "How a harness turns a model's tool-call request into schema-validated dispatch to real code."
+duration: "5 min read"
+---
+
+A model doesn't call functions. It emits text — a tool name and a blob of arguments, shaped by whatever schema you gave it. Something else has to turn that text into a real function running with real side effects. That something is the tool router, and it's one of the least glamorous, most failure-prone parts of a harness.
+
+## The registry: a name-to-function map
+
+At startup, the harness builds a registry: a lookup table from tool name to an implementation, its input schema, and often a handler for permissions. When you hand the model's provider a list of tool definitions, you're really publishing a public interface to that registry — the names and schemas the model is allowed to request.
+
+The registry itself is usually just a dictionary:
+
+```python
+registry = {
+    "read_file": {"schema": ReadFileArgs, "fn": read_file_impl},
+    "run_shell": {"schema": ShellArgs, "fn": run_shell_impl},
+}
+```
+
+Adding a tool means adding an entry — the router doesn't care about the tool's purpose, only its shape.
+
+## Dispatch: validate first, execute second
+
+When a tool-call event arrives, the router does three things in strict order: look up the name, validate the arguments against the schema, then invoke the function. Skipping validation is the most common way harnesses get exploited or simply crash — a model that hallucinates an extra field, omits a required one, or passes a string where an integer belongs will happen eventually, and raw arguments should never reach your function body unchecked. This is the same discipline covered in [schema design for reliability](/learn/structured-outputs/schema-design-for-reliability): the schema is a contract, and the router is what enforces it.
+
+An unknown tool name is not an edge case to shrug off — it means the model requested something outside the published registry, and the router should return a structured error back to the model rather than throwing, so the loop can recover instead of crashing.
+
+## What the router returns
+
+The function's return value isn't handed back to the model raw. The router wraps it — success or error, plus enough shape for the model to make sense of it on the next turn. A `run_shell` call that fails should come back as a tool result saying so, not as an unhandled exception that kills the session. Good routers standardize this envelope across every tool, so the [control loop](/learn/harness-design/the-control-loop) doesn't need tool-specific error handling.
+
+## Where policy plugs in
+
+Because every tool call passes through one chokepoint, the router is also the natural place to enforce policy: check an allow/ask/deny rule before dispatch, log the call for [observability](/learn/harness-design/observability-and-logging), or route execution into a sandboxed subprocess. This is why routing and registries usually sit right next to [permission and approval systems](/learn/harness-design/permission-and-approval-systems) in a harness's design — the registry knows what a tool *can* do, but the router decides whether it's *allowed* to, right now, for this call.
+
+Treat the router as infrastructure, not glue code. It's the seam between a model's guesses and your system's guarantees.
+
+**Related:** [Building the Control Loop](/learn/harness-design/the-control-loop), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability)

@@ -1,0 +1,43 @@
+---
+title: "Crash Recovery: Resuming an Agent Session After an Unexpected Exit"
+track: "harness-design"
+status: live
+summary: "Reconstruct valid state and safely retry a tool call that died mid-execution, instead of replaying blind or losing the session."
+duration: "6 min read"
+---
+
+A checkpoint tells you where the agent was. It doesn't tell you whether the tool call in flight when the process died actually finished. That gap is where crash recovery gets hard.
+
+## The problem checkpointing alone doesn't solve
+
+[Checkpointing](/learn/harness-design/state-and-checkpointing) gives you a snapshot: messages so far, pending tool calls, harness config. On restart you can reload that snapshot and resume the [control loop](/learn/harness-design/the-control-loop). But the crash almost never lands between steps. It lands mid-step — the process was killed while a tool call was executing, and you don't know if that call completed.
+
+Three cases look identical from the checkpoint's point of view:
+
+- The tool call never reached the target (safe to retry).
+- The tool call executed and the effect landed, but the result never made it back into the transcript (retrying duplicates the effect).
+- The tool call is still running somewhere (a detached subprocess, a long-running API job) and will complete on its own.
+
+Naively resuming by re-issuing the last tool call assumes case one. For a read-only call like `grep` or `read_file`, that's fine — reads are naturally idempotent. For a write — `git commit`, "send email," "charge card," "create a resource with no client-supplied ID" — a blind retry can double an effect the user never asked to happen twice.
+
+## Reconstructing what actually happened
+
+Before retrying anything, the harness needs to classify the interrupted call. A few techniques, layered:
+
+**Idempotency keys.** Attach a stable key to every write-shaped tool call before executing it — derived from the call's arguments and position in the transcript, not randomly generated at retry time. On resume, replay the call with the same key. A well-designed tool (or a wrapper around it) checks the key first and returns the prior result instead of re-executing. This pushes the correctness burden onto the tool boundary, which is where it belongs — the harness can't verify effects it doesn't control.
+
+**A durable intent log, written before execution.** Log "about to call X with args Y and key Z" to disk *before* invoking the tool, and log the result immediately after. On restart, an entry with no matching result means the call's fate is unknown — that's the signal to treat it as interrupted, not "safe to retry" and not "definitely done." This is the same write-ahead-log pattern databases use for crash consistency, applied to tool calls instead of writes.
+
+**Verification over re-execution.** When possible, don't retry the write — check whether it already happened. Did the commit land? Does the resource with that idempotency key already exist? A verify step is slower than a blind retry but it's the only way to handle tools that don't support idempotency keys and aren't naturally safe to repeat.
+
+## Designing tools for recoverability
+
+Most of this burden should sit on the tool, not the recovery logic, because the harness can't guess an arbitrary tool's semantics after the fact:
+
+- Read-only tools need nothing special — always safe to retry.
+- Tools with a natural idempotency key (a commit SHA, a resource's client-supplied ID) should accept one as a parameter, from day one, not bolted on later.
+- Tools with no natural idempotency and no verification path are the ones to flag during [tool schema design](/learn/tools-function-calling/designing-a-tool-schema) — "send a Slack message" has no undo and no dedup; either accept that duplicates are possible after a crash, or require a client-generated message key the receiving side can dedupe on.
+
+On resume, the harness reloads the checkpoint, consults the intent log for anything left dangling, resolves each one (verify, retry-with-key, or surface to the user as unknown), and only then re-enters the control loop. Treat the "resume" code path as a first-class part of the loop, not an afterthought bolted on for the crash case — it runs less often, but it's the path that runs exactly when something has already gone wrong once.
+
+**Related:** [Checkpointing Long-Running Agent State](/learn/harness-design/state-and-checkpointing), [Handling Ctrl-C: Clean Interruption Mid-Tool-Call](/learn/harness-design/interrupt-and-cancellation-handling), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries)

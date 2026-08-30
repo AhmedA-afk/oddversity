@@ -1,0 +1,29 @@
+---
+title: "Confidence Signals: What Model Certainty Actually Reflects"
+track: "hallucinations"
+status: live
+summary: "A model sounding sure and a model being right are different things — here's what each confidence signal actually measures."
+duration: "6 min read"
+---
+
+A model that says "I'm confident this is correct" is not reporting a measurement — it's generating the most probable next tokens given a prompt that asked for a confidence claim. That's the trap: certainty in the output text and certainty in the underlying computation are two different things, and only one of them is worth trusting.
+
+## Verbalized confidence is weak evidence
+
+Ask a model to rate its own answer from 1-10, or to say how sure it is, and you'll usually get a number — but that number comes from the same next-token-prediction process that produced the (possibly wrong) answer. Models trained with RLHF learn that confident-sounding text gets rewarded during training, independent of whether the claim is true. The result: verbalized confidence clusters near the high end regardless of actual accuracy, and it barely correlates with correctness on anything past simple factual recall. Treat a stated confidence score as a stylistic choice, not a diagnostic.
+
+## Token probabilities are closer to the real signal
+
+Underneath the sampled text, the model computes a probability distribution over every possible next token — the same distribution [temperature](/learn/maths-foundations/temperature-in-sampling) reshapes before sampling. The log-probability ("logprob") of the tokens actually chosen is a much better proxy for uncertainty than anything the model says about itself, because it reflects the shape of the distribution rather than a generated opinion about it. A low-probability token mid-answer — a specific number, a citation, a name — is a real signal that the model was guessing at that spot, even if the surrounding sentence reads smoothly. [Perplexity](/learn/maths-foundations/perplexity-explained) is the aggregate version of this: it scores how "surprised" the model was by its own output, averaged across the response.
+
+The catch: logprobs are only available through APIs that expose them, they don't distinguish "uncertain because the fact is genuinely unknown" from "uncertain because this phrasing is unusual," and they say nothing about whether the *fact itself* is true — a model can be highly confident in a wrong answer it has seen many times in training.
+
+## Sampling variance as a proxy
+
+A more practical technique doesn't require logprob access at all: run the same prompt multiple times at nonzero temperature and see whether the answers agree. If five samples converge on the same fact, that's weak evidence the model has a stable, well-represented answer. If they diverge — different names, different numbers, different reasoning paths — that instability is itself the uncertainty signal, and it's one you can act on programmatically (flag for review, ask a follow-up, fall back to retrieval). This is the same idea behind [self-consistency sampling](/learn/prompt-engineering/self-consistency-sampling): multiple reasoning paths that agree are more trustworthy than one confident-sounding pass.
+
+## What actually correlates with being right
+
+None of these signals are calibrated the way a well-designed classifier's output probabilities are. The most reliable move isn't extracting a better confidence number from the model — it's structural: grounding claims in [retrieved sources](/learn/hallucinations/retrieval-augmented-mitigation) so there's something to check against, requiring [citations](/learn/hallucinations/citations-and-attribution) so claims are traceable, and treating any ungrounded, low-agreement, or low-logprob claim as provisional rather than asking the model to grade its own homework. Confidence signals are useful as a filter for what to double-check — never as a substitute for checking it.
+
+**Related:** [RAG as Hallucination Mitigation](/learn/hallucinations/retrieval-augmented-mitigation), [Self-Verification: Having the Model Check Its Own Work](/learn/hallucinations/self-verification-techniques), [Teaching a Model to Say 'I Don't Know'](/learn/hallucinations/teaching-models-to-say-i-dont-know)

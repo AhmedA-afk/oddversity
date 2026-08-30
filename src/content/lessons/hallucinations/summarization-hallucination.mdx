@@ -1,0 +1,30 @@
+---
+title: "Summarization Hallucination: Facts the Source Never Said"
+track: "hallucinations"
+status: live
+summary: "Why summaries drift from their source and how to catch a claim the original text never actually made."
+duration: "5 min read"
+---
+
+Ask a model to summarize a document and it will compress ruthlessly — sometimes past the point of accuracy. Summarization hallucination is the failure where the summary states something as fact that the source never said, or reverses something it did say, while everything around it reads perfectly plausible.
+
+## Why it happens more here than elsewhere
+
+Summarization looks like a low-risk task because the model already has the source in context — surely it can't invent anything. But the model isn't retrieving and repeating; it's paraphrasing, and paraphrasing is generation. Two pressures push it toward invention specifically in this task:
+
+- **Compression forces inference.** A ten-paragraph article rarely states its own thesis in one sentence. The model has to synthesize a claim, and synthesis is where it starts filling gaps with what's typical rather than what's stated — a quarterly report becomes "strong growth" because the numbers look growth-shaped, even if the text never uses that framing.
+- **World knowledge leaks in.** If the source is a news article about a familiar company or event, the model has priors about what usually happens in that situation. Those priors bleed into the summary as specifics — a date, a cause, a number — that came from training data, not the document in front of it.
+
+The result is subtler than a fabricated citation. The summary is topically correct and stylistically faithful; it's just wrong on a specific claim, which is exactly what makes it hard to catch on a skim.
+
+## What it looks like in practice
+
+Common patterns: adding a causal link the source only implies ("X happened because of Y" when the source lists them as unrelated events), upgrading a hedge into a certainty ("may reduce" becomes "reduces"), inventing a number by averaging or rounding two that were stated separately, and attributing a quote or finding to the wrong entity in a multi-source document.
+
+## Catching it
+
+The reliable check is entailment, not vibes: for every factual sentence in the summary, ask whether the source entails it — could you point to the specific span that supports this claim? If you can't point to one, it's not in the source, regardless of how reasonable it sounds. This is the same discipline used in [grounding](/learn/hallucinations/grounding-with-source-documents) and in requiring [citations](/learn/hallucinations/citations-and-attribution) for every claim: force the model (or a second pass) to tag each summary sentence with the source line it came from, and treat untraceable sentences as suspect by default.
+
+A cheap production technique: run extraction before summarization. Have the model first pull direct quotes or bullet facts from the source, then summarize only from that extracted set. It can't invent what isn't upstream of it — the same logic behind [chain-of-density summarization](/learn/prompt-engineering/chain-of-density-summarization), which iteratively grounds a summary in entities the source actually names rather than letting a single generation pass drift.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Citations: Making Every Claim Traceable to a Source](/learn/hallucinations/citations-and-attribution), [Chain-of-Density: Iteratively Tightening a Draft](/learn/prompt-engineering/chain-of-density-summarization)

@@ -1,0 +1,35 @@
+---
+title: "JSON Mode: Forcing Valid JSON Out of the Model"
+track: "structured-outputs"
+status: live
+summary: "Flip a model flag to get syntactically valid JSON back, and know what it doesn't guarantee."
+duration: "5 min read"
+---
+
+Ask a model for JSON in plain English and you'll usually get JSON — wrapped in a sentence, fenced in markdown, or missing a closing brace. JSON mode is a setting most model APIs expose that removes that guesswork: turn it on, and the model is constrained at the token level to emit only syntactically valid JSON.
+
+## What the flag actually does
+
+Without JSON mode, the model is just predicting the next likely token, and "likely" includes things like "Sure, here's the JSON you asked for:" before the object starts. JSON mode changes the decoding process itself — the API restricts which tokens are legal at each step so the output can't help but parse as JSON. No preamble, no markdown fences, no trailing commentary.
+
+In practice this looks like one extra parameter on the request:
+
+```
+response_format: { "type": "json_object" }
+```
+
+Exact naming varies by provider, but the shape is the same everywhere: a boolean or type flag on the API call, not a prompt trick.
+
+## What it guarantees — and what it doesn't
+
+JSON mode guarantees **valid syntax**: braces balanced, strings quoted, commas in the right places. It does not guarantee the JSON has the shape you want. Nothing stops the model from returning `{"result": "the answer is 42"}` when you needed `{"answer": 42}`, or from inventing a field you never asked for. Syntax and structure are different problems — the field names, types, and nesting you actually need come from a schema, not the mode flag. That's the job of [JSON Schema](/learn/structured-outputs/json-schema-for-outputs).
+
+It's also worth knowing JSON mode has a failure edge: if your prompt doesn't clearly ask for JSON, some providers will error rather than silently returning prose, since the constraint has nothing sensible to produce. Always state in the prompt that JSON is expected, even with the flag on.
+
+## When to reach for it
+
+JSON mode is the right tool when you need machine-parseable output but don't need to enforce a specific schema — a quick internal script, a prototype, a case where "some valid JSON object" is enough. The moment you care about exact field names, types, or nested structure, move up to schema-constrained output, which most providers now support as a stricter sibling of plain JSON mode (see [Constrained Decoding](/learn/structured-outputs/constrained-decoding-under-the-hood) for how both are implemented under the hood).
+
+It's the smallest possible step up from [free text](/learn/structured-outputs/why-structured-output) — enough to stop `JSON.parse()` from throwing, not enough to stop bad data from getting through.
+
+**Related:** [Why Structured Output](/learn/structured-outputs/why-structured-output), [JSON Schema for Outputs](/learn/structured-outputs/json-schema-for-outputs), [Constrained Decoding](/learn/structured-outputs/constrained-decoding-under-the-hood)

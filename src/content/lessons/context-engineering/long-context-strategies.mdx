@@ -1,0 +1,37 @@
+---
+title: "Long-Context Strategies for Million-Token Windows"
+track: "context-engineering"
+status: live
+summary: "A bigger context window doesn't fix retrieval on its own - here's how to actually use one well."
+duration: "6 min read"
+---
+
+Modern models ship with context windows in the hundreds of thousands to over a million tokens. That's enough to paste in an entire codebase, a book, or months of logs. But dumping everything in rarely works as well as people expect - large windows need their own strategies, not just a bigger paste buffer.
+
+## Why more tokens isn't a free lunch
+
+Models don't read a million tokens the way you'd skim a document. Attention gets diluted across everything in the window, and models are measurably worse at using information buried in the middle of a very long context than information near the start or end - a pattern often called "lost in the middle." Cost and latency scale with tokens too, so a million-token prompt is slow and expensive even when it works. This is a big part of why [context rot](/learn/context-engineering/context-rot) happens: quality can degrade as you add tokens, even when every token is technically relevant.
+
+## Chunk, then layer summaries on top
+
+The core technique for long documents is hierarchical: split the source into chunks, summarize each chunk, then summarize the summaries. A 500-page report becomes section summaries, which become a document summary, which becomes an executive summary - and you can hand the model whichever layer matches the question. This is the same instinct behind [compaction](/learn/context-engineering/summarization-for-compaction), applied to source material instead of conversation history: compress what's redundant, keep what's load-bearing, and preserve the ability to drill back down into a chunk when a summary isn't enough.
+
+A practical pattern:
+
+```
+chunk_summaries = [summarize(chunk) for chunk in split(document)]
+section_summary = summarize(chunk_summaries)
+doc_summary = summarize(section_summaries)
+```
+
+Each layer is small enough to fit comfortably in context, and you only pull full chunks back in when the task actually needs that level of detail.
+
+## Route instead of stuffing everything in
+
+The alternative to "put it all in the window" is "put in only what's needed for this turn." That's the same tradeoff covered in [retrieval vs. stuffing](/learn/context-engineering/retrieval-vs-context-stuffing): even with a million-token window available, a targeted retrieval pass is often faster, cheaper, and more accurate than relying on the model to find a needle in a haystack of mostly-irrelevant tokens. Long context and retrieval aren't competitors - a common production pattern uses retrieval to narrow a huge corpus down to a candidate set, then uses a large window to reason over that set in full, rather than forcing everything through a small window in fragments.
+
+## Test before you trust the window
+
+A model's advertised context length and its *effective* context length are different numbers. Some models hold up well at 500K tokens; others start dropping accuracy well before their stated limit. Don't assume - measure it for your actual task and data, the way described in [testing whether more context actually helps](/learn/context-engineering/context-window-testing-and-eval). If accuracy degrades past a certain size, that's your real budget, regardless of what the spec sheet says.
+
+**Related:** [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Retrieval vs Stuffing: Fetch Just-in-Time or Load It All](/learn/context-engineering/retrieval-vs-context-stuffing), [Testing Whether More Context Actually Helps](/learn/context-engineering/context-window-testing-and-eval)

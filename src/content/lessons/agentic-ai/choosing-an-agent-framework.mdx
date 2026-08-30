@@ -1,0 +1,33 @@
+---
+title: "LangGraph, CrewAI, AutoGen: What Each Framework Actually Buys You"
+track: "agentic-ai"
+status: live
+summary: "Three popular agent frameworks impose three different abstractions — graph, crew, conversation. Here's what each one actually costs and fixes."
+duration: "6 min read"
+---
+
+None of these frameworks make your agent smarter. They each hand you a different mental model for wiring one agent to another, and that model shapes every bug you'll hit later.
+
+## LangGraph: your agent is a graph
+
+LangGraph makes the control flow explicit. You define nodes (each one a function, tool call, or LLM call) and edges (including conditional ones) and the framework walks the graph, keeping a shared state object that every node can read and write. There's no hidden loop deciding what happens next — you drew it.
+
+That buys you precision: cycles, branches, human-in-the-loop pauses, and retries are all things you can literally see in the graph definition, and the state object gives you a natural checkpoint to persist and resume from. The cost is that you're doing the orchestration work yourself. For anything beyond a simple sense-think-act loop (see [The Agent Loop](/learn/agentic-ai/the-agent-loop)), you're drawing the diagram before you write the logic. It fits teams that already know their process and want it to run reliably, not teams still discovering what the process should be.
+
+## CrewAI: your agent is a role
+
+CrewAI organizes work around roles — a "researcher," a "writer," a "reviewer" — each with a goal, a backstory, and a set of tools, assembled into a crew that runs a task list either sequentially or with a manager agent delegating. It's the framework that maps most directly onto [Multi-Agent Patterns](/learn/agentic-ai/multi-agent-patterns) like orchestrator-worker: you're not writing a graph, you're casting a team.
+
+That abstraction is fast to prototype with — role-based prompting is intuitive and the boilerplate is minimal — but it also means less visibility into what's actually happening at the control-flow level. When a crew misbehaves, the fix is usually a prompt or role adjustment, not a wiring change, because there isn't much wiring exposed. It fits problems that decompose cleanly into specialist roles: research-then-write, plan-then-critique, that kind of shape.
+
+## AutoGen: your agent is a conversation
+
+AutoGen (Microsoft's framework, now converging with their newer Agent Framework SDK) models everything as agents talking to each other in a shared message thread — a "conversable agent" pattern where any agent can reply to any other, including a human proxy agent that can inject itself into the loop. This is the natural fit for [debate and critique patterns](/learn/agentic-ai/multi-agent-patterns) where the value comes from agents actually seeing and reacting to each other's output, not just passing a result down a pipeline.
+
+The tradeoff is that free-form conversation is harder to bound: without careful termination logic, agents can loop, over-defer to each other, or drift off task (see [Termination Conditions](/learn/agentic-ai/stopping-conditions-for-agents)). It rewards problems where dialogue itself is doing the work — code review, negotiation, multi-perspective analysis.
+
+## Picking one
+
+The honest test isn't feature lists — it's which mental model matches the shape of your problem. Deterministic pipeline with branches and retries: LangGraph. Specialist roles handing off cleanly: CrewAI. Agents that need to argue with each other: AutoGen. And if your task is a fixed sequence of steps with no real decision-making, [a plain workflow beats any of them](/learn/agentic-ai/when-not-to-use-an-agent).
+
+**Related:** [Multi-Agent Patterns: Orchestrator, Pipeline, Debate](/learn/agentic-ai/multi-agent-patterns), [Choosing an Orchestration Framework](/learn/agentic-ai/agent-orchestration-frameworks), [Termination Conditions for Agents](/learn/agentic-ai/stopping-conditions-for-agents)

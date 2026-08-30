@@ -1,0 +1,33 @@
+---
+title: "Context Window Anatomy: Where Every Token Actually Goes"
+track: "context-engineering"
+status: live
+summary: "Every context window splits into system prompt, tools, history, retrieved context, and output reserve — know the split before you optimize it."
+duration: "5 min read"
+---
+
+A "128k context window" is not 128k tokens of usable space for your problem. It's a budget that several competing tenants draw from before your actual task gets a single token — and most context engineering bugs trace back to nobody having mapped where the tokens went.
+
+## The five tenants
+
+Every request to a model fills its window with roughly the same categories, in roughly this order:
+
+- **System prompt** — role, instructions, formatting rules, safety constraints. Often the most static and most under-audited part of the budget, because nobody re-measures it once it's "done."
+- **Tool definitions** — every tool's name, description, and JSON schema, sent on every single call whether or not the model uses it. Ten well-documented tools can easily cost more tokens than the user's actual question. See [The Token Cost of Tool Schemas](/learn/tools-function-calling/token-cost-of-tool-schemas).
+- **Conversation history** — prior turns, replayed in full unless something trims them. This is the tenant that grows unbounded if you let it.
+- **Retrieved / injected context** — RAG chunks, file contents, search results, anything fetched for this turn. See [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing).
+- **Output reserve** — space the provider holds back for the response itself (and, on reasoning models, for thinking tokens). This isn't optional and isn't always obvious from the advertised window size.
+
+## Why the split matters more than the total
+
+Two agents with identical 200k windows can behave completely differently depending on how that space is carved up. An agent with a 3,000-token system prompt, 40 tool schemas, and no history trimming can burn most of its budget before the user says anything — leaving little room for the retrieved context that was supposed to make it accurate. The window's total size tells you the ceiling; the split tells you what's actually available for the task.
+
+This is also why "just use a bigger context window" is a weaker fix than it sounds. A bigger window grows every tenant's headroom, not just the useful ones — history and tool definitions expand to fill it if nothing bounds them, and you can still hit [context rot](/learn/context-engineering/context-rot) well before you hit the hard limit.
+
+## Auditing your own budget
+
+Before optimizing anything, instrument it. Log the actual token count per category on a handful of real requests: system prompt, tool schemas, history, retrieved context, output reserve. This is usually the first time teams discover that a "quick fix" they added to the system prompt six months ago is now 800 tokens on every call, or that history alone eats 60% of the window by turn ten.
+
+Once you can see the split, the fixes are targeted instead of guessed: trim or [progressively disclose](/learn/context-engineering/progressive-tool-disclosure) tools, [summarize](/learn/context-engineering/summarization-for-compaction) or slide the history window, and only then decide how much room is left for retrieval. Optimizing a category you haven't measured is how "context engineering" quietly turns into cargo-culting prompt tricks.
+
+**Related:** [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies), [Context Observability: Instrumenting What's Actually in the Window](/learn/context-engineering/context-observability-and-token-accounting), [The Token Cost of Tool Schemas](/learn/tools-function-calling/token-cost-of-tool-schemas)

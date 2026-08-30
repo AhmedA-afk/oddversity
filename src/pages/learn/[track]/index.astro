@@ -1,6 +1,10 @@
 ---
 import Layout from '../../../components/Layout.astro';
-import { tracks, getTrack, statusLabel, type NodeStatus } from '../../../data/curriculum.ts';
+import { getCollection } from 'astro:content';
+import { tracks, getTrack } from '../../../data/curriculum.ts';
+import { groupTrack } from '../../../data/modules';
+import { ogImage } from '../../../data/og-images';
+import { quickGuides } from '../../../data/quick-guides';
 
 export function getStaticPaths() {
   return tracks.map((t) => ({ params: { track: t.id } }));
@@ -12,72 +16,198 @@ const idx = tracks.findIndex((t) => t.id === track.id);
 const prev = tracks[idx - 1];
 const next = tracks[idx + 1];
 
-const dotClass = (s: NodeStatus) =>
-  s === 'curated' ? 'node-dot is-curated' : s === 'coming' ? 'node-dot is-coming' : 'node-dot';
+const lessons = await getCollection('lessons');
+const inTrack = lessons.filter((l) => l.id.startsWith(`${track.id}/`));
+const summaryFor = new Map(inTrack.map((l) => [l.id, l.data.summary ?? '']));
+const durationFor = new Map(inTrack.map((l) => [l.id, l.data.duration ?? '']));
+
+const minutes = inTrack.reduce((total, l) => {
+  const n = parseInt((l.data.duration ?? '').replace(/\D+/g, ''), 10);
+  return total + (Number.isFinite(n) ? n : 6);
+}, 0);
+const hours = Math.max(1, Math.round(minutes / 60));
+
+const modules = groupTrack(track);
+const quickGuide = quickGuides[track.id];
+const playable = track.nodes.filter((n) => n.slug);
+const first = playable[0];
+
+const levelForGroup: Record<string, string> = {
+  Foundations: 'Beginner',
+  'Classical ML': 'Intermediate',
+  'Working with Models': 'Beginner to intermediate',
+  Building: 'Intermediate',
+  Agentic: 'Intermediate to advanced',
+  Production: 'Advanced',
+};
+const level = levelForGroup[track.group] ?? 'All levels';
 ---
-<Layout title={track.name} description={track.summary}>
+<Layout
+  title={track.name}
+  description={`${track.summary} ${inTrack.length} free lessons, about ${hours} hours. No paywall, no sign-up.`}
+  type="course"
+  course={{ level, lessonCount: inTrack.length, sections: modules?.map((m) => m.name) }}
+  image={ogImage(`track-${track.id}`)}
+  imageAlt={`${track.name} — ${inTrack.length} free lessons on Oddversity`}
+  breadcrumbs={[
+    { name: 'Home', url: '/' },
+    { name: 'Learn', url: '/learn' },
+    { name: track.name, url: `/learn/${track.id}` },
+  ]}
+  itemList={playable.map((n) => ({ name: n.title, url: `/learn/${track.id}/${n.slug}` }))}
+>
   <section class="head container">
-    <a href="/learn" class="back mono">← The map</a>
+    <a href="/learn" class="back mono">← All tracks</a>
     <div class="hub-row">
       <span class="hub mono">{track.n}</span>
-      <span class="eyebrow">{track.group} track</span>
+      <span class="eyebrow">{track.group}</span>
     </div>
     <h1>{track.name}</h1>
     <p class="summary">{track.summary}</p>
-    <p class="meta mono">{track.meta}</p>
+    <div class="facts">
+      <span class="chip">{inTrack.length} lessons</span>
+      <span class="chip">~{hours} hours</span>
+      <span class="chip">{level}</span>
+      <span class="chip">Free, no account</span>
+    </div>
+    <div class="meter head-meter" data-track-progress={track.id} data-track-total={inTrack.length} hidden>
+      <span class="meter-rail"><span class="meter-fill" data-bar></span></span>
+      <span class="meter-label" data-label></span>
+    </div>
+    {modules && (
+      <nav class="modjump" aria-label="Modules in this track">
+        {modules.map((mod, i) => (
+          <a href={`#${mod.anchor}`}><span class="mono">{String(i + 1).padStart(2, '0')}</span> {mod.name}</a>
+        ))}
+      </nav>
+    )}
+    {first && (
+      <div class="cta">
+        <a href={`/learn/${track.id}/${first.slug}`} class="btn btn-primary">Start with lesson 01</a>
+        {quickGuide && <a href={`/learn/${track.id}/quick-guide`} class="btn btn-ghost">Read the {quickGuide.minutes}-minute version</a>}
+        <button type="button" class="btn btn-ghost" data-search-open>Search this curriculum</button>
+      </div>
+    )}
   </section>
 
   <section class="container lessons">
-    <ol>
-      {track.nodes.map((nd, i) => (
-        <li class="lesson">
-          <span class="ln mono">{String(i + 1).padStart(2, '0')}</span>
-          <span class={dotClass(nd.status)} aria-hidden="true"></span>
-          <span class="body">
-            {nd.slug ? (
-              <a href={`/learn/${track.id}/${nd.slug}`} class="title">{nd.title}</a>
-            ) : (
-              <span class:list={['title', { dim: nd.status !== 'live' }]}>{nd.title}</span>
-            )}
-          </span>
-          <span class="right mono">{nd.eta ?? statusLabel[nd.status]}</span>
-        </li>
-      ))}
-    </ol>
+    <div class="lessons-head">
+      <h2>Contents</h2>
+      <input type="search" data-side-filter class="filter" placeholder="Filter lessons" aria-label={`Filter ${track.name} lessons`} />
+    </div>
+    {modules ? (
+      <div class="modules">
+        {modules.map((mod, mi) => (
+          <section class="mod" id={mod.anchor} data-side-group>
+            <div class="mod-head">
+              <span class="mod-n mono">{String(mi + 1).padStart(2, '0')}</span>
+              <h3>{mod.name}</h3>
+              <span class="mod-rule"></span>
+              <span class="mod-count mono">{mod.nodes.length} lessons</span>
+            </div>
+            <ol>
+              {mod.nodes.map((nd, i) => (
+                <li class="lesson" data-side-item>
+                  <span class="ln mono">{String(mod.offset + i + 1).padStart(2, '0')}</span>
+                  <span class="body">
+                    {nd.slug ? (
+                      <a href={`/learn/${track.id}/${nd.slug}`} class="title" data-lesson-link={`${track.id}/${nd.slug}`}>
+                        <svg class="check" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+                        {nd.title}
+                      </a>
+                    ) : (
+                      <span class="title dim">{nd.title}</span>
+                    )}
+                    {nd.slug && summaryFor.get(`${track.id}/${nd.slug}`) && (
+                      <span class="lsum">{summaryFor.get(`${track.id}/${nd.slug}`)}</span>
+                    )}
+                  </span>
+                  <span class="right mono">{nd.slug ? durationFor.get(`${track.id}/${nd.slug}`) : nd.eta}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+    ) : (
+      <ol data-side-group>
+        {track.nodes.map((nd, i) => (
+          <li class="lesson" data-side-item>
+            <span class="ln mono">{String(i + 1).padStart(2, '0')}</span>
+            <span class="body">
+              {nd.slug ? (
+                <a href={`/learn/${track.id}/${nd.slug}`} class="title" data-lesson-link={`${track.id}/${nd.slug}`}>
+                  <svg class="check" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+                  {nd.title}
+                </a>
+              ) : (
+                <span class="title dim">{nd.title}</span>
+              )}
+              {nd.slug && summaryFor.get(`${track.id}/${nd.slug}`) && (
+                <span class="lsum">{summaryFor.get(`${track.id}/${nd.slug}`)}</span>
+              )}
+            </span>
+            <span class="right mono">{nd.slug ? durationFor.get(`${track.id}/${nd.slug}`) : nd.eta}</span>
+          </li>
+        ))}
+      </ol>
+    )}
+    <p class="side-empty" data-side-empty hidden>No lesson in this track matches that.</p>
   </section>
 
   <nav class="pager container" aria-label="Track navigation">
-    {prev ? <a href={`/learn/${prev.id}`} class="pg"><span class="mono">← Previous</span><span class="pt">{prev.name}</span></a> : <span></span>}
-    {next ? <a href={`/learn/${next.id}`} class="pg alignr"><span class="mono">Next →</span><span class="pt">{next.name}</span></a> : <span></span>}
+    {prev ? <a href={`/learn/${prev.id}`} class="pg"><span class="mono">← Previous track</span><span class="pt">{prev.name}</span></a> : <span></span>}
+    {next ? <a href={`/learn/${next.id}`} class="pg alignr"><span class="mono">Next track →</span><span class="pt">{next.name}</span></a> : <span></span>}
   </nav>
 </Layout>
 
 <style>
-  .head { padding: 48px 0 8px; }
+  .head { padding-block: 44px 8px; max-width: 900px; }
   .back { font-size: 12px; color: var(--muted); }
   .back:hover { color: var(--accent); text-decoration: none; }
   .hub-row { display: flex; align-items: center; gap: 12px; margin: 22px 0 12px; }
   .hub { flex: none; width: 30px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-contrast); font-size: 12px; font-weight: 500; }
-  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; }
-  .summary { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--muted); max-width: 60ch; }
-  .meta { margin-top: 14px; font-size: 11px; color: var(--faint); letter-spacing: .04em; }
+  .head h1 { font-size: clamp(30px, 4.6vw, 44px); letter-spacing: -.022em; }
+  .summary { margin-top: 16px; font-size: 16.5px; line-height: 1.6; color: var(--muted); max-width: 62ch; }
+  .facts { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .head-meter { margin-top: 18px; }
+  .cta { margin-top: 26px; display: flex; gap: 12px; flex-wrap: wrap; }
 
-  .lessons { padding-top: 36px; }
+  .lessons { padding-top: 52px; }
+  .lessons-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 14px; flex-wrap: wrap; }
+  .lessons-head h2 { font-size: 21px; letter-spacing: -.014em; }
+  .filter { width: min(280px, 100%); height: 34px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 7px; background: var(--paper-2); color: var(--text); font: 400 12.5px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .filter::placeholder { color: var(--muted); }
+
   .lessons ol { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
-  .lesson { display: flex; align-items: center; gap: 14px; padding: 16px 4px; border-bottom: 1px solid var(--rule); }
-  .ln { flex: none; width: 22px; font-size: 11px; color: var(--faint); }
-  .lesson .node-dot { flex: none; }
-  .body { flex: 1; }
-  .title { font: 500 15px/1.4 'IBM Plex Sans', sans-serif; color: var(--text); }
+  .modules { display: flex; flex-direction: column; gap: 34px; }
+  .mod { scroll-margin-top: 84px; }
+  .mod-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 10px; }
+  .mod-n { flex: none; font-size: 11px; color: var(--accent); }
+  .mod-head h3 { font-size: 18px; letter-spacing: -.012em; }
+  .mod-rule { flex: 1; height: 1px; background: var(--rule); align-self: center; }
+  .mod-count { flex: none; font-size: 10.5px; color: var(--muted); }
+  .modjump { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 7px; }
+  .modjump a { font: 400 11.5px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--muted); background: var(--chip-bg); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 9px; }
+  .modjump a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+  .modjump .mono { font-size: 10px; color: var(--muted); margin-right: 3px; }
+  .lesson { display: flex; align-items: flex-start; gap: 14px; padding: 15px 6px; border-bottom: 1px solid var(--rule); }
+  .lesson:hover { background: var(--paper); }
+  .ln { flex: none; width: 24px; padding-top: 2px; font-size: 11px; color: var(--muted); }
+  .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .title { display: inline-flex; align-items: center; gap: 7px; font: 500 15px/1.4 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
   a.title:hover { color: var(--accent); text-decoration: none; }
   .title.dim { color: var(--muted); font-weight: 400; }
-  .right { flex: none; font-size: 11px; color: var(--faint); }
+  .lsum { font-size: 12.5px; line-height: 1.5; color: var(--muted); max-width: 84ch; }
+  .right { flex: none; padding-top: 3px; font-size: 11px; color: var(--muted); }
+  .side-empty { padding-block: 28px; color: var(--muted); }
 
   .pager { display: flex; justify-content: space-between; gap: 16px; padding-top: 40px; }
   .pg { display: flex; flex-direction: column; gap: 4px; }
   .pg:hover { text-decoration: none; }
   .pg.alignr { text-align: right; }
-  .pg .mono { font-size: 11px; color: var(--faint); }
-  .pg .pt { font: 500 15px/1.2 'Source Serif 4', Georgia, serif; color: var(--text); }
+  .pg .mono { font-size: 11px; color: var(--muted); }
+  .pg .pt { font: 500 15px/1.2 'Source Serif 4', 'Source Serif 4 Fallback', Georgia, serif; color: var(--text); }
   .pg:hover .pt { color: var(--accent); }
+  @media (max-width: 600px) { .right { display: none; } }
 </style>

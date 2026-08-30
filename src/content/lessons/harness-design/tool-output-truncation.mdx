@@ -1,0 +1,33 @@
+---
+title: "Truncating and Paginating Oversized Tool Output"
+track: "harness-design"
+status: live
+summary: "Handle multi-megabyte tool results with head/tail truncation, pagination, and file-backed overflow so they don't blow the context window."
+duration: "5 min read"
+---
+
+A single tool call can return more text than a whole conversation should hold. A grep over a large repo, a full HTTP response body, a database dump — any of these can return megabytes when the model only needed a few lines. Left unhandled, one oversized result silently evicts everything else in the window, or the call just fails at the token limit. A harness has to decide, at the tool-execution boundary, what actually reaches the model.
+
+## Truncate at the boundary, not in the prompt
+
+The right place to cap output is in the tool-execution code, before the result is ever serialized into a message. Waiting until context is already full and then summarizing after the fact is reactive and lossy — see [compaction](/learn/context-engineering/summarization-for-compaction) for why that's a worse fallback than prevention.
+
+A common pattern is head/tail truncation: keep the first N lines and the last M lines, drop the middle, and insert a marker like this in between:
+
+```text
+... [12,400 lines omitted] ...
+```
+
+Head/tail beats a flat head-only cut for two reasons. Errors and stack traces often end at the bottom of output, and a pure head cut throws away the exact line that mattered. It also gives the model an honest signal — it knows something was hidden, instead of quietly seeing a truncated result and concluding that's simply what happened. This ties into a broader failure mode: [context poisoning](/learn/context-engineering/context-poisoning-and-distraction) gets worse when the model reasons confidently over a result it doesn't know is partial.
+
+## Pagination and file-backed overflow
+
+For results that are useful in full but too big for one message, offer pagination instead of a hard cut: return the first page plus a cursor or offset, and let the model request more if it decides it needs to. This keeps the default case cheap while leaving a path to completeness — the same tradeoff that shows up in <a href="/learn/context-engineering/retrieval-vs-context-stuffing">retrieval vs. stuffing</a>.
+
+The other escape hatch is writing large output to a file and returning a path plus a short summary instead of the content itself. This works well for artifacts the model may never need to read verbatim — a full build log, a large CSV — and it composes with a code-execution tool that can grep or slice the file on demand rather than paying for it up front.
+
+## Set limits per tool, not globally
+
+A single global character cap treats a `list_files` result and a `read_file` result the same way, which is wrong in both directions — one wants a handful of names, the other might legitimately need thousands of lines of source. Budget truncation limits per tool type, and size them against your [token budget](/learn/context-engineering/token-budgeting-strategies) for that part of the loop, not against an arbitrary constant that made sense for one call site and nowhere else.
+
+**Related:** [Managing Context Inside a Long Session](/learn/harness-design/context-window-management-in-a-harness), [Tool Output Deduplication](/learn/context-engineering/tool-output-deduplication), [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction)

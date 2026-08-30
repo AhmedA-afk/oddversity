@@ -1,0 +1,45 @@
+---
+title: "Survive Model Deprecations and Silent Version Drift"
+track: "production"
+status: live
+summary: "Pin exact model snapshots, track deprecation dates, and keep a tested migration path so a provider's sunset doesn't become your outage."
+duration: "5 min read"
+---
+
+Every model you call has a shelf life. Providers ship a new version, mark the old one deprecated, and eventually retire it — and if your code just says "use the latest model," you find out about the change when your evals silently regress or a request starts returning an error.
+
+## Pin the exact snapshot, not the family name
+
+Model identifiers usually come in two flavors: a rolling alias (something like a "latest" tag) and a dated snapshot (a specific version string with a release date baked in). The alias is convenient during development because you always get the newest weights without touching config. In production it's a liability — the provider can point that alias at a new model at any time, with a different personality, different formatting habits, or different tool-calling behavior, and nothing in your deploy pipeline records that it happened.
+
+Pin the dated snapshot in your config, not in scattered strings across the codebase — treat it the same way you'd treat a pinned dependency version, ideally sourced from the same place your prompts live (see [Treat Prompts as Versioned Config, Not Embedded Strings](/learn/production/prompts-as-versioned-config)). Upgrading becomes a deliberate, reviewed change instead of something that happens to you overnight.
+
+```text
+# fragile: provider can repoint this at any time
+MODEL_ID = "claude-latest"
+
+# pinned: you control exactly when this changes
+MODEL_ID = "claude-sonnet-4-5-20250929"
+```
+
+## Watch the deprecation clock, not just the outage
+
+Providers publish deprecation and retirement dates for older snapshots, usually with a multi-month runway. Treat that date as a deadline on your own calendar, not the provider's problem:
+
+- Subscribe to the provider's model-lifecycle notices (changelog, status page, or API headers that flag a deprecated model) and route them somewhere a human will actually see.
+- Track which snapshot each feature is pinned to in one place, so "what breaks when model X retires" is a lookup, not an investigation.
+- Budget migration time before the retirement date, not after — the failure mode you're avoiding is discovering the deadline from a 4xx in production.
+
+## Build the migration playbook before you need it
+
+A model swap is a mini-release, and it deserves the same safety net as any other production change. Before you touch the pin:
+
+1. Re-run your eval suite against the candidate model and diff the results — see [Catch Regressions with Evals in CI](/learn/production/eval-based-regression-testing). A new model can pass "it still works" smoke tests while quietly failing on edge cases your evals actually catch.
+2. Shadow or canary the new snapshot on a slice of real traffic before flipping everyone over, per [Canary and Shadow-Test Prompt or Model Changes](/learn/production/canary-and-shadow-releases).
+3. Keep a kill switch that can revert to the last known-good pin in one step, per [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches) — a bad migration should be a config revert, not a hotfix.
+
+## What actually breaks
+
+Version drift rarely looks like a clean error. The usual symptoms are a new model that's slightly more or less verbose, changes its default refusal behavior, formats structured output differently, or calls tools with subtly different argument choices — all things your existing evals and logs will catch faster than a support ticket will. Structured logging of every call's model ID and output (see [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls)) is what lets you actually prove a regression traces back to a version change instead of guessing.
+
+**Related:** [Treat Prompts as Versioned Config, Not Embedded Strings](/learn/production/prompts-as-versioned-config), [Catch Regressions with Evals in CI](/learn/production/eval-based-regression-testing), [Canary and Shadow-Test Prompt or Model Changes](/learn/production/canary-and-shadow-releases)

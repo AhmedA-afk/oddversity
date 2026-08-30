@@ -1,0 +1,34 @@
+---
+title: "Run a Postmortem After a Model Incident"
+track: "production"
+status: live
+summary: "Investigate bad outputs, cost spikes, and outages with a blameless postmortem that fixes the system, not the prompt."
+duration: "6 min read"
+---
+
+Your AI feature had a bad night: it hallucinated refund policies to customers, or a provider outage took chat down for two hours, or someone's prompt tweak 10x'd your token bill overnight. The incident is over. Now the real work starts — figuring out why it happened and making sure the same failure can't happen again the same way.
+
+## Why AI incidents need their own postmortem shape
+
+A model incident rarely has one root cause the way a null-pointer crash does. It's usually a stack: a prompt change shifted behavior, an eval suite that didn't cover the new case, a missing guardrail, and a monitoring gap that let it run for hours before anyone noticed. A good postmortem walks the whole stack instead of stopping at "the model said something wrong." Pull the actual trace — the [structured logs](/learn/production/structured-logging-for-llm-calls) and [pipeline traces](/learn/production/tracing-multi-step-ai-pipelines) for the incident window — before you write a single sentence of narrative. Memory of what "probably happened" is unreliable; the logged prompt, retrieved context, and completion are not.
+
+## Write it blameless, and specific
+
+Blameless doesn't mean vague — it means the write-up names the mechanism, not the person who typed the prompt. Structure it as:
+
+- **Timeline**: when the bad behavior started, when it was detected, when it was fixed, in timestamps pulled from logs, not memory.
+- **Impact**: how many users or requests were affected, and by what measure — wrong answers, cost, latency. This is where your [cost tracking](/learn/production/token-and-cost-tracking) and [SLO dashboards](/learn/production/latency-and-cost-slos) earn their keep; they turn "it felt bad" into a number.
+- **Root cause**: the actual mechanical chain — e.g., a system prompt edit removed a constraint, a new document type wasn't covered by your retrieval filters, a provider silently changed default behavior on a model alias.
+- **Detection gap**: how long between the change landing and a human noticing, and why. This is almost always the most fixable part.
+
+## Turn findings into artifacts, not action items that rot
+
+The postmortem is only useful if it produces things that outlive the meeting. Concretely:
+
+- A failing case goes into your [regression eval suite](/learn/production/eval-based-regression-testing) so this exact failure can't ship silently again.
+- A missing guard becomes a real gate — a [kill switch](/learn/production/feature-flags-and-kill-switches) if none existed, or a tighter [canary rollout](/learn/production/canary-and-shadow-releases) so the next risky change only reaches 1% of traffic first.
+- A detection gap becomes an alert threshold in your [on-call playbook](/learn/production/on-call-playbooks-for-ai), not a vague "watch this more closely."
+
+Skip "be more careful next time" as an action item — it's not a system change, and it won't survive contact with the next deadline. The goal of an AI postmortem isn't to explain the incident well; it's to make the system that produced it measurably harder to fail the same way twice.
+
+**Related:** [Catch Regressions with Evals in CI](/learn/production/eval-based-regression-testing), [Write an On-Call Playbook for AI Failures](/learn/production/on-call-playbooks-for-ai), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches)

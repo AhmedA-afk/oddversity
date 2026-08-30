@@ -1,0 +1,41 @@
+---
+title: "Tracking Eval Scores Across Model Versions"
+track: "evals-red-teaming"
+status: live
+summary: "Turn eval and red-team runs into a dashboard over time so regressions are visible, not anecdotal."
+duration: "6 min read"
+---
+
+A single eval run tells you how the system performs today. It tells you nothing about whether last week's prompt tweak made things better or worse, or whether swapping model versions quietly broke a category you don't test manually anymore. That's what a tracking dashboard is for: turning eval results into a time series you can actually watch.
+
+## What to log per run
+
+Every eval and red-team run should write a row, not just a pass/fail toast in your terminal. At minimum, log:
+
+- **Timestamp and commit/prompt version** — what changed since the last run
+- **Model and model version** — providers ship silent updates; pin and record the exact identifier
+- **Per-category scores**, not just an aggregate — an overall score can hold steady while one category quietly drops
+- **Sample size and dataset version** — a score is meaningless without knowing what it was measured against, see [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)
+- **Red-team pass rate separately from quality metrics** — safety and capability drift at different rates and for different reasons, so mixing them into one number hides both
+
+Store this somewhere queryable — a database table, a spreadsheet with an append-only sheet, or a metrics backend you already have. The format matters less than the discipline of never overwriting old rows.
+
+## Build the view, not just the log
+
+A log of numbers isn't a dashboard until someone can look at it and immediately see a trend. The minimum useful view is a line chart per category, x-axis is run date or version, y-axis is score, with a horizontal line marking your acceptance threshold. When a line crosses under the threshold, that's your regression alert — no one has to remember to go looking for it.
+
+Two views matter more than people expect:
+
+**Model-version comparison.** When a new model version ships, run your full suite against both old and new before switching. Plot them side by side per category. A 2-point aggregate improvement can hide a 15-point drop in one category that the average buries — this is the same failure mode as [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics) warns about, just applied over time instead of within one run.
+
+**Eval-diff on every change.** Rather than watching an unbroken time series, tie each run to a specific prompt or code diff, as in [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration). The dashboard becomes less "here's the trend" and more "here's exactly what this change cost or bought us."
+
+## Keep red-team results on the same board
+
+It's tempting to keep jailbreak and prompt-injection results in a separate security tracker from quality evals, since they're often run by a different team. Resist that. The two need to live on one timeline, because the tradeoffs between them are exactly what you're trying to catch: a change that raises quality scores by tightening instruction-following can simultaneously make the model more compliant with injected instructions it should refuse. If quality and safety dashboards are in different tools, nobody sees that tradeoff until it's in production.
+
+## Alert on drift, not just failures
+
+A threshold-crossing alert catches sudden breaks. It won't catch slow drift, where a score drops half a point every week for two months. Track a rolling baseline (e.g., trailing 5-run average) alongside the raw score, and alert when the current run deviates meaningfully from that baseline, not just from a fixed line. This is the same failure mode as production monitoring dashboards — see [Offline Evals vs Production Monitoring](/learn/evals-red-teaming/offline-vs-online-evals) — where nobody notices a metric sliding until a user complains.
+
+**Related:** [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration), [Offline Evals vs Production Monitoring](/learn/evals-red-teaming/offline-vs-online-evals)

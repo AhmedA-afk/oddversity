@@ -1,0 +1,33 @@
+---
+title: "Evaluating Structured Output: Validity, Accuracy, and Completeness Are Different Axes"
+track: "structured-outputs"
+status: live
+summary: "A pipeline that parses can still be wrong, and one that's right can still be missing fields — grade all three separately."
+duration: "5 min read"
+---
+
+A dashboard that reports "98% structured output success" is almost always measuring one thing: did the JSON parse. That number can look great while the pipeline quietly ships wrong answers, because parsing, correctness, and completeness are three separate failures that happen to share one output.
+
+## Why one score hides two problems
+
+Say you're extracting invoices into a schema with `vendor`, `total`, `line_items`, and `due_date`. Three outputs can each fail differently:
+
+- **Invalid**: the model emits `total: "1,204.50"` when your schema wants a number, or drops a closing brace. This is a syntax/schema-conformance failure — [constrained decoding](/learn/structured-outputs/constrained-decoding-under-the-hood) mostly eliminates it, [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) catches what slips through.
+- **Inaccurate**: the JSON is perfectly valid, `total: 1204.50`, but the real invoice total was 1,240.50. Nothing in the schema can catch this — it parsed fine and it's wrong.
+- **Incomplete**: `line_items` comes back as an empty array because the model truncated its extraction after the header, or it silently omitted a field the schema marked optional when the source document actually had a value.
+
+A validity-only eval marks all three "pass," "fail," "pass" — when the real story is "pass, fail, silently-fail." Treating validity as a proxy for quality is the single most common mistake in structured-extraction evals, because validity is the one axis a schema can enforce mechanically, so teams stop there.
+
+## Scoring each axis on its own terms
+
+**Validity** is binary and cheap: does it parse, does it match the schema's types and required fields. Automate this with the same validator that runs in production — a JSON Schema check or your Pydantic/Zod model. See [schema design choices that reduce model errors](/learn/structured-outputs/schema-design-for-reliability) for what makes this check meaningful in the first place.
+
+**Accuracy** needs a source of truth per field, not just per record. Field-level exact match works for `due_date` or an enum status; numeric fields want a tolerance band (`total` within $0.01); free-text fields like `vendor` want fuzzy match or an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) grading semantic equivalence, not string equality, since "Acme Corp." and "Acme Corporation" are the same vendor. Score accuracy per field and roll up — a record that's 9/10 fields correct is a different failure than one that's 0/10.
+
+**Completeness** is the one teams forget to check at all. It asks: of everything present in the source, how much made it into the output? For a list field like `line_items`, compare counts against a labeled reference. For optional fields, track the null rate against how often the source actually had a value — a suspiciously high null rate on a field that's usually present is a sign the model is giving up, not that the data is genuinely missing.
+
+## Building the eval
+
+Keep a labeled set of real (or realistic) source documents with their correct extracted values — this is the same discipline as [building a golden dataset](/learn/evals-red-teaming/building-a-golden-dataset). Run each of the three checks against it independently and report three separate numbers, not one blended score. When a model update or prompt change moves the accuracy number down while validity stays at 100%, that's a signal a validity-only dashboard would have missed entirely — and it's exactly the failure mode covered in [structured output failure modes](/learn/structured-outputs/structured-output-failure-modes).
+
+**Related:** [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), [Structured Output Failure Modes and How to Spot Them](/learn/structured-outputs/structured-output-failure-modes), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)

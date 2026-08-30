@@ -1,0 +1,46 @@
+---
+title: "Sequential, Multi-Step Tool Use"
+track: "tools-function-calling"
+status: live
+summary: "Let the model plan, call a tool, read the result, and decide the next call — a loop, not a single request."
+duration: "6 min read"
+---
+
+A single tool call answers a single question. Most real tasks need several — check inventory, then place the order, then send a confirmation — where each step depends on what the last one returned. That's sequential, multi-step tool use: the model and your code trade turns until the task is actually done.
+
+## The loop, not the call
+
+A one-shot integration looks like: send a prompt, get a tool call, run it, return the result, get a final answer. Multi-step tool use repeats that middle part. After you return a tool result, the model doesn't have to answer immediately — it can look at what came back and issue another tool call, then another, until it has enough to respond in prose.
+
+Concretely, the message list keeps growing across turns: user message, assistant tool call, tool result, assistant tool call again, tool result again, and so on, until the assistant finally replies with text instead of a call. Your code's job is just to keep running that loop — call the model, check whether the response is a tool call or a final answer, execute and append the result if it's a call, repeat.
+
+```python
+while True:
+    response = client.messages.create(
+        model="claude-opus-4-6",
+        messages=messages,
+        tools=tools,
+    )
+    messages.append({"role": "assistant", "content": response.content})
+
+    tool_uses = [b for b in response.content if b.type == "tool_use"]
+    if not tool_uses:
+        break  # model gave a final text answer
+
+    results = [run_tool(t) for t in tool_uses]
+    messages.append({"role": "user", "content": results})
+```
+
+This is the same shape whether the model needs two calls or twenty. Nothing about the API changes between "single tool call" and "multi-step" — it's the same request format, called in a loop until the model stops asking for tools.
+
+## Why the model needs to see results before planning the next step
+
+The reason this can't be flattened into one big upfront plan is that later steps often depend on earlier outputs you can't predict. A model that looks up a customer ID doesn't know which order to cancel until the lookup returns; a model debugging a test failure doesn't know which file to open until the traceback names it. This observe-then-decide rhythm is the same idea behind the [ReAct pattern](/learn/agentic-ai/react-pattern), and it's what separates [the agent loop](/learn/agentic-ai/the-agent-loop) from a fixed pipeline: the branching happens live, informed by real results, not baked into the prompt in advance.
+
+## Where it goes wrong
+
+Multi-step loops fail in ways single calls don't. A missing stopping condition lets the model call tools forever, burning tokens and money — always cap the number of iterations. A tool that returns a huge, unfiltered payload pollutes every later turn with context the model has to keep re-reading; keep [what you return to the model](/learn/tools-function-calling/returning-tool-results-to-the-model) tight. And a step that fails silently (rather than surfacing as a clear error) tends to make the model invent a plausible-sounding next move instead of retrying or asking for help — see [handling tool errors and retries](/learn/tools-function-calling/handling-tool-errors-and-retries) for how to make failures visible instead of swallowed.
+
+Multi-step tool use is also distinct from firing several independent calls at once — that's [parallel tool calls](/learn/tools-function-calling/parallel-tool-calls), useful when steps don't depend on each other. Sequential use is for when they do.
+
+**Related:** [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern), [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries)

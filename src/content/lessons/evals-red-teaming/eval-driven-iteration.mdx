@@ -1,0 +1,45 @@
+---
+title: "Shipping Changes by Eval Diff"
+track: "evals-red-teaming"
+status: live
+summary: "Treat a score delta between eval runs like a code diff you review before merging a prompt or model change."
+duration: "6 min read"
+---
+
+You changed a system prompt, swapped a model, or tweaked a retrieval step. How do you know the change actually helped? Not by reading five transcripts and feeling better about them — by running your eval suite twice and reviewing the diff.
+
+## The loop
+
+Eval-driven iteration is a small, repeatable cycle: change something, run the eval suite, compare the new scores to the baseline, decide whether to keep the change. It's the same discipline as code review, applied to prompts, models, and pipelines instead of source files.
+
+1. **Baseline** — run your current version against your eval set and save the results.
+2. **Change** — make one deliberate edit: a prompt wording, a temperature, a retrieval parameter, a model swap.
+3. **Re-run** — run the exact same eval set against the new version.
+4. **Diff** — compare per-case scores, not just the aggregate.
+5. **Decide** — merge, revert, or investigate.
+
+This only works if you already have a suite worth running — see [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset) and [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics) if you don't have one yet.
+
+## Why the aggregate number lies
+
+An overall score going from 82% to 85% looks like a win. But averages hide movement in both directions. The change might have fixed ten easy cases while quietly breaking three hard ones that used to pass — a net gain that ships a real regression. The fix is to diff at the level of individual test cases, not just the summary line:
+
+```
+case_017  refund_policy_edge_case   PASS -> FAIL
+case_042  multilingual_greeting     FAIL -> PASS
+case_058  nested_json_extraction    PASS -> PASS (same)
+```
+
+A case that flips from pass to fail is the thing you actually need to look at — read that transcript before you approve the change, the same way you'd read a suspicious hunk in a pull request rather than trusting that "tests passed."
+
+## Treat it like code review
+
+The habit that transfers well from software: nobody merges a PR because "the test count went up." They read the diff. Do the same here — surface newly-failing cases first, read a sample of newly-passing ones to confirm they passed for the right reason (not because the [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) grader got looser), and only then decide. If [offline evals](/learn/evals-red-teaming/offline-vs-online-evals) look good, watch the same cases in production monitoring before fully trusting the change.
+
+## Keep a changelog, not just a number
+
+Store each run with what changed, the full per-case results, and a one-line note on why you made the change. Over weeks this becomes a record of what actually moved your metrics — genuinely useful when a regression shows up later and you need to know which of the last twenty tweaks caused it. It's also the raw material for turning a newly-discovered failure into a permanent test case, per [Turning Bugs into a Regression Suite](/learn/evals-red-teaming/building-a-regression-suite).
+
+The point isn't ceremony — it's that "it feels better" is not a decision process, and a single aggregate score is too coarse to trust on its own. A reviewed diff is.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Turning Bugs into a Regression Suite](/learn/evals-red-teaming/building-a-regression-suite), [Offline Evals vs Production Monitoring](/learn/evals-red-teaming/offline-vs-online-evals)

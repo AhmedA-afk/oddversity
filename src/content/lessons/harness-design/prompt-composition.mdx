@@ -1,0 +1,54 @@
+---
+title: "Composing the System Prompt at Runtime"
+track: "harness-design"
+status: live
+summary: "How a harness assembles the system prompt from static rules, live context, and tool schemas on every single call."
+duration: "6 min read"
+---
+
+A harness doesn't ship one fixed system prompt. It builds a new one on every request, stitching together pieces that change independently — and the order and size of those pieces decides whether the model actually behaves.
+
+## The pieces you're assembling
+
+Think of the runtime prompt as layers, not one big string:
+
+- **Static instructions** — the harness's own rules: tone, output format, safety floors. These rarely change between calls.
+- **Environment context** — current date, working directory, OS, logged-in user. Cheap, but stale copies cause weird bugs (a model reasoning about "today" using a date baked in at build time).
+- **Tool schemas** — the name, description, and parameters for every tool currently available. This is often the single largest chunk of the prompt.
+- **Project or user config** — a `CLAUDE.md`-style file, a memory doc, org policy. Loaded from disk or a database at call time.
+- **Retrieved or session context** — anything pulled in dynamically: file contents, search results, prior turns.
+
+Each layer has a different owner and a different refresh rate. A harness that concatenates them naively — dumping every tool's full schema and every memory file on every call — burns tokens fast and drowns the instructions that actually matter. See [Token Budgeting](/learn/context-engineering/token-budgeting-strategies) for how to size each layer against a fixed window.
+
+## Order matters as much as content
+
+Models weight instructions unevenly by position — content near the start and end of the prompt tends to get followed more reliably than content buried in the middle, an effect worth knowing about even without precise numbers (see [Context Ordering](/learn/context-engineering/context-ordering-and-recency-effects)). A practical convention:
+
+1. Identity and non-negotiable rules first (who the agent is, what it must never do).
+2. Tool definitions and how to use them.
+3. Environment and project-specific context.
+4. Task-specific instructions last, closest to the user's actual request.
+
+Deny-floor rules — the ones that must survive no matter what a user or a document later says — belong at the top *and* need runtime enforcement below the prompt, since a long enough prompt can still bury or dilute them. That's the subject of [Deny-Floors](/learn/harness-design/deny-floors-and-policy-layers).
+
+## Templating, not string concatenation
+
+In practice this is a small templating system, not a `+=` chain:
+
+```text
+compose_prompt(session):
+  parts = []
+  parts.append(STATIC_RULES)
+  parts.append(render_tool_schemas(session.active_tools))
+  parts.append(load_project_context(session.cwd))
+  parts.append(session.dynamic_context)  # date, user, env
+  return "\n\n".join(parts)
+```
+
+Keeping each layer as a separate function makes it possible to cache the expensive, rarely-changing parts (static rules, tool schemas) and only recompute the cheap, volatile ones (current date, active file) — which also plays well with prompt caching if your provider supports it.
+
+## Watch tool-schema bloat
+
+Every tool you register adds its full schema to the prompt on every turn, whether or not it's used. A harness with fifty tools can spend thousands of tokens on schemas before the user has said a word. [Tool Routing and Registries](/learn/harness-design/tool-routing-and-registries) covers scoping which tools are even loaded for a given session, which is usually the biggest lever for keeping runtime prompts lean.
+
+**Related:** [Token Budgeting](/learn/context-engineering/token-budgeting-strategies), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Routing Tool Calls to Real Code](/learn/harness-design/tool-routing-and-registries)

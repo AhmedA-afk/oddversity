@@ -1,0 +1,37 @@
+---
+title: "Choose a Base Model to Fine-Tune"
+track: "fine-tuning"
+status: live
+summary: "Match open-weight model size, license, and architecture to your task, hardware, and deployment target."
+duration: "6 min read"
+---
+
+The base model you pick decides your hardware bill, your license obligations, and your ceiling on quality — and you can't undo that choice cheaply once training starts. Before touching a training script, narrow the field on four axes: size, license, architecture, and how well it already does your task.
+
+## Size: match parameters to your GPU, not your ambition
+
+Bigger models generalize better before fine-tuning, but every extra billion parameters costs you VRAM, training time, and inference latency later. A 7-8B model fine-tunes comfortably on a single consumer GPU with [LoRA or QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning) and serves cheaply. A 70B+ model needs multi-GPU infrastructure for training and serving, and only pays for itself when the task genuinely needs the extra reasoning capacity — long multi-step logic, broad world knowledge, nuanced writing.
+
+Start smaller than you think you need. Fine-tuning narrows a model's behavior toward your task, so a well-tuned 8B model on a focused task often beats a generic 70B model prompted zero-shot. If evaluation later shows the small model plateauing below your bar, that's the signal to move up a size tier — not a guess made in advance.
+
+## License: read it before you train, not after you ship
+
+Open-weight doesn't mean unrestricted. Licenses fall into three rough buckets:
+
+- **Permissive (Apache 2.0, MIT)** — free commercial use, no attribution requirements, no usage caps. Safest default for a product you intend to sell.
+- **Custom "open" licenses** (Llama, Gemma-style) — free for most commercial use, but often carry a monthly-active-user threshold above which you need a separate commercial agreement, plus naming and acceptable-use clauses.
+- **Research-only or non-commercial** — fine for internal tools and experimentation, a legal problem the moment you charge money for the output.
+
+Check the license file in the model's repository directly, not a summary someone else wrote. Licenses change between model versions from the same family, and what applied to last year's release doesn't automatically apply to this year's.
+
+## Architecture: dense vs. mixture-of-experts
+
+Most base models you'll fine-tune are dense transformers — every parameter activates on every token, which makes training and quantization behavior predictable. [Mixture-of-experts](/learn/llm-foundations/mixture-of-experts-explained) models activate only a subset of parameters per token, giving you the quality of a larger model at closer to a smaller model's inference cost — but they're pickier to fine-tune well, since naive LoRA can under-train experts that rarely get routed to. Unless you have a specific reason to want an MoE's cost profile, a dense model is the safer default for a first fine-tuning project.
+
+## Check the instruct version before you commit to the base
+
+Most model families ship both a raw base checkpoint and an instruction-tuned variant. If your task looks like the model's existing chat behavior with a narrower domain or tone, fine-tuning the instruct version is usually faster and more stable than starting from raw base — you're adjusting behavior, not building it from scratch. Save true base-model fine-tuning for cases where you need to break out of the instruct model's habits entirely, such as teaching an unusual output format or a domain the instruct tuning actively fights against.
+
+Whatever you pick, the choice isn't final — it's a hypothesis you test. Confirm it's the right one during [evaluation](/learn/fine-tuning/evaluating-a-fine-tuned-model), not before.
+
+**Related:** [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag), [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Mixture of Experts, Explained](/learn/llm-foundations/mixture-of-experts-explained)

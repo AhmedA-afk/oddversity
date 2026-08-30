@@ -1,0 +1,61 @@
+---
+title: "Building a RAG Pipeline End to End"
+track: "rag"
+status: live
+summary: "Wire ingestion, chunking, retrieval, reranking, and generation into one working pipeline you can actually ship."
+duration: "8 min read"
+---
+
+Every RAG tutorial teaches the pieces in isolation. In production they're one pipeline, and the order you wire them in matters more than any single component.
+
+## The two pipelines, not one
+
+RAG is really two separate flows that happen to share a vector store.
+
+The **ingestion pipeline** runs offline, ahead of any user query: load documents, split them with a [chunking strategy](/learn/rag/chunking-strategies-for-documents), turn each chunk into a vector with an [embedding model](/learn/rag/embeddings-and-semantic-similarity), and write vectors plus metadata into a [vector database](/learn/rag/choosing-a-vector-database). This runs on a schedule or a webhook, not on the request path.
+
+The **query pipeline** runs live, on every user turn: embed the query, retrieve candidate chunks, narrow and rerank them, then hand the survivors to the model as context. This is the part users actually wait on, so every step here has a latency budget.
+
+Keeping these mentally separate stops a common mistake: trying to re-embed or re-chunk documents inside the request path "to be safe." Ingestion is where you can afford to be slow and careful; query time is where you can't.
+
+## The query pipeline, step by step
+
+A working query pipeline looks like this:
+
+```
+query
+  -> rewrite/expand (optional)
+  -> embed query
+  -> retrieve top-K (vector, or hybrid lexical+vector)
+  -> filter by metadata (optional)
+  -> rerank top-K down to top-N
+  -> assemble prompt with top-N chunks
+  -> generate answer with citations
+```
+
+Each arrow is a place you can improve quality without touching the others. If retrieval is pulling irrelevant chunks, add [hybrid search](/learn/rag/hybrid-search-lexical-and-vector) before you blame the model. If the right chunk is in the top 20 but not the top 5, that's a job for a [reranker](/learn/rag/reranking-retrieved-results), not a bigger K. If the query itself is ambiguous or underspecified, [query rewriting](/learn/rag/query-rewriting-and-expansion) fixes it upstream of retrieval entirely.
+
+Resist the urge to over-fetch and let the model sort it out. A wider K increases retrieval latency, embedding-search cost, and — counterintuitively — the model's chance of getting distracted by near-miss chunks. Retrieve generously (K of 20-50), then rerank down hard to the 3-8 chunks you actually put in the prompt.
+
+## Wiring generation to the retrieved context
+
+The last step is easy to get wrong in a subtle way: dumping retrieved chunks into the prompt without structure. Label each chunk with its source, give the model an explicit instruction to answer only from the provided context, and require it to cite which chunk backed each claim — this is what makes [grounded answers with citations](/learn/rag/grounding-answers-with-citations) possible instead of the model quietly blending retrieved text with its own prior knowledge.
+
+A minimal assembled prompt:
+
+```
+Answer the question using only the sources below.
+Cite the source number for each claim.
+
+[1] <chunk text>
+[2] <chunk text>
+[3] <chunk text>
+
+Question: <user query>
+```
+
+## Where pipelines actually fail
+
+Most RAG pipelines that "don't work" fail at the seams, not inside any one component: chunks that split a table row in two, a query rewrite that drifts off the original intent, a reranker with a different distance metric than the retriever expects, or a prompt template that silently truncates when too many chunks come back. Build the pipeline end to end first, even badly, then run it through [RAG evaluation](/learn/rag/evaluating-rag-quality) to find which seam is actually costing you accuracy — don't optimize any single stage before you can measure the whole thing.
+
+**Related:** [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Grounding Answers with Citations](/learn/rag/grounding-answers-with-citations), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

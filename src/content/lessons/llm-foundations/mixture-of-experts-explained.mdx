@@ -1,0 +1,35 @@
+---
+title: "Mixture of Experts, Explained"
+track: "llm-foundations"
+status: live
+summary: "How MoE models route each token to a few specialized sub-networks instead of running the whole model."
+duration: "6 min read"
+---
+
+A dense model runs every parameter on every token. A mixture-of-experts (MoE) model doesn't — it keeps a huge pool of parameters but only activates a small slice of them per token, which is how models like Mixtral, DeepSeek-V3, and GPT-4-class systems get frontier quality without frontier-sized compute per token.
+
+## The core trick: routing, not running everything
+
+Inside an MoE model, the feed-forward layer of a transformer block is replaced with many parallel "expert" sub-networks — often 8, 64, or even hundreds of them, each the size of a normal feed-forward layer. A small router network looks at each token and picks a handful (commonly the top 2) of experts to actually run. The rest sit idle for that token.
+
+This is the whole idea in one sentence: **total parameters can be enormous, but active parameters per token stay small.** A model might have 400 billion total parameters but only touch 15-20 billion of them to produce any given token. You get the representational capacity of a huge model at close to the inference cost of a much smaller one.
+
+Compare this to a dense model covered in [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), where the feed-forward block is a single network every token must pass through in full.
+
+## Why "experts" is a slightly misleading name
+
+It's tempting to picture one expert for math, another for poetry, another for code. In practice, routing is rarely that clean. Analyses of trained MoE models usually find experts specializing in shallower patterns — token types, syntax, local statistics — rather than tidy subject domains. The router is learned end-to-end via [gradient descent](/learn/maths-foundations/gradient-descent-intuition), and it settles wherever it finds a path that reduces loss, not wherever a human would draw the boundaries.
+
+The name is really about the architecture (many candidate sub-networks, a gate that picks a few) rather than a promise about what those sub-networks conceptually "know."
+
+## The catch: load balancing
+
+If left alone, a router tends to converge on a small favorite set of experts and ignore the rest — wasted capacity, and a bottleneck on the popular ones. MoE training adds an auxiliary load-balancing loss that penalizes uneven usage, nudging the router toward spreading tokens across experts more evenly. Get this wrong and you effectively paid for a huge model but are only using a fraction of it.
+
+There's also an infrastructure cost that dense models don't have: all those experts still need to be loaded into memory (or spread across devices), even though only a couple run per token. MoE mainly saves compute and inference latency — it does not save memory the way it saves FLOPs.
+
+## Why this matters for inference cost
+
+For anyone choosing between models, MoE explains a pattern that otherwise looks strange: two models with wildly different total parameter counts can have similar latency and cost per token, because what matters for [tokens, context, and cost](/learn/ai-foundations/tokens-context-cost) is active parameters, not total parameters. Total size still matters for hosting and memory footprint, but per-token compute — and therefore much of inference pricing — tracks the smaller, active-parameter number.
+
+**Related:** [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), [Model Families: Base, Instruct, Chat, Reasoning](/learn/llm-foundations/model-families-and-variants), [Tokens, Context, and Cost](/learn/ai-foundations/tokens-context-cost)

@@ -1,0 +1,41 @@
+---
+title: "Optional and Nullable Fields: Modeling 'The Model Doesn't Know'"
+track: "structured-outputs"
+status: live
+summary: "Give a field a legitimate way to come back empty so the model reports missing data instead of guessing it."
+duration: "5 min read"
+---
+
+Every required field in a schema is a promise the model has to keep, even when the source text doesn't. If your schema says `email` is a required string and the resume has no email on it, the model will make one up rather than break the contract. The fix isn't better prompting — it's giving the field a legal way to say "not present."
+
+## Required fields force fabrication
+
+Structured output is enforced by the decoder, not by the model's judgment. A required string field must be filled with *some* string before generation can finish. If the model can't find an email in the document, "leave it blank" isn't on the menu unless the schema explicitly allows it. So it pattern-matches to something plausible-looking, and you get a syntactically perfect JSON object with a semantically invented value. This is one of the most common, least visible sources of hallucination in extraction pipelines — the output validates cleanly, so nothing downstream flags it.
+
+## Optional vs. nullable are different contracts
+
+These two get conflated constantly, but they mean different things to a parser:
+
+- **Optional** — the key can be absent from the object entirely. Good for JSON Schema / Pydantic-style validation where `required: []` omits a field name.
+- **Nullable** — the key is always present, but its value can be `null`. Better for tool-calling APIs and providers whose constrained decoding wants a fixed key set every time, and better for typed languages where a missing key is more annoying to handle than a null.
+
+Most providers' structured-output modes work more reliably with nullable-but-present fields than with truly optional ones, because the decoder can commit to the object's shape up front and only choose the value. Check your provider's guidance — see the schema differences in [why "JSON mode" isn't one thing](/learn/structured-outputs/cross-provider-structured-output-differences) — but when in doubt, prefer `"type": ["string", "null"]` over omitting the field from `required`.
+
+## Give the model somewhere to put its uncertainty
+
+A blank or null field is ambiguous by itself: does it mean "not present in the source" or "I didn't look"? For anything where that distinction matters, pair the nullable field with a sibling that names the reason:
+
+```json
+{
+  "email": null,
+  "email_status": "not_found_in_source"
+}
+```
+
+Or, cheaper, fold it into an enum the model fills honestly: `"found" | "not_present" | "ambiguous"`. This turns "the model doesn't know" from a silent failure into a signal your pipeline can branch on — retry, escalate to a human, or just leave the record incomplete instead of wrong. It's the schema-level version of the same discipline covered in [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know).
+
+## Don't make everything optional
+
+The opposite failure is a schema where nothing is required, which just pushes the ambiguity downstream — now every consumer of the output has to handle every field being absent, including ones that should always exist (an `id`, a `record_type`). Reserve optional/nullable for fields whose absence is a real, expected outcome given your input distribution: an email that some documents lack, a phone number, a middle name. Fields that must exist for the record to make sense stay required, and a missing one should fail validation loudly rather than degrade gracefully. Pushing every hard case into [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) only works if the schema told you which fields were allowed to legitimately fail.
+
+**Related:** [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability), [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know), [Discriminated Unions: One Field Deciding the Shape of the Rest](/learn/structured-outputs/discriminated-unions-in-schemas)

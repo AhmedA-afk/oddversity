@@ -1,0 +1,29 @@
+---
+title: "SFT vs Preference Tuning (DPO/RLHF)"
+track: "fine-tuning"
+status: live
+summary: "Supervised fine-tuning teaches a model what to say; preference tuning teaches it which of two answers is better."
+duration: "6 min read"
+---
+
+Supervised fine-tuning (SFT) and preference tuning solve different problems, and most fine-tuned models go through both, in that order. Confusing them is the fastest way to fine-tune the wrong thing.
+
+## SFT: teaching a task
+
+SFT trains on pairs of input and target output — a prompt and the exact response you want. The loss is next-token prediction, the same objective as pretraining, just on your labeled examples instead of the open web. If you want a model that reliably outputs a specific JSON shape, follows a support-ticket format, or writes in a house style, SFT is the tool: you show it hundreds or thousands of examples of the input-output mapping and it learns to reproduce that pattern.
+
+SFT is good at teaching format, vocabulary, and task structure. It's bad at teaching taste. If two responses are both plausible completions of the target format but one is subtly better — more helpful, less evasive, funnier — SFT has no way to express that preference, because every training example only shows one "correct" answer with no contrast against a worse one.
+
+## Preference tuning: teaching a judgment
+
+Preference tuning trains on comparisons instead of targets: given a prompt, response A is better than response B. RLHF (reinforcement learning from human feedback) does this in two stages — train a reward model on human-labeled comparisons, then use reinforcement learning (typically PPO) to push the policy model toward outputs the reward model scores highly. DPO (Direct Preference Optimization) collapses this into one step: it optimizes the policy directly on the same A-beats-B preference pairs using a closed-form loss, without a separate reward model or an RL loop. DPO is cheaper to run and more stable to tune, which is why most open-source and mid-size fine-tuning pipelines default to it in 2026; RLHF-style pipelines still show up at the frontier lab scale where the extra machinery pays for itself.
+
+Preference tuning is what turns a model that can produce a task into a model that reliably produces the *good version* of that task — refusing appropriately, being concise instead of padded, picking the more honest answer over the more confident-sounding one. This is the same mechanism used for [instruction tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf) at the base-model level, just applied to your narrower fine-tune.
+
+## Why order matters
+
+Preference tuning needs a model that already produces reasonable, on-distribution responses — otherwise there's nothing sensible to compare. Run SFT first to teach the task and format, then run DPO or RLHF on top to sharpen quality and alignment within that task. Skipping SFT and going straight to preference tuning on a raw base model usually fails: the comparisons are between two bad, off-format responses, and the model has no foothold to improve from.
+
+In practice, decide whether you need preference tuning at all before reaching for it. If your evaluation failures are "wrong format" or "missing information," that's an [SFT dataset](/learn/fine-tuning/building-a-fine-tuning-dataset) problem. If failures are "technically correct but the model chose the worse of two valid answers," that's a preference-tuning problem, and it's worth checking whether [better prompting or RAG](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag) could have closed the gap more cheaply first.
+
+**Related:** [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset), [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag), [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf)

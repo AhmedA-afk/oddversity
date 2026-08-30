@@ -1,0 +1,28 @@
+---
+title: "A research feature that streams useful work"
+scenario: "Streaming research feature"
+description: "Design a multi-step research experience that stays honest while the user watches progress."
+order: 6
+---
+
+## The situation
+
+You are building a research feature that searches a private knowledge base, compares sources, and writes a short brief. Users want to see progress, but partial answers can be mistaken for final conclusions.
+
+## The first decision
+
+Stream typed progress events rather than an unstructured stream of model prose. Show stages such as searching, selecting sources, drafting, and checking citations. Label partial findings and keep the final brief separate.
+
+## Guided reasoning
+
+1. Define a state machine for queued, running, waiting, completed, failed, and cancelled.
+2. Give each stage a time and cost budget.
+3. Store source IDs and intermediate artifacts so the final answer is traceable.
+4. Make cancellation stop downstream work and revoke temporary authority.
+5. Validate the final structure and citations before marking the task complete.
+
+Streaming improves perceived responsiveness; it does not make an unsupported claim safe. Combine [streaming responses](/learn/genai-app-dev/streaming-responses-to-the-ui) with [evaluating RAG quality](/learn/rag/evaluating-rag-quality).
+
+## What to test first
+
+Test cancellation during retrieval, a source that disappears, conflicting sources, a partial network disconnect, a citation validation failure, and a user navigating away mid-run.

@@ -1,0 +1,46 @@
+---
+title: "Checkpointing Long-Running Agent State"
+track: "harness-design"
+status: live
+summary: "Persist agent state to disk so a task that runs for hours can crash or pause and resume where it left off, not from zero."
+duration: "6 min read"
+---
+
+An agent that refactors a codebase for two hours, or works a support queue overnight, will eventually get killed — a deploy, a laptop sleeping, a process OOM. If all that state lived only in memory, the work is gone. Checkpointing is the practice of writing an agent's state to durable storage often enough that resuming costs seconds, not hours.
+
+## What actually needs to be saved
+
+A checkpoint is not just the conversation transcript. For an agent mid-task, the durable state usually includes:
+
+- **Message history** — the full turn-by-turn record sent to the model, including tool calls and results
+- **Task progress** — a todo list or plan with per-item status (done, in-progress, blocked)
+- **Tool side effects already committed** — files written, branches created, API calls made, so a resume doesn't redo them
+- **A cursor or step index** — where in the plan execution stopped
+
+The message history alone is usually not enough. An agent that wrote three files and is mid-way through a fourth needs to know those three are done, or a naive resume will re-run the whole plan and duplicate work. This is the same distinction covered in [Memory vs State](/learn/context-engineering/conversation-memory-and-state): state is what execution needs to continue correctly, not just what the model needs to sound coherent.
+
+## When to checkpoint
+
+Checkpointing on every token is wasteful; checkpointing only at the end defeats the purpose. The practical rule is to checkpoint at durable, resumable boundaries:
+
+- After each tool call completes (not before — an interrupted tool call is ambiguous, an interrupted checkpoint write is not)
+- After each plan step is marked complete
+- On a timer as a backstop (e.g. every 30 seconds) for tasks with long gaps between tool calls
+
+A checkpoint write should be a single atomic operation — write to a temp file or a new row, then swap or commit — so a crash mid-write never leaves a corrupt, half-written checkpoint that's worse than no checkpoint at all.
+
+## Resuming correctly
+
+On restart, the harness loads the last checkpoint and has to decide what to do about the step that was in flight when it died. Three common strategies:
+
+1. **Re-run the last step.** Safe only if the tool is idempotent (e.g. reading a file). Cheap and simple.
+2. **Mark it failed and let the agent decide.** The model sees "step 4 status: unknown, may have partially executed" and reasons about it, similar to how it would handle any tool failure — see [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries).
+3. **Design tools to be resumable.** A file write can check "does this content already match?" before writing; a database insert can use an idempotency key. This is the most robust option but requires discipline in every tool, not just the harness.
+
+Most production harnesses combine these: idempotent tools where possible, and an explicit "resumed from checkpoint, last action status unknown" note injected into context otherwise, so the model treats it as a known ambiguity rather than silently trusting a step that may never have finished.
+
+## Where checkpoints live
+
+For a single local session, a JSON or SQLite file on disk is enough. For anything distributed — multiple workers, a hosted agent service — checkpoints belong in a database or object store keyed by session ID, so any worker can pick up a task after a crash. This is also what makes [Subagent and Task Delegation](/learn/harness-design/subagent-and-task-delegation) safe at scale: a parent can restart without losing track of which subagents already reported back.
+
+**Related:** [Memory vs State](/learn/context-engineering/conversation-memory-and-state), [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries), [Managing Context Inside a Long Session](/learn/harness-design/context-window-management-in-a-harness)

@@ -1,0 +1,31 @@
+---
+title: "Offline Evals vs Production Monitoring"
+track: "evals-red-teaming"
+status: live
+summary: "Pre-deployment test suites catch known failure modes; production monitoring catches the ones you didn't think to test for."
+duration: "5 min read"
+---
+
+Offline evals run before you ship, against inputs you chose. Production monitoring runs after you ship, against inputs a real user chose. They answer different questions, and a team that only has one of them is flying half-blind.
+
+## What offline evals are for
+
+An offline eval is a fixed dataset plus a fixed set of metrics, run against a candidate version of your agent before it goes near a user. You built the dataset from a [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) of representative and edge cases, you scored it with [metrics you chose deliberately](/learn/evals-red-teaming/writing-eval-metrics), and every score is reproducible: run the same suite against the same model version twice and you get the same answer.
+
+That reproducibility is the whole point. Offline evals let you say "this prompt change improved accuracy from 82 percent to 89 percent" with a straight face, because nothing else moved between the two runs. They're what you use to decide whether to ship a change at all — the practice sometimes called [shipping by eval diff](/learn/evals-red-teaming/eval-driven-iteration).
+
+But a fixed dataset is, by definition, a sample of the inputs you anticipated. It cannot contain the phrasing a real customer invents at 11pm, the malformed PDF someone uploads, or the prompt injection buried in a support ticket. No offline suite, however large, closes that gap.
+
+## What production monitoring is for
+
+Production monitoring watches the traffic your agent actually receives, live. Instead of scoring 500 curated examples once, you're scoring — or at least sampling and flagging — every real request as it happens: latency, error rates, refusal rates, user corrections, thumbs-down clicks, escalations to a human. Some of that scoring uses the same techniques as offline evals, like an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) grading a sample of live transcripts, but the input distribution is whatever the world sends you, not what you picked.
+
+This is where you catch things offline evals structurally can't: a model provider's silent update changing behavior, a traffic pattern nobody designed a test case for, a slow quality drift that only shows up over thousands of real conversations, or a new jailbreak attempt your red team never tried.
+
+## The two feed each other
+
+The relationship isn't offline-then-online, it's a loop. When production monitoring surfaces a failure — a user complaint, a bad transcript, a spike in refusals — that failure becomes a new test case, folded into your [regression suite](/learn/evals-red-teaming/building-a-regression-suite) so it can never silently reappear. And when you're deciding whether a metric is worth tracking live at all, you first validate it offline, where you can check it against cases with a known right answer.
+
+Skip offline evals and you ship changes with no idea whether they helped or hurt until users tell you. Skip production monitoring and you're defending against a threat model frozen on the day you built your test set — which is exactly the gap [prompt injection](/learn/evals-red-teaming/prompt-injection-basics) and novel jailbreaks live in.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge)

@@ -1,0 +1,46 @@
+---
+title: "Tool Choice and Forcing Tool Use"
+track: "tools-function-calling"
+status: live
+summary: "Control whether the model can, must, or must not call a tool on a given turn."
+duration: "5 min read"
+---
+
+By default, giving a model tools doesn't mean it will use them. It might answer from memory, call the wrong tool, or call nothing at all. Tool choice is the setting that removes that ambiguity by telling the model, per request, how much freedom it has to call a tool.
+
+## The four modes
+
+Most APIs that support tool calling expose a small set of choice modes, usually named something like this:
+
+- **auto** — the model decides whether to call a tool or just respond in text. This is the default, and it's right for open-ended assistants where a plain-text answer is often the correct move.
+- **any / required** — the model must call *some* tool, but it picks which one. Useful when you know this turn needs an action but don't want to hardcode which.
+- **tool (a specific name)** — the model must call exactly the tool you name, with arguments it fills in. This is how you force a particular function to run.
+- **none** — tools are disabled for this turn even though they're defined. The model can only produce text.
+
+A minimal example using a named tool choice:
+
+```json
+{
+  "tools": [{"name": "get_weather", "parameters": {"city": "string"}}],
+  "tool_choice": {"type": "tool", "name": "get_weather"}
+}
+```
+
+That request cannot come back as free text — the model is constrained to emit a `get_weather` call.
+
+## Why you'd force a specific tool
+
+Forcing a tool is most useful when a tool call isn't really optional to your app's logic, or when you're using tools for a purpose that has nothing to do with letting the model choose. Two common cases:
+
+1. **Guaranteed structured output.** You want the model's answer as a typed object every time, not a mix of prose and JSON it might drift into. Defining one tool and forcing it turns tool calling into a schema-enforcement mechanism — see [Structured Output vs. Tool Calls](/learn/tools-function-calling/structured-output-vs-tool-calls) for when this beats native JSON mode.
+2. **Deterministic first step.** If every request in a flow must start by looking something up (a user record, a document, a policy), forcing that tool on turn one removes an entire class of failure where the model tries to answer before it has the data.
+
+`any`/`required` is the softer version: you want *an* action taken — routing to one of several tools — without picking which one yourself.
+
+## The cost of forcing
+
+Forcing removes the model's ability to say "actually, I don't need a tool for this" or "none of these tools fit." If a user asks something a forced tool can't answer, you'll get a call anyway, often with made-up or null-ish arguments, because the model has no other move. Reserve forced modes for turns where you've already confirmed a tool call is the only sane outcome, and keep `auto` for anything conversational. This interacts closely with how tools are described in the first place — see [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow) — a forced tool with a vague schema will still produce bad arguments even though it's guaranteed to fire.
+
+`none` is worth remembering too: it's the cheapest way to get a pure-text response from a model that has tools defined for other turns in the same conversation, without stripping the tool definitions out of the request.
+
+**Related:** [Structured Output vs. Tool Calls](/learn/tools-function-calling/structured-output-vs-tool-calls), [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes)

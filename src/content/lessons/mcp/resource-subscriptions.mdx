@@ -1,0 +1,41 @@
+---
+title: "Resource Subscriptions: Notifying Clients When Data Changes"
+track: "mcp"
+status: live
+summary: "Pushes updates to a client instead of making it poll a resource for changes."
+duration: "5 min read"
+---
+
+A resource is a fine way to hand a model a file, a database row, or a log tail — but what happens when that data changes a second after the client read it? Without subscriptions, the client's only option is to re-fetch on a timer and hope it isn't stale or wasting calls. MCP's subscription mechanism lets the server push a signal instead.
+
+## How the handshake works
+
+Subscriptions build on the same JSON-RPC channel as everything else in MCP, using two extra message types layered on top of `resources/read`.
+
+A server first declares support by setting `subscribe: true` under its `resources` capability during initialization. A client that cares about a specific resource — say `file:///project/config.json` — then sends a `resources/subscribe` request naming that URI. From that point, whenever the underlying data changes, the server fires a `notifications/resources/updated` notification carrying that same URI. The notification carries no payload beyond the URI itself: it's a doorbell, not a delivery. The client decides what to do next, which is almost always to call `resources/read` again and pull the fresh content.
+
+```json
+// client -> server
+{"jsonrpc": "2.0", "id": 7, "method": "resources/subscribe",
+ "params": {"uri": "file:///project/config.json"}}
+
+// server -> client, sometime later
+{"jsonrpc": "2.0", "method": "notifications/resources/updated",
+ "params": {"uri": "file:///project/config.json"}}
+```
+
+A client that no longer cares sends `resources/unsubscribe` with the same URI. Servers should also drop subscriptions when a session ends, since nothing in the protocol requires a client to unsubscribe cleanly before disconnecting.
+
+## Don't confuse it with list-changed
+
+MCP has a second, easily-confused notification: `notifications/resources/list_changed`. That one fires when the *set* of available resources changes — a new file appears, an old one is deleted — and it doesn't require a subscription at all; a client just declares interest in list-changed events generally. Resource subscriptions are the opposite granularity: you've already listed the resource, you already read it, and now you want to know when *that specific one* mutates in place. Think of list-changed as "the directory changed" and subscribe as "the file changed."
+
+## Why this matters for context
+
+The real payoff shows up once you connect this to how agents manage context. Polling a resource on every turn burns tokens and round-trips even when nothing changed, and it still misses updates that land between polls. Subscriptions flip that: the server tells the client exactly when a re-read is worth the cost, so the agent can leave a resource alone until it's told otherwise — a much cheaper pattern than reasoning about staleness on every turn, and one worth pairing with how you think about [MCP and the Context Window](/learn/mcp/mcp-context-window).
+
+## The catch: not every server supports it
+
+Subscriptions are optional. A server that never sets `subscribe: true` simply won't accept subscribe requests, and plenty of real servers skip it because tracking per-client subscription state adds real complexity — especially for a [stateless server design](/learn/mcp/stateful-vs-stateless-servers) that would rather not hold any session state between requests at all. Before you build a client feature around live updates, check the server's advertised capabilities rather than assuming; falling back to periodic polling is still a legitimate default when subscriptions aren't on offer.
+
+**Related:** [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts), [Stateful vs. Stateless MCP Server Design](/learn/mcp/stateful-vs-stateless-servers), [MCP and the Context Window](/learn/mcp/mcp-context-window)

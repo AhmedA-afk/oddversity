@@ -1,0 +1,45 @@
+---
+title: "Automatic Prompt Optimization with Tools Like DSPy"
+track: "prompt-engineering"
+status: live
+summary: "Let a search process find better instructions and few-shot examples instead of hand-tuning wording by feel."
+duration: "6 min read"
+---
+
+Hand-tuning a prompt is guessing with extra steps: you tweak a sentence, rerun a few examples, decide it "feels" better, and move on. Automatic prompt optimization replaces that guesswork with search — you define what "better" means as a metric, and a program tries variations until it finds instructions and examples that actually score higher.
+
+## The core idea: prompts as parameters
+
+Treat your prompt like a set of tunable parameters instead of fixed prose. In a framework like DSPy, you write your pipeline as typed steps ("given a question, produce a search query," "given retrieved passages, produce an answer") without writing the wording yourself. Each step is a module with inputs and outputs. DSPy's compiler then generates and tests candidate instructions and candidate few-shot examples for each module, using a training set and a scoring function you supply — say, exact-match accuracy or an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) score.
+
+This is the same shift that happened in deep learning decades ago: stop hand-engineering features, define an objective, and let optimization find the parameters. Here the "parameters" are strings of natural language instead of weights.
+
+## How the search actually works
+
+A typical optimizer, like DSPy's MIPRO, runs in two loosely coupled loops:
+
+1. **Bootstrap examples.** Run your current pipeline on training inputs and keep the traces that scored well as candidate few-shot demonstrations — this is [few-shot prompting](/learn/prompt-engineering/few-shot-prompting) done automatically rather than curated by hand.
+2. **Propose and select instructions.** Use a model to generate several candidate instruction phrasings for each module (often conditioned on the task description and a few of the bootstrapped examples), then evaluate combinations of instructions and demonstrations against a held-out split of your data, keeping whatever combination scores highest.
+
+Some optimizers add a Bayesian or evolutionary search over which combination of instruction + example set to try next, so you don't need to brute-force every pairing. The output is a compiled prompt: fixed instruction text and a fixed set of few-shot examples baked in, ready to ship — no runtime search happens in production.
+
+```python
+import dspy
+
+class Classify(dspy.Signature):
+    """Classify support ticket urgency."""
+    ticket: str = dspy.InputField()
+    urgency: str = dspy.OutputField()
+
+program = dspy.Predict(Classify)
+optimizer = dspy.MIPROv2(metric=my_accuracy_metric)
+compiled = optimizer.compile(program, trainset=my_examples)
+```
+
+## What it needs to work — and where it breaks down
+
+Automatic optimization is only as good as its metric. If your scoring function is a weak proxy for what you actually care about, the optimizer will happily overfit to gaming that proxy — the same failure mode covered in [evaluating prompts before you ship them](/learn/prompt-engineering/prompt-evaluation-basics) and in Goodhart's-law territory for evals generally. It also needs a real training set with enough labeled or scorable examples to distinguish good candidates from lucky ones, plus a held-out set so you're not just measuring memorization.
+
+It's not free, either: compiling a pipeline means dozens to hundreds of extra model calls during optimization, so it's worth it when a prompt is high-value, stable, and worth squeezing — not for a one-off prompt you're still iterating on by hand. And a compiled prompt is tied to the model it was optimized against; swap models and you likely need to recompile, which is the same fragility discussed in [prompt portability across models](/learn/prompt-engineering/prompt-portability-across-models). Once you're running compiled prompts in production, keep them under [prompt versioning and change management](/learn/prompt-engineering/prompt-versioning-and-change-management) like any other build artifact — they're generated, but they still need a diffable history.
+
+**Related:** [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics), [Few-Shot Prompting: Teaching by Example](/learn/prompt-engineering/few-shot-prompting), [Prompt Versioning: Treating Prompts Like Code](/learn/prompt-engineering/prompt-versioning-and-change-management)

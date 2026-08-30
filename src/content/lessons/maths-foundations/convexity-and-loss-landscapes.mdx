@@ -1,0 +1,36 @@
+---
+title: "Convexity and Loss Landscapes"
+track: "maths-foundations"
+status: live
+summary: "Why deep learning loss surfaces are almost never convex, and what that means for local minima, saddle points, and training luck."
+duration: "6 min read"
+---
+
+A convex loss surface has exactly one bowl: any downhill path leads to the global minimum, and gradient descent can't get lost. A neural network's loss surface has millions of dimensions and none of that guarantee — yet training usually works anyway. Understanding why is the difference between panicking at a stalled loss curve and reading it correctly.
+
+## What convexity actually buys you
+
+A function is convex if the line segment between any two points on its graph never dips below the graph itself. Picture a single smooth bowl: wherever you start, walking downhill (following the negative gradient) always ends at the same lowest point, because there's only one point where the gradient is zero. This is why classical models like linear regression with mean-squared error, or logistic regression with cross-entropy, are so well-behaved: their loss functions are convex, so gradient descent has a provable, unique destination. See [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition) for the mechanics of that walk.
+
+Deep networks throw this away. Stacking layers with nonlinear activations and multiplying weight matrices together makes the loss a highly non-convex function of the parameters — full of hills, ridges, plateaus, and many, many valleys.
+
+## Local minima aren't the real problem
+
+The intuitive fear is that training gets stuck in a shallow local minimum far worse than the global one. In practice, for large networks this turns out to be a minor issue. In high-dimensional parameter space, a point is only a local minimum if the loss curves upward in *every* direction simultaneously — and with millions of directions available, that's statistically rare. Far more common are **saddle points**: the loss curves up in some directions and down in others, so training doesn't get permanently trapped, just slowed while gradients flatten out near the saddle. This is one of the reasons [why high-dimensional space feels weird](/learn/maths-foundations/high-dimensional-spaces) — geometric intuitions built in 2D or 3D mislead you badly at scale.
+
+Research on large networks has also found that most of the wide, flat minima networks actually converge to have loss values close to each other — the landscape has many "good enough" basins rather than one true minimum surrounded by traps. That's part of why different random initializations of the same architecture tend to land at similar final performance.
+
+## What actually helps navigate a bad landscape
+
+Since you can't make the landscape convex, training strategies focus on moving through it well:
+
+- **Momentum-based optimizers** like [Adam](/learn/maths-foundations/the-adam-optimizer) carry velocity through flat or noisy regions instead of stalling at every saddle point.
+- **Overparameterization** — more parameters than strictly needed — tends to smooth the landscape and make wide, connected minima more reachable; this connects to why bigger models often train more reliably, not just more powerfully (see [Scaling Laws](/learn/ai-foundations/scaling-laws)).
+- **Learning rate schedules** trade fast early progress across the rough parts of the surface for careful settling once near a good basin.
+- **Batch normalization and residual connections** reshape the landscape itself to have fewer sharp cliffs, making [backpropagation](/learn/maths-foundations/backpropagation-intuition) gradients more informative at every layer.
+
+## The practical takeaway
+
+When your training loss plateaus, it's rarely a sign you're trapped in a bad local minimum — it's more often a saddle region, a learning-rate issue, or simply the geometry of a very high-dimensional, non-convex surface being slow rather than stuck. Non-convexity is not a flaw to work around; it's the default shape of every loss surface deep learning actually uses, and the entire optimizer toolkit exists to move through it efficiently rather than to fix it.
+
+**Related:** [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition), [The Adam Optimizer](/learn/maths-foundations/the-adam-optimizer), [Why High-Dimensional Space Feels Weird](/learn/maths-foundations/high-dimensional-spaces)

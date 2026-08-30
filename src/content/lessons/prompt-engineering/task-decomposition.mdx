@@ -1,0 +1,44 @@
+---
+title: "Decomposition: Splitting One Big Prompt into a Pipeline"
+track: "prompt-engineering"
+status: live
+summary: "When one prompt is asking a model to do too much, split it into a chain of smaller, checkable steps."
+duration: "5 min read"
+---
+
+Ask a model to "read this contract, summarize the risks, draft a response email, and format it as JSON" in a single prompt, and you'll often get a mediocre version of all four things instead of a good version of any one. Decomposition means breaking that into a pipeline of smaller prompts, each doing one job well, with the output of one step feeding the next.
+
+## Why one giant prompt underperforms
+
+A single sprawling prompt forces the model to juggle multiple objectives — extraction, reasoning, tone, formatting — at once, and instructions buried in the middle of a long prompt get less weight than ones at the start or end (see context ordering). It also makes failures opaque: if the final output is wrong, you can't tell whether extraction, reasoning, or formatting broke. A pipeline gives you a checkpoint after every stage.
+
+Compare:
+
+**One big prompt**: "Extract the key clauses from this contract, assess which ones are risky, then write a client-facing summary."
+
+**Decomposed**:
+1. Extract clauses → structured list
+2. Classify each clause as low/medium/high risk → labeled list
+3. Write the client summary from the labeled list
+
+Step 2 only has to reason over clean, already-extracted data instead of raw text, which is a much narrower and more reliable task.
+
+## What makes a good split point
+
+Split where the *type* of work changes, not just where the text is long. Good seams:
+
+- **Extraction → reasoning.** Pull structured facts out first, then reason over the structured version. This is the same instinct behind [structured output](/learn/structured-outputs/why-structured-output) — clean intermediate data is easier for a model to reason over than a wall of prose.
+- **Draft → verify.** Generate first, then run a separate pass that checks the draft against the source (a form of [self-verification](/learn/hallucinations/self-verification-techniques)).
+- **Retrieve → synthesize.** Don't ask one prompt to decide what's relevant and also write the answer — that's the whole premise behind [RAG](/learn/rag/what-is-rag-and-when-to-use-it).
+
+A bad seam is one that just chops the same task in half for no reason — that adds latency and cost without adding reliability.
+
+## The cost you're trading for reliability
+
+Decomposition isn't free. Each extra step is another API call: more latency, more tokens (you're often re-sending context between steps), and more places for a step to silently fail. For a simple task, a single well-written prompt with [chain-of-thought](/learn/prompt-engineering/chain-of-thought-prompting) reasoning built in is often enough — decomposition earns its keep when the task genuinely has independent sub-problems, when you need to inspect or cache an intermediate result, or when different steps benefit from different settings (a creative draft step at higher temperature, a strict-format step at zero).
+
+## Building the pipeline
+
+In practice this looks like a short script: call the model, parse the result, feed it into the next prompt. Each stage's prompt can be a simple [template](/learn/prompt-engineering/prompt-templates-and-variables) with the previous stage's output slotted in as a variable. Keep each stage's job small enough that you could describe it in one sentence — if you can't, split it again.
+
+**Related:** [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Prompt Templates: Building Reusable, Parameterized Prompts](/learn/prompt-engineering/prompt-templates-and-variables), [Sequential, Multi-Step Tool Use](/learn/tools-function-calling/sequential-multi-step-tool-use)

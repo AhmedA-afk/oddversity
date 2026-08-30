@@ -1,0 +1,33 @@
+---
+title: "Setting Latency Budgets for LLM Features"
+track: "genai-app-dev"
+status: live
+summary: "Set a time budget for each step of a request and decide where to stream, cache, or cut scope to hit it."
+duration: "6 min read"
+---
+
+An LLM call is rarely the only thing standing between a click and a response — there's auth, retrieval, the model call itself, and rendering. If you don't budget each piece, the slowest one sets your product's ceiling and nobody decided that on purpose.
+
+## Break the request into a timeline
+
+Take one real user action and list every step it triggers, in order, with a target duration for each: auth check (20ms), fetch context or retrieved documents (150ms), build the prompt (5ms), model call (the big one), stream tokens to the UI, render. Add them up and compare against what users will actually tolerate. A chat reply feels fine up to a couple seconds before the first token; a background summarization job can take much longer because nobody is staring at a spinner for it. The budget isn't one number — it's "time to first token" for anything interactive, and "time to completion" for anything batch.
+
+Once you have a timeline, the model call usually eats 70-90% of it. That's where the real decisions happen.
+
+## Where the time actually goes
+
+Three levers move the model-call number:
+
+- **Model choice.** A smaller or faster model can cut latency by half or more, sometimes at a real quality cost, sometimes not — measure on your own task, don't assume the biggest model is "safer."
+- **Output length.** Tokens stream out roughly one at a time, so a response with 3x the tokens takes roughly 3x as long to finish, even if time-to-first-token is identical. Ask for shorter, more structured output where you can — see [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability).
+- **Input length.** A bloated prompt costs prefill time before the first token appears at all. Trimming unnecessary context or history helps twice: it's cheaper and it's faster. See [Trimming Conversation History for Context Limits](/learn/genai-app-dev/trimming-conversation-history) and [Prompt Caching for Speed and Cost](/learn/genai-app-dev/prompt-caching-for-speed-and-cost), which can turn a repeated prefix from "pay every time" into "pay once."
+
+## When you can't hit the number, change the perceived number
+
+If the true latency won't move, the felt latency still can. Stream the response so the user sees the first words in a few hundred milliseconds instead of waiting for the whole answer — see [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui). Show a skeleton or a "thinking" state that matches what's actually happening rather than a generic spinner, which is part of good [chat UX](/learn/genai-app-dev/designing-chat-ux). For steps that don't need to block the response — logging, analytics, a background eval — move them off the critical path entirely.
+
+## Set a hard ceiling, not just a target
+
+A budget without a cutoff isn't a budget. Decide up front what happens when a step blows its number: retry once with a shorter prompt, fall back to a smaller model, or return a partial/cached answer rather than let the user watch a spinner indefinitely. This is the same instinct behind [rate limits and retry strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies) — plan the failure path before you ship the happy path, because in production the happy path is not guaranteed.
+
+**Related:** [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Prompt Caching for Speed and Cost](/learn/genai-app-dev/prompt-caching-for-speed-and-cost), [Trimming Conversation History for Context Limits](/learn/genai-app-dev/trimming-conversation-history)

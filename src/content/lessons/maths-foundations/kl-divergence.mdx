@@ -1,0 +1,54 @@
+---
+title: "KL Divergence: Comparing Two Probability Distributions"
+track: "maths-foundations"
+status: live
+summary: "How to measure the gap between two distributions, and why it quietly drives RLHF, distillation, and drift detection."
+duration: "5 min read"
+---
+
+KL divergence answers one question: if you expected outcomes from distribution Q but they actually come from distribution P, how surprised should you be, on average? That single number turns out to be one of the most reused quantities in modern AI.
+
+## The formula, read as a sentence
+
+For discrete distributions P and Q over the same outcomes:
+
+```
+KL(P || Q) = sum over x of P(x) * log(P(x) / Q(x))
+```
+
+Read it left to right: for every outcome x, take how likely it really is (P(x)), multiply by the log of how much more or less likely the true distribution says it is compared to your guess (Q). Weight the surprise by how often that outcome actually happens. Outcomes P thinks are common but Q thinks are rare contribute a lot; outcomes both agree on contribute close to zero.
+
+This is exactly [cross-entropy](/learn/maths-foundations/entropy-and-cross-entropy) minus entropy: KL(P||Q) = H(P, Q) − H(P). Cross-entropy is "bits needed to encode P using a code built for Q"; entropy is "bits needed if you'd built the code for P itself." KL is the wasted bits — the tax you pay for using the wrong distribution.
+
+## Why it's asymmetric, and why that matters
+
+KL(P||Q) is not KL(Q||P). If Q assigns near-zero probability to something P considers likely, `log(P(x)/Q(x))` blows up — that term dominates. If instead Q spreads probability somewhere P barely visits, P(x) is tiny, so that term contributes almost nothing regardless of how wrong Q is there.
+
+This asymmetry is a design choice, not a defect:
+
+- **Mode-seeking** (minimizing KL(Q||P)): Q gets penalized hardest for putting mass where P has none, so Q tends to collapse onto a single mode of P and ignore the rest.
+- **Mean-seeking / mass-covering** (minimizing KL(P||Q)): Q gets penalized for missing mass P actually has, so Q spreads out to cover all of P's support, even at the cost of also covering some low-density gaps.
+
+Which direction you minimize changes the *shape* of the model you end up with, not just the number.
+
+## Where it actually shows up
+
+- **Training the next-token predictor**: minimizing cross-entropy loss during [pretraining](/learn/llm-foundations/pretraining-explained) is minimizing KL between the true next-token distribution and the model's — cross-entropy and KL share a minimizer here since H(P) is fixed by the data.
+- **RLHF and preference tuning**: [instruction tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf) add a KL penalty term between the fine-tuned policy and the original base model, so the model can't drift arbitrarily far chasing reward — it stays "close" in the KL sense to what it knew before.
+- **Distillation**: training a small model to match a large teacher's output distribution (not just its argmax) is minimizing KL between teacher and student logits — this is why distillation targets are usually soft probabilities, not hard labels.
+- **Drift detection**: comparing today's input or output distribution to a training-time baseline with KL is a standard way to flag that a production model's world has shifted.
+
+## A worked mini-example
+
+Say P = [0.7, 0.2, 0.1] and Q = [0.3, 0.3, 0.4] over three outcomes.
+
+```
+KL(P||Q) = 0.7*log(0.7/0.3) + 0.2*log(0.2/0.3) + 0.1*log(0.1/0.4)
+         ≈ 0.7*0.847 + 0.2*(-0.405) + 0.1*(-1.386)
+         ≈ 0.593 - 0.081 - 0.139
+         ≈ 0.373 nats
+```
+
+Flip P and Q and you get a different number — try it, and notice the outcome Q severely underweights (x=1, true probability 0.7 vs guessed 0.3) is what drives most of the divergence. That's the asymmetry doing its job: it's telling you specifically where Q is dangerously overconfident, not just that the two distributions differ.
+
+**Related:** [Entropy and Cross-Entropy: Measuring Surprise](/learn/maths-foundations/entropy-and-cross-entropy), [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf), [Distill a Large Model into a Small One](/learn/fine-tuning/knowledge-distillation)

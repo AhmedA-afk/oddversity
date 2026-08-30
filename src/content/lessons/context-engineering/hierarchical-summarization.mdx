@@ -1,0 +1,31 @@
+---
+title: "Hierarchical Summarization: Compressing History in Layers"
+track: "context-engineering"
+status: live
+summary: "Roll history up in layers — turn, session, project — instead of flattening a whole conversation into one shrinking summary blob."
+duration: "5 min read"
+---
+
+Flat compaction has a ceiling: summarize a long conversation once and you get one blob that keeps getting re-summarized as it grows, losing a little more detail each pass. Hierarchical summarization avoids that by never re-compressing the same text twice — it builds a pyramid of summaries at different granularities and only ever adds a new layer on top.
+
+## The layers
+
+Think of three tiers, each summarizing the tier below it rather than the raw transcript:
+
+- **Turn-level**: a single exchange (or a small cluster of them) gets reduced to a sentence or two — "user asked for X, agent did Y, result was Z."
+- **Session-level**: once enough turn-summaries pile up, they get rolled into a paragraph describing what the session accomplished, what decisions were made, and what's still open.
+- **Project-level**: across many sessions, session-summaries get rolled into a standing document — the durable facts, preferences, and state that should survive indefinitely.
+
+Each layer is a compression of the layer beneath it, not of the original text. A turn-summary is written once and never touched again; only the roll-up above it changes as new turns arrive. This is the difference from naive [compaction](/learn/context-engineering/summarization-for-compaction): compaction typically re-summarizes the whole remaining history as it shrinks, so old information gets diluted every time it's touched. Hierarchical summarization touches each fact exactly once on the way up.
+
+## Why it beats one shrinking summary
+
+A single rolling summary has to trade recency against everything that came before it in one document, so early details either get dropped or get vaguer with every pass. A layered structure keeps the last few turns verbatim (or turn-summarized) while pushing older material up to coarser tiers — recent work stays sharp, and only genuinely old context degrades to "the gist." It also means the model can reconstruct at variable resolution: it can read project-level context for orientation, session-level context for what happened this week, and turn-level detail only for the last few exchanges — an approach much closer to how [structured context injection](/learn/context-engineering/structured-context-injection) organizes what gets loaded, rather than one undifferentiated wall of text.
+
+## Where it breaks down
+
+The failure mode is information that matters later but looked unimportant when it was first compressed. If a turn-summary drops a detail because it seemed minor at the time, that detail is gone for good — there's no raw transcript to re-derive it from once turns roll off. Teams mitigate this by keeping the raw log around in cold storage (never in the active context) so a summary can, in principle, be regenerated, and by biasing turn-summaries toward over-including anything that looks like a decision, constraint, or commitment rather than a narrative recap. This connects to [structured memory stores](/learn/context-engineering/structured-memory-stores): if project-level facts are pulled into a queryable store instead of prose, you can update or correct a fact later instead of being stuck with whatever the summary froze in place.
+
+The practical shape most agent harnesses converge on: keep recent turns raw, summarize older turns into a session digest on a rolling basis, and periodically fold session digests into a small set of durable project facts — the same rhythm as [conversation memory and state](/learn/context-engineering/conversation-memory-and-state), just applied recursively instead of as a single compression step.
+
+**Related:** [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction), [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state), [Structured Memory Stores: Vector, Key-Value, or Knowledge Graph](/learn/context-engineering/structured-memory-stores)

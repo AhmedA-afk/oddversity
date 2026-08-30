@@ -1,0 +1,51 @@
+---
+title: "Query Rewriting and Expansion"
+track: "rag"
+status: live
+summary: "Rewrite vague or conversational queries into forms that retrieve better before the search even runs."
+duration: "6 min read"
+---
+
+The query a user types is rarely the query you want to embed and search with. "What about the pricing thing we discussed?" carries almost no retrievable signal on its own — fix that before it ever reaches your index, not after.
+
+## Why the raw query fails
+
+Retrieval matches the *surface form* of a query against the *surface form* of your chunks. A short, pronoun-heavy, or context-dependent question breaks that match even when the answer sits right there in the corpus. Three common failure shapes:
+
+- **Conversational shorthand** — "what about the pricing thing" only makes sense next to the previous turn.
+- **Underspecified terms** — "outage last week" needs a real date and system name to match log chunks.
+- **Vocabulary mismatch** — the user says "cancel my plan," the docs say "terminate a subscription."
+
+Chunking and embeddings (see [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)) can only match what's actually in the query — they can't infer what you meant.
+
+## Rewriting: resolve before you retrieve
+
+Rewriting turns the raw query into a self-contained, retrieval-shaped one, usually with a small, fast LLM call ahead of the real search:
+
+1. Fold in conversation history — resolve "it," "that," "the thing we discussed" into explicit nouns.
+2. Strip filler and social framing ("hey can you help me understand...") down to the informational core.
+3. Normalize vocabulary toward terms likely to appear in your documents, when you know the domain.
+
+A useful pattern is HyDE (Hypothetical Document Embeddings): ask the model to draft a short *hypothetical answer* to the question, then embed that answer instead of the question. Answers and document chunks share more vocabulary and structure with each other than questions do with answers, so this often out-retrieves embedding the raw query directly.
+
+## Expansion: search more than one way
+
+Expansion doesn't rewrite the query — it adds queries. Generate two or three paraphrases or sub-questions, run retrieval for each, and merge the results (deduplicated, or fed into a reranker). This helps when a single phrasing has a narrow blast radius: "How do I reset my password" and "account access recovery steps" can retrieve genuinely different chunks that are each partially right.
+
+```text
+user: "what about the pricing thing we discussed?"
+
+rewritten: "What is the pricing for the Team plan on the
+Acme subscription page, following up on the earlier
+question about annual billing?"
+
+expansions:
+- "Team plan pricing Acme"
+- "annual billing discount Acme subscription"
+```
+
+## Where this sits in the pipeline
+
+Rewriting and expansion happen *before* the search call, distinct from [Hybrid Search](/learn/rag/hybrid-search-lexical-and-vector), which changes how the search itself scores matches, and [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), which reorders what came back. They're complementary, not competing — a well-rewritten query still benefits from hybrid retrieval and a reranking pass afterward. The extra LLM call adds latency and cost, so reserve it for queries where the raw text is genuinely underspecified — a well-formed, self-contained question doesn't need rewriting at all.
+
+**Related:** [Hybrid Search: Lexical and Vector Combined](/learn/rag/hybrid-search-lexical-and-vector), [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)

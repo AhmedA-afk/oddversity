@@ -1,0 +1,27 @@
+---
+title: "Designing a Human Review Workflow"
+track: "evals-red-teaming"
+status: live
+summary: "Writing rubrics, sampling strategically, and checking inter-rater agreement for judgments too expensive to automate."
+duration: "6 min read"
+---
+
+Some judgments don't fit a script or a scoring function — "is this response actually helpful," "does this summary miss the point of the ticket," "would a lawyer sign off on this." For those, you need people. The trick is turning that into a repeatable process instead of a Slack thread where someone eyeballs ten outputs and calls it done.
+
+## Write a rubric before you look at outputs
+
+The single biggest failure mode in human eval is starting from the outputs. A reviewer who reads ten responses before defining "good" will anchor on whatever looks best in that batch, and every later reviewer inherits the drift. Write the rubric first, from your product requirements — concrete criteria with example pass/fail cases for each one, not "rate 1-5 for quality." A rubric like "cites at least one source from the retrieved context" or "does not recommend a dosage outside the label" gives two reviewers a real chance of agreeing. Vague rubrics don't fail loudly; they just quietly produce noise that looks like signal. This is the same discipline behind [choosing metrics that actually measure success](/learn/evals-red-teaming/writing-eval-metrics) — a metric or a rubric item is only useful if it's falsifiable.
+
+## Sample strategically, not randomly
+
+You can't have humans review everything in production, and you shouldn't try. Stratify your sample instead of pulling it uniformly: over-sample edge cases, low-confidence outputs, anything flagged by an automated check, and anything a user complained about. A flat random sample of normal traffic mostly tells you the easy cases are easy, which you already knew. Pair this with your [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) — human review is often what builds that dataset in the first place, and what re-validates it when the product changes underneath it.
+
+## Check agreement before you trust the labels
+
+Two reviewers should occasionally grade the same items, blind to each other's answers. If they disagree constantly, the problem usually isn't the reviewers — it's the rubric, and it needs another pass before you trust a single one of the labels it produced. Cohen's kappa is the standard measure here because it corrects for chance agreement (two coin-flippers can "agree" 50% of the time on a binary label and mean nothing by it). You don't need a formal statistics background to use it: run it on a sample, and if it's low, go read the specific items where reviewers split and find the ambiguity they're actually disagreeing about.
+
+## Use human labels to calibrate the automated judge
+
+Manual review doesn't scale to every request forever, and it isn't meant to. Its real job is usually to calibrate something faster — checking that an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) setup agrees with human raters on a held-out sample before you let it run unsupervised, and re-checking periodically as the product and the traffic shift under it. When a model judge and human raters disagree, treat it as a debugging signal on the rubric or the judge prompt, not a majority vote to resolve and move past.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics)

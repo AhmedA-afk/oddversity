@@ -1,0 +1,29 @@
+---
+title: "What a Hallucination Actually Is"
+track: "hallucinations"
+status: live
+summary: "A hallucination is fluent, confident output that isn't supported by facts or sources — not a random glitch."
+duration: "4 min read"
+---
+
+Ask a model for the population of a small town and it might answer with a specific number, delivered in the same steady tone it uses for anything else. The number is wrong. Nothing in the response signals that. That's a hallucination: not a stammer or a crash, but a well-formed sentence that sounds exactly as certain as a true one.
+
+## The precise definition
+
+A hallucination is model output that is fluent and plausible but not grounded in the facts, sources, or reality it claims to describe. Three things have to be true at once: the output looks correct on its face, it isn't actually supported by anything real, and the model gives no indication of the gap. Drop any one of those and it's a different problem. A response that's obviously garbled isn't a hallucination, it's a formatting failure. A model that says "I'm not sure, but possibly X" isn't hallucinating, it's hedging honestly. The dangerous case is the one that reads exactly like a correct answer.
+
+This is why hallucinations are hard to catch by ear. A model doesn't get quieter or more tentative when it's wrong — see [confidence signals](/learn/hallucinations/confidence-and-uncertainty-signals) for why fluency and accuracy are produced by different parts of the process and don't move together.
+
+## Fabrication vs. distortion
+
+Hallucinations aren't one failure mode. A model can invent something that doesn't exist at all — a case citation, a package name, a study — with zero basis in anything it was trained on or given. Or it can take something real and misstate it: the right person with the wrong job title, the right paper with a fabricated finding attributed to it. The first kind is easier to catch, because a fact-check turns up nothing. The second is harder, because half the claim checks out and readers extend that trust to the rest.
+
+## Why "the model is lying" is the wrong frame
+
+Lying implies the model knows the truth and says something else on purpose. That's not what's happening. A language model generates the next most probable token given everything before it — see [next-token prediction](/learn/llm-foundations/next-token-prediction) — with no separate step that checks the result against reality. When the training data thins out on a topic, or a question presupposes something false, the model doesn't hit a wall and stop. It keeps producing plausible-sounding tokens, because plausible-sounding is the only thing it was ever optimized to produce. The output isn't a lie; it's the model doing exactly what it does, applied to a spot where doing that isn't enough.
+
+## Why the word matters
+
+Calling it a "hallucination" instead of an "error" isn't just vocabulary — it points at where the fix has to live. A normal software bug gets caught because the program crashes or the output looks visibly wrong. Hallucinated output clears that bar; it looks fine. So catching it can't rely on the output alone — it needs either a way to check claims against a real source, like [grounding](/learn/hallucinations/grounding-with-source-documents) or [citations](/learn/hallucinations/citations-and-attribution), or an understanding of exactly which situations make fabrication more likely, which is where [risk factors](/learn/hallucinations/hallucination-risk-factors) comes in next.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Hallucination Risk Factors](/learn/hallucinations/hallucination-risk-factors), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents)

@@ -1,0 +1,40 @@
+---
+title: "Train/Validation/Test Splits, Done Right"
+track: "ai-foundations"
+status: live
+summary: "Why you need three separate datasets, not two, and the leakage mistakes that quietly invalidate reported results."
+duration: "6 min read"
+---
+
+Two datasets feel like enough until you notice you've been tuning against your "test" set the whole time. Three splits exist because a model needs one set to learn from, one to make decisions on, and one that never influences a single decision until the very end.
+
+## Why two splits aren't enough
+
+Split your data into train and test, and the workflow looks clean: fit on train, score on test. But real modeling isn't one fit — it's dozens of them. You try a bigger model, a different learning rate, more regularization, a new feature. Each time, you check the test score to decide whether the change helped.
+
+That's the leak. The moment test-set performance influences a choice — a hyperparameter, an architecture, a stopping point — the test set has stopped being a neutral judge. It's become part of training, just indirectly. Your final test number now overstates how the model will do on data it's never informed a decision about, which is the only number that matters in production.
+
+The validation set exists to absorb that pressure. You tune against validation as many times as you want — that's what it's for. The test set gets touched exactly once, at the end, to report a number you didn't optimize toward.
+
+## What each split is actually for
+
+- **Train**: the data the model's weights are fit to. This is the only set the optimizer ever sees.
+- **Validation**: the data you use to make every human or automated decision — model selection, early stopping, hyperparameter search. You can look at this score a thousand times without corrupting anything, because that's its job.
+- **Test**: touched once, after every decision is frozen. It estimates generalization to genuinely unseen data. If you go back and change anything based on the test score, it's now a second validation set wearing a costume.
+
+A common ratio is 70/15/15 or 80/10/10, but the right sizes depend on how much data you have and how noisy your metric is — a small test set gives you a noisy final estimate no matter how careful the rest of the process was.
+
+## Leakage: the subtler failure mode
+
+Splits fail silently, not loudly. Common ways it happens:
+
+- **Temporal leakage**: for time-series or any data with a time axis, a random split lets future rows train a model that predicts the past. Split by time instead — train on earlier data, validate and test on later data — so the split mirrors how the model will actually be used, per [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting).
+- **Group leakage**: near-duplicate rows (the same patient, user, or document appearing multiple times) landing on both sides of a split let the model memorize identity rather than learn the pattern. Split by group, not by row.
+- **Preprocessing leakage**: fitting a scaler, imputer, or feature selector on the full dataset before splitting bakes test-set statistics into features the model trains on. Fit preprocessing on train only, then apply it unchanged to validation and test.
+- **Target leakage**: a feature that's only available because the label already happened (e.g., "was this transaction refunded" as a feature for predicting fraud) makes results look great and be useless.
+
+## The rule that survives all of it
+
+Ask, at every step: could information from this row have reached the model's decisions before the final evaluation? If yes for anything in your test set, the number you're about to report isn't measuring what you think it is — a lesson worth pairing with [The Bias-Variance Tradeoff](/learn/ai-foundations/bias-variance-tradeoff) to understand what overfitting actually costs you downstream.
+
+**Related:** [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting), [The Bias-Variance Tradeoff](/learn/ai-foundations/bias-variance-tradeoff), [Supervised Learning, Explained](/learn/ai-foundations/supervised-learning-explained)

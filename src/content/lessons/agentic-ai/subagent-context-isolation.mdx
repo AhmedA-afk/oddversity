@@ -1,0 +1,32 @@
+---
+title: "Context Isolation: Why Subagents Get a Clean Slate"
+track: "agentic-ai"
+status: live
+summary: "Subagents run with fresh context instead of inheriting the parent's history, which keeps noise out and focus narrow."
+duration: "5 min read"
+---
+
+When an orchestrator spins up a subagent, it doesn't hand it a copy of everything that happened so far. It hands it a task description and lets it start clean. That choice is deliberate, not a limitation you work around.
+
+## The problem a shared context creates
+
+Imagine a coding agent that has spent 40 tool calls debugging a flaky test: failed greps, a wrong hypothesis about a race condition, a stack trace it misread, a fix it tried and reverted. If you then ask it to "write the changelog entry for this fix," all of that debugging noise is still sitting in the context window. The model has to actively ignore dozens of dead-end turns to find the one fact that matters. Irrelevant history doesn't just cost tokens — it actively competes for attention, and a model conditioned on a long trace of confusion tends to write a confused summary, even when the underlying fix was clean.
+
+This is the same failure you'd get from asking a colleague to summarize a project by reading your entire Slack history instead of just the final PR description. More input isn't more informed; past some point it's dilution.
+
+## What a clean slate buys you
+
+A subagent that starts fresh only sees what the orchestrator explicitly passes in: a task, maybe a few key facts, maybe a file path. It reasons over that alone. Concretely, this gives you:
+
+- **Narrower attention.** With nothing else in the window, every token in context is relevant to the task, so the model's output stays on-topic instead of drifting toward whatever else was recently discussed.
+- **No contamination from failed attempts.** If the parent tried and abandoned three approaches, the subagent never sees them and can't get anchored on a wrong framing the way the parent did.
+- **Parallelizability.** Because each subagent's context is self-contained, you can run several at once without their histories tangling together or one agent's mistake leaking into another's reasoning.
+- **A natural summarization boundary.** The subagent does its work in isolation and returns only a result — a report, a diff, an answer — back to the parent. The parent's context grows by one clean artifact instead of by the dozens of raw tool calls the subagent needed to produce it.
+
+This is why orchestrator patterns delegate specific, bounded jobs — "find every usage of this deprecated function," "review this diff for bugs" — rather than saying "keep going, but as someone else." The isolation only pays off when the task handed over is genuinely self-contained; a subagent still needs enough framing to act, which is why the parent has to think carefully about what to include in that initial handoff. Get that wrong and you've just swapped one problem (context bloat) for another (a subagent that lacks the information it needs).
+
+## The tradeoff
+
+Isolation is not free. The subagent can't ask the parent's earlier self a clarifying question, and any nuance the orchestrator forgot to pass along is simply gone. Good delegation design is really a compression problem: deciding what slice of the parent's understanding is small enough to fit, yet complete enough to work with. That's the same judgment call made in [Context Handoff Between Agents](/learn/context-engineering/context-handoff-between-agents), and it's what separates a subagent call that saves the parent's context from one that just adds a confusing round trip.
+
+**Related:** [Multi-Agent Patterns: Orchestrator, Pipeline, Debate](/learn/agentic-ai/multi-agent-patterns), [Delegating Work to Subagents](/learn/harness-design/subagent-and-task-delegation), [Context Handoff Between Agents: Passing the Slice, Not the Stack](/learn/context-engineering/context-handoff-between-agents)

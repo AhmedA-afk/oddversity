@@ -1,0 +1,36 @@
+---
+title: "Feature-Flagging and Gradual Rollouts for AI Features"
+track: "genai-app-dev"
+status: live
+summary: "Ship a model or prompt change behind a flag so a regression hits 1% of users, not everyone."
+duration: "6 min read"
+---
+
+A new system prompt looks great in your test chats and then quietly tanks quality for a slice of real users you never sampled. Feature flags exist so that when this happens, it happens to 1% of traffic and gets caught, not 100% and gets tweeted about.
+
+## Why AI changes need flags more than normal code
+
+A typical code deploy is deterministic: the same input produces the same output, and a bad build usually fails loudly (500s, crashes, broken pages). An AI change is different on both counts. Output is probabilistic, so a worse prompt does not error, it just answers slightly worse, more often, for some kinds of questions. And the failure modes are subtle: a rewritten system prompt might improve concise answers but wreck a rare-but-important case like refusals, code output, or a specific language. You will not catch that in a demo. You catch it by shipping to a small, measured slice and watching the numbers before touching everyone.
+
+This is also why the flag has to gate more than the toggle itself. It should carry the model ID, prompt version, and any parameter changes (temperature, tool set, system prompt) as a single unit, resolved once per request and logged alongside the response. That log is what turns "does this feel worse" into "the new variant has a 3-point higher escalation rate."
+
+## Structuring the rollout
+
+A gradual rollout for an AI feature typically moves through:
+
+1. **Internal only** — your team and design partners, flag on for a fixed user list.
+2. **Percentage rollout** — 1% to 5% of traffic, bucketed by a stable key (user ID, not session ID, so the same user gets a consistent experience across requests).
+3. **Cohort expansion** — widen by segment (free tier first, or a specific locale) rather than jumping straight to 100%.
+4. **Full rollout**, then a cleanup pass that deletes the flag once the new variant is the only path.
+
+The bucketing key matters more here than in typical feature flagging. If you rotate the assignment randomly on every request, you cannot tell whether a complaint is about the new variant or the old one, and you cannot compute a clean A/B comparison. Hash a stable user ID into the flag decision so the same user consistently gets the same variant for the duration of the test — this is also what makes [A/B testing prompts against real traffic](/learn/prompt-engineering/ab-testing-prompts-in-production) actually valid.
+
+## The kill switch is the point
+
+The real payoff of flagging an AI feature isn't the gradual ramp, it's that you can turn a bad variant off in seconds without a deploy. That means the flag check has to sit in the hot path of every request, not behind a config file that needs a redeploy to change, and it has to fail closed to the known-good variant if the flag service itself is unreachable. Pair the flag with an automatic rollback trigger: if error rate, refusal rate, or a quality eval score on the new variant crosses a threshold during the percentage-rollout stage, flip it back automatically rather than waiting for someone to notice a dashboard. See [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches) for how to wire that trigger.
+
+## What to compare, not just whether to ship
+
+Flip the flag with a clear, pre-defined success metric — task completion, thumbs-up rate, latency, cost per request — not a vibe check on a few transcripts. Run the new variant and the old one side by side long enough to get a statistically meaningful sample, especially for rare-but-costly failure modes. This is the same discipline as a [canary or shadow release](/learn/production/canary-and-shadow-releases) for any backend change, just applied to a prompt or model swap instead of a binary.
+
+**Related:** [Prompt Versioning and Safe Rollbacks](/learn/genai-app-dev/prompt-versioning-rollback), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches), [A/B Testing Prompts Against Real Traffic](/learn/prompt-engineering/ab-testing-prompts-in-production)

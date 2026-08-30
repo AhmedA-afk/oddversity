@@ -1,0 +1,36 @@
+---
+title: "The KV Cache: How LLMs Avoid Recomputing the Past"
+track: "llm-foundations"
+status: live
+summary: "Why the first token takes forever and every token after is fast — caching keys and values instead of recomputing the whole prompt each step."
+duration: "6 min read"
+---
+
+Ask an LLM a question and you'll notice the pattern: there's a pause, then tokens stream out fast and steady. That gap is two different computational regimes — and the thing that makes the second one fast is the KV cache.
+
+## Why generation would be brutally slow without it
+
+A transformer generates one token at a time. At each step it runs a full forward pass to predict the next token, then appends that token to the sequence and does it again. In [self-attention](/learn/llm-foundations/attention-mechanism-explained), every token attends to all the tokens before it, and doing that requires a key vector and a value vector for each of those earlier tokens — projections computed by multiplying each token's hidden state through the layer's weight matrices.
+
+Naively, generating token 500 means recomputing the keys and values for tokens 1 through 499 all over again, at every layer, just to predict one new token. Then token 501 repeats almost the same work, plus one more position. Because of [causal masking](/learn/llm-foundations/causal-masking), a token's key and value never depend on anything that comes after it — so once you've computed the K and V for token 12, that result is fixed forever. Recomputing it on every later step is pure waste.
+
+## The fix: cache K and V, only compute what's new
+
+The KV cache stores the key and value vectors for every previous token, at every layer, in memory. When the model generates the next token, it computes Q, K, and V for only the newest token, appends that new K and V to the cache, and attends the new query against the full cached set. No replay of the past — just one new row of work per step.
+
+This is why LLM inference splits into two visibly different phases:
+
+- **Prefill**: the entire input prompt is processed in one parallel pass, building the initial KV cache. This is compute-bound and is why the first token takes noticeably longer to appear.
+- **Decode**: each subsequent token only computes attention for itself against the cache. This is memory-bandwidth-bound — the bottleneck becomes shuttling the (large, growing) cache through memory, not raw compute — which is why decoding feels comparatively snappy and steady.
+
+## What the cache actually costs
+
+The KV cache isn't free. Its size scales with sequence length × number of layers × number of attention heads × head dimension × 2 (for K and V) × the batch size being served. For long contexts or many concurrent users, the cache can dwarf the model's own weights in memory footprint — it's often the real limit on how long a [context window](/learn/llm-foundations/context-window-mechanics) a server can afford to run at scale, more than raw compute.
+
+This cost is exactly why techniques like [grouped-query attention](/learn/llm-foundations/grouped-query-attention) exist: by having multiple query heads share the same key/value heads, the cache shrinks dramatically with barely any quality loss, since it's the K/V side of attention that gets stored and repeatedly read.
+
+## The intuition to keep
+
+Every token an LLM has already "seen" gets its key and value computed exactly once. The KV cache is the reason autoregressive generation is a viable product and not a research curiosity — it turns an O(n²)-per-token replay into an O(n) append, at the price of memory that has become one of the central engineering constraints in serving LLMs at scale.
+
+**Related:** [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [Causal Masking: Why LLMs Can't Peek Ahead](/learn/llm-foundations/causal-masking), [Grouped-Query and Multi-Query Attention](/learn/llm-foundations/grouped-query-attention)

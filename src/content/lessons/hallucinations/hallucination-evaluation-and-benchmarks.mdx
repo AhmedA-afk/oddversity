@@ -1,0 +1,33 @@
+---
+title: "Measuring Hallucination Rate Instead of Spot-Checking"
+track: "hallucinations"
+status: live
+summary: "Why anecdotal spot checks miss most hallucinations, and how to build a real measurement instead."
+duration: "5 min read"
+---
+
+You ran ten prompts, read the answers, none looked wrong, and shipped. That's not measurement — it's a coin flip with extra steps. If your model hallucinates on 1 in 50 queries, ten spot checks will almost always look clean while production quietly serves bad answers all week.
+
+## Why spot-checking fails
+
+Spot-checking fails for three reasons that compound. First, sample size: most hallucinations are rare-but-real events, and a handful of manual tests can't detect a low-frequency failure mode with any confidence. Second, selection bias: the prompts you think to try are the ones you already expect to work, not the edge cases that actually break the model — ambiguous phrasing, sparse-knowledge topics, multi-hop questions. Third, hallucinations are often *fluent*. A wrong date or a fabricated citation reads exactly like a correct one unless you check it against a source, so a reviewer skimming for "does this sound right" will pass it.
+
+The fix isn't more spot checks — it's a dataset and a metric, the same discipline covered in [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset).
+
+## Building a hallucination eval
+
+A hallucination eval needs three things:
+
+1. **A test set with known answers.** Pull real queries from logs or support tickets, weighted toward the risk factors covered in [Hallucination Risk Factors](/learn/hallucinations/hallucination-risk-factors) — long-tail facts, recent events, numeric claims, anything outside the source documents. For each, record the ground truth: the correct answer, or "unanswerable" if no source supports one.
+2. **A grading method.** Exact-match works for narrow factual questions, but most real answers are free text, so you'll usually grade with an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) that checks whether the response contradicts, overreaches, or invents something beyond the ground truth. For RAG systems specifically, grade against the retrieved context, not just the final answer — see [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality).
+3. **A rate, tracked over time.** Report hallucination rate as a single number (hallucinations / total responses) split by category — factual fabrication, unsupported citation, false premise acceptance. Track it release over release the way you'd track latency or cost, per [Tracking Eval Scores Across Model Versions](/learn/evals-red-teaming/eval-and-safety-metrics-dashboards).
+
+## What good benchmarks measure
+
+Public benchmarks (closed-book QA sets, RAG faithfulness suites, and provider-published hallucination leaderboards) are useful for comparing base models, but they rarely match your domain. A model that scores well on general trivia can still hallucinate constantly on your internal jargon, your document formats, or your specific numeric conventions. Treat public numbers as a starting filter for model selection, not a substitute for your own eval — the same gap covered in [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss).
+
+The distinction that matters in production is refusal versus fabrication. A model that says "I don't know" when it should have known is a coverage problem; a model that confidently invents an answer is a trust problem, and the second is far more expensive. Your eval should score these differently — reward correct abstention (see [Teaching a Model to Say "I Don't Know"](/learn/hallucinations/teaching-models-to-say-i-dont-know)), and penalize fabrication heavily, since users can't tell a fabricated answer from a real one without checking it themselves.
+
+Once you have a rate you trust, you have something spot-checking never gave you: a number that goes down when your grounding, prompting, or fact-checking pipeline actually improves.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Fact-Checking Pipelines Before Output Ships](/learn/hallucinations/fact-checking-pipelines)

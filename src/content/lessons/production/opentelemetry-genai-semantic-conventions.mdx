@@ -1,0 +1,49 @@
+---
+title: "Instrument LLM Calls with OpenTelemetry's GenAI Conventions"
+track: "production"
+status: live
+summary: "Use OpenTelemetry's gen_ai.* attribute standard so LLM spans work with any tracing backend, not a bespoke schema."
+duration: "5 min read"
+---
+
+Every LLM call you make is a span waiting to happen — but if you name its attributes yourself, they only make sense to you. OpenTelemetry's GenAI semantic conventions give those spans a shared vocabulary so any OTel-compatible backend (Jaeger, Honeycomb, Datadog, Grafana Tempo) can render, filter, and alert on them without custom mapping code.
+
+## Why a shared schema matters
+
+Before this convention existed, every team invented its own span attributes: `model_name` here, `llm.model` there, `openai_model` somewhere else. Dashboards built for one team's traces were useless on another's, and swapping providers meant rewriting instrumentation. The GenAI conventions fix this the same way HTTP semantic conventions fixed `http.method` and `http.status_code` years ago: agree on names once, and every tool that speaks OTel understands your traces for free.
+
+## What actually gets captured
+
+A span for a single model call follows a fixed naming pattern — the operation followed by the model, like `chat gpt-4o` or `chat claude-sonnet-4` — and carries a defined set of attributes:
+
+- `gen_ai.system` — the provider (`openai`, `anthropic`, `azure.ai.inference`, and so on)
+- `gen_ai.request.model` and `gen_ai.response.model` — what you asked for vs. what actually answered (these can differ when a provider auto-routes or aliases a model name)
+- `gen_ai.request.max_tokens`, `gen_ai.request.temperature` — the parameters that shaped the call
+- `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens` — the numbers your [cost tracking](/learn/production/token-and-cost-tracking) already needs
+- `gen_ai.response.finish_reasons` — why generation stopped (`stop`, `length`, `tool_calls`)
+
+Prompt and completion content are handled separately from these low-cardinality attributes, usually as span events or log records gated behind an opt-in flag — because raw prompts are high-volume, often sensitive, and shouldn't blow up your span size or leak into a backend that isn't built to hold them. If you're capturing content, run it through your [PII redaction](/learn/production/pii-redaction-in-llm-logs) step first.
+
+## Wiring it into your existing pipeline
+
+If you already emit OTel spans for HTTP calls or database queries, adding GenAI spans is additive, not a new system. Wrap your LLM client call in a span, set the `gen_ai.*` attributes from the request and response objects, and record token usage before you close it:
+
+```python
+from opentelemetry import trace
+
+tracer = trace.get_tracer("genai-app")
+
+with tracer.start_as_current_span("chat claude-sonnet-4") as span:
+    span.set_attribute("gen_ai.system", "anthropic")
+    span.set_attribute("gen_ai.request.model", "claude-sonnet-4")
+    response = client.messages.create(model="claude-sonnet-4", messages=messages)
+    span.set_attribute("gen_ai.response.model", response.model)
+    span.set_attribute("gen_ai.usage.input_tokens", response.usage.input_tokens)
+    span.set_attribute("gen_ai.usage.output_tokens", response.usage.output_tokens)
+```
+
+Several SDKs (the OpenTelemetry Python and JS auto-instrumentation packages, plus instrumentation shipped by some LLM gateways) already do this wrapping for you — check before hand-rolling it. Once these spans exist, they slot straight into a [multi-step pipeline trace](/learn/production/tracing-multi-step-ai-pipelines): the LLM call becomes one labeled child span inside the larger agent or RAG trace, instead of an unlabeled black box.
+
+The conventions are still evolving — attribute names have changed as the spec matures from experimental to stable — so pin the semconv version your instrumentation targets and watch the changelog before upgrading a production pipeline.
+
+**Related:** [Trace Multi-Step Agent and RAG Pipelines](/learn/production/tracing-multi-step-ai-pipelines), [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls)

@@ -1,0 +1,40 @@
+---
+title: "Token Budgeting: Splitting a Fixed Context Window"
+track: "context-engineering"
+status: live
+summary: "Treat the context window like a fixed budget of line items, not a bucket you fill until it overflows."
+duration: "5 min read"
+---
+
+Even a huge context window is still finite, and everything you put into it competes for the same space. Token budgeting means deciding, on purpose, how many tokens go to instructions, history, retrieved documents, and the model's own output — instead of stuffing things in until the request fails or the answer gets worse.
+
+## Why "more room" doesn't solve this
+
+A bigger window changes the ceiling, not the discipline you need. Retrieved chunks that arrive irrelevant or duplicated still cost tokens and still dilute the signal the model has to work with — see [context rot](/learn/context-engineering/context-rot) for what happens to quality once you cross that line, even inside a window that technically has room left. Budgeting is what keeps you on the right side of that line instead of finding it by accident in production.
+
+## The line items
+
+A practical way to think about it is as a small number of named allocations that must sum to less than the model's context limit, minus a reserved slice for the output itself:
+
+```
+system instructions   ~300–800 tokens   (fixed, rarely varies)
+conversation history   variable          (grows every turn)
+retrieved context      variable          (grows with query complexity)
+user's current message variable
+--------------------------------------------------
+reserved for output    fixed             (set by max_tokens)
+```
+
+Instructions are usually cheap and static, so budget them first and treat that number as a constant. History and retrieved context are where the real competition happens — [Compaction](/learn/context-engineering/summarization-for-compaction) and [sliding windows](/learn/context-engineering/sliding-window-context-management) exist specifically to cap the history line item so it doesn't quietly crowd out everything else. The output reservation matters more than people expect: if you don't carve it out up front, a long retrieval haul can leave too little room for the model to actually answer, and some APIs will simply truncate or error.
+
+## Setting the actual numbers
+
+Start from the model's context limit and work backward, not forward. Pick a hard cap for retrieved content (say, 30–40% of the window) before you know how many results a query will return, then apply [relevance filtering](/learn/context-engineering/relevance-filtering) to fit within it rather than raising the cap to fit whatever came back. This is also the point where you decide between [retrieval and stuffing](/learn/context-engineering/retrieval-vs-context-stuffing) — a generous stuffing budget for a small, static corpus is a different call than a tight, per-query retrieval budget for a corpus that changes daily.
+
+Cost is the other constraint worth budgeting against explicitly, since every token you spend on context is a token you're paying for on every call — see [tokens, context, and cost](/learn/ai-foundations/tokens-context-cost). A budget that's technically inside the context limit can still be an expensive habit if half of it is filler that doesn't change the answer.
+
+## Treat the budget as a spec, not a leftover
+
+The failure mode to avoid is backing into the budget — filling instructions, then history, then whatever retrieval returns, and discovering the output got squeezed. Write the allocation down as explicit numbers per component before you build the pipeline, then enforce it with truncation or filtering rules rather than hoping the inputs stay small. Revisit the split when you change models, since a larger window is an invitation to raise limits deliberately, not an excuse to stop budgeting.
+
+**Related:** [Relevance Filtering](/learn/context-engineering/relevance-filtering), [Context Rot](/learn/context-engineering/context-rot), [Compaction](/learn/context-engineering/summarization-for-compaction)

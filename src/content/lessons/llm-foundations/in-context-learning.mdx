@@ -1,0 +1,29 @@
+---
+title: "In-Context Learning: Why Few-Shot Examples Work at All"
+track: "llm-foundations"
+status: live
+summary: "How a model picks up a task from examples in the prompt, with no weight updates and no training step involved."
+duration: "5 min read"
+---
+
+Drop three input-output pairs into a prompt, then ask for a fourth, and the model often nails it — even on a task it never saw named during training. No gradient step happens. No weight changes. The examples just sit there as tokens, and the model's behavior shifts anyway. That's in-context learning (ICL), and it's one of the stranger properties of large transformers.
+
+## What's actually happening
+
+The naive explanation — "the model is learning the task from the examples" — is misleading if you picture it like training. There's no parameter update. What's really going on is closer to retrieval and pattern-completion inside a single forward pass: the examples in context act as a soft specification of the task, and [attention](/learn/llm-foundations/attention-mechanism-explained) lets every later token look back at them when deciding what comes next.
+
+Research on this (notably work framing ICL as implicit optimization) suggests something more specific: the forward pass over the few-shot examples behaves *analogously* to a tiny, implicit gradient descent happening inside the activations, effectively conditioning the model toward a region of its learned function space that fits the demonstrated pattern. That's a mechanistic hypothesis, not settled fact — but it explains why ICL feels like learning without being training.
+
+## Why it depends on pretraining, not the examples alone
+
+ICL isn't magic that appears in any model of any size. It's an emergent capability tied to scale and pretraining data — see [Emergent Abilities in LLMs](/learn/llm-foundations/emergent-abilities-in-llms). During [pretraining](/learn/llm-foundations/pretraining-explained), the model sees enormous amounts of text that contains implicit task structure: lists, Q&A pairs, translated sentence pairs, code with docstrings. It never gets a label "this is few-shot learning," but it absorbs the *statistical shape* of "given a pattern, continue the pattern." Few-shot prompting at inference time is just handing the model that shape explicitly and asking it to keep going.
+
+This is why the examples' *format* often matters more than the examples' *correctness*. Studies have found that even few-shot demonstrations with scrambled or wrong labels can improve performance over zero-shot, purely because they establish the input-output structure and vocabulary — the model latches onto the pattern shape, not just the content. Get the format wrong (inconsistent delimiters, mismatched casing, unclear boundaries between examples) and performance drops even with correct labels.
+
+## Why this matters practically
+
+ICL is the entire mechanism behind [few-shot prompting](/learn/prompt-engineering/few-shot-prompting): every example you paste into a prompt is context, competing for space with everything else in the [context window](/learn/llm-foundations/context-window-mechanics). More examples generally help up to a point, then plateau or even hurt as irrelevant patterns dilute the signal or push earlier instructions out of the model's effective attention. Order matters too — later examples tend to have outsized influence, which is why example selection and ordering is its own skill, not an afterthought.
+
+It also explains a common failure mode: a model asked to do something genuinely novel, with no analog anywhere in its pretraining distribution, won't be rescued by examples the way you'd expect a human to be. ICL is powerful pattern-matching against a vast prior, not general reasoning from first principles.
+
+**Related:** [Few-Shot Prompting: Teaching by Example](/learn/prompt-engineering/few-shot-prompting), [Emergent Abilities in LLMs](/learn/llm-foundations/emergent-abilities-in-llms), [Zero-Shot vs Few-Shot: When Examples Earn Their Tokens](/learn/prompt-engineering/zero-shot-vs-few-shot)

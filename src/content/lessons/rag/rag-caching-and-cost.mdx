@@ -1,0 +1,39 @@
+---
+title: "Caching Retrieval and Generation in a RAG Pipeline"
+track: "rag"
+status: live
+summary: "Reuses embeddings, retrieved sets, and answers to cut latency and cost on repeat queries."
+duration: "6 min read"
+---
+
+A RAG pipeline redoes the same expensive work over and over: embed the query, search the index, rerank, then generate an answer — even when ten users just asked the same question in different words. Caching at each stage turns repeat work into a lookup.
+
+## What's worth caching, and where
+
+Every RAG pipeline has three cacheable layers, and they fail independently:
+
+- **Embedding cache** — keyed on the exact query text (or a normalized version: lowercased, whitespace-trimmed). Cheapest to implement, since embedding calls are deterministic for a given model and input.
+- **Retrieval cache** — keyed on the query embedding (or the query text plus filters). Stores the retrieved chunk IDs and scores, not just the embedding, so a repeat query skips the vector search entirely.
+- **Generation cache** — keyed on the full prompt sent to the LLM, including the retrieved context. This is the most valuable to hit and the hardest, because the cache key includes the exact chunks retrieved.
+
+A hit at the embedding layer still costs a vector search and a generation call. A hit at the generation layer skips everything. Design for hits as far down the stack as you can get them, but keep all three, because near-misses at generation still benefit from the layers above.
+
+## Exact match vs. semantic match
+
+Exact-match caching (hash the query string, look it up) is simple and safe but only helps with literal repeats. Most real query traffic is semantically identical but lexically different — "what's our refund policy" vs. "how do refunds work here" — and an exact-match cache misses both.
+
+Semantic caching closes that gap: embed the incoming query, search a small cache index of past query embeddings, and treat anything above a similarity threshold as a hit. The threshold is the whole game. Set it too loose and you'll serve a cached answer to a question that only sounds similar — a fast, confident, wrong answer, which is worse than a cache miss. Set it too tight and the cache barely fires. Start conservative (0.95+ cosine similarity on a strong embedding model) and loosen only against measured precision, not intuition. See [cosine similarity](/learn/maths-foundations/cosine-similarity) for the mechanics of that threshold.
+
+## Invalidation is the actual hard part
+
+A RAG cache is only as safe as its ties to the underlying data. If a document is edited or deleted after its chunks were cached in an answer, that cached answer is now confidently citing something that no longer exists. Practical patterns:
+
+- **TTL by content volatility.** Cache answers grounded in a slow-changing knowledge base for days; cache anything touching live data (prices, inventory, ticket status) for minutes or not at all.
+- **Version-tag the cache key.** Include your index version or last-reindex timestamp in the key, so a reindex — see [incremental indexing](/learn/rag/incremental-indexing-freshness) — invalidates every cached answer built on the old index without you tracking which ones.
+- **Never cache low-confidence or unretrieved answers.** If retrieval came back thin or the model hedged, that's exactly the response you don't want served instantly to the next five users who ask something similar.
+
+## What this buys you
+
+Done well, layered caching turns a RAG pipeline's cost curve from linear-in-queries to roughly linear-in-*distinct* queries — which for most support and internal-tools traffic is a small fraction of total volume. It's also latency win before it's a cost win: a cache hit returns in milliseconds instead of the seconds a full retrieve-then-generate round trip takes. Treat cache hit rate and cache precision (how often a "hit" was actually the right answer) as first-class metrics alongside the checks in [evaluating RAG quality](/learn/rag/evaluating-rag-quality) — a cache that's fast but occasionally wrong is a regression, not a win.
+
+**Related:** [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality), [Incremental Indexing and Keeping an Index Fresh](/learn/rag/incremental-indexing-freshness), [Cache Prompts and Responses to Cut Cost](/learn/production/prompt-and-semantic-caching)

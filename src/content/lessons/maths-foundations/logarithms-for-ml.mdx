@@ -1,0 +1,33 @@
+---
+title: "Logarithms for Machine Learning"
+track: "maths-foundations"
+status: live
+summary: "Logs turn multiplication into addition and tame tiny probabilities into numbers models can train on."
+duration: "5 min read"
+---
+
+A language model's output is a probability, and probabilities of long sequences get absurdly small, fast. Logarithms are the tool that keeps those numbers usable — which is why "log-probs" and "loss" are everywhere once you start reading model internals.
+
+## The one idea to keep
+
+A logarithm answers "what power do I raise this base to, to get this number?" In ML almost everyone uses the natural log (base e), written `ln` or just `log`. The property that matters is:
+
+```
+log(a * b) = log(a) + log(b)
+```
+
+Multiplying probabilities is how a model scores a whole sequence — the probability of a sentence is the product of the probability of each token given the ones before it, a chain rule you'll meet again in [probability basics](/learn/maths-foundations/probability-basics-for-ai). Multiply enough numbers that are each less than 1, and the product underflows toward zero almost immediately — a 50-token sentence at even 90% confidence per token is already down near 0.005. Take the log of each term and add instead, and the numbers stay in a well-behaved range a computer can represent without losing precision.
+
+## Why "log-probs" instead of "probs"
+
+Model APIs report token probabilities as log-probabilities for exactly this reason. A log-prob is always zero or negative (since probabilities are between 0 and 1, and log of a number less than 1 is negative). A log-prob near 0 means the model was very confident; a large negative number means it was surprised. Cross-entropy loss — the number that goes down during training — is built directly from this: it's the negative average log-probability the model assigned to the correct next token. Lower loss means the model is putting more probability mass on the right answer, expressed on a scale that's stable to compute and easy to average across a batch.
+
+This same trick shows up one level up in [perplexity](/learn/maths-foundations/perplexity-explained), which is just log-loss converted back into an interpretable number, and it's the reason [softmax](/learn/maths-foundations/the-softmax-function) is so often paired with a log — "log-softmax" avoids computing tiny exponentials only to shrink them again.
+
+## Logs compress scale, not just tiny numbers
+
+The same compression works in the other direction, on huge numbers. Model sizes, dataset token counts, and loss curves are usually plotted on a log axis because the interesting behavior spans several orders of magnitude — going from 1 billion to 10 billion parameters is a fixed-size step in log-space, same as 10 billion to 100 billion. That's what lets you see a smooth trend in a training curve instead of a flat line that suddenly spikes.
+
+The takeaway: whenever you see a model report a "log likelihood," a loss value, or an axis labeled log-scale, it's the same move — addition standing in for multiplication, and a huge range of scale folded down into something a graph, or a float, can actually hold.
+
+**Related:** [Probability Basics for AI](/learn/maths-foundations/probability-basics-for-ai), [The Softmax Function](/learn/maths-foundations/the-softmax-function), [Perplexity: How Language Models Are Scored](/learn/maths-foundations/perplexity-explained)

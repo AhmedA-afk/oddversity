@@ -1,0 +1,44 @@
+---
+title: "Semantic Entropy: Measuring Uncertainty by Resampling"
+track: "hallucinations"
+status: live
+summary: "Resample an answer several times and measure how much the meanings disagree — that spread is a real uncertainty signal, not just token probability."
+duration: "5 min read"
+---
+
+Ask a model the same question five times at nonzero temperature. If it comes back with five different wordings of the same fact, it's confident. If it comes back with five genuinely different claims, it's guessing — and semantic entropy is the technique that turns that observation into a number.
+
+## Why token probability isn't enough
+
+The obvious uncertainty signal is the model's own token-level probability: how "sure" was it of each word it generated. The problem is that this conflates two very different kinds of uncertainty. A model can be highly confident about *phrasing* — which synonym, which sentence structure — while being deeply unsure about the *fact* itself. "The capital of Australia is Canberra" and "Canberra is Australia's capital" have completely different token sequences and very different per-token probabilities, but they say the exact same thing. Naive entropy over token sequences would call that disagreement, when there is none. See [Confidence Signals: What Model Certainty Actually Reflects](/learn/hallucinations/confidence-and-uncertainty-signals) for why raw logprobs mislead you this way.
+
+## How semantic entropy works
+
+Semantic entropy, introduced by researchers at Oxford (Kuhn et al., later published in *Nature* as Farquhar et al., 2024), fixes this by clustering on meaning instead of wording:
+
+1. Sample the same prompt N times (say, 10) at a moderate temperature.
+2. Group the answers into clusters where every answer in a cluster **entails** every other — checked with a natural language inference model, or a second LLM call asking "do these two statements say the same thing?"
+3. Compute entropy over the cluster distribution, not the raw answer distribution.
+
+Two clusters, evenly split — high semantic entropy, the model is genuinely unsure of the fact. One cluster with ten differently-worded members — low semantic entropy, the model knows the answer and is just varying its phrasing, which is exactly what you want and not something to penalize.
+
+```text
+Q: "Who directed the 1985 film Brazil?"
+Samples: "Terry Gilliam directed it." / "It was directed by Terry Gilliam."
+         / "Terry Gilliam." / "Terry Gilliam." / "Terry Gilliam directed Brazil."
+→ 1 semantic cluster → low entropy → high confidence
+
+Q: "What was the exact box office of Brazil in its opening weekend?"
+Samples: "$..." / "$..." (different number) / "I'm not sure of the exact figure"
+→ 3+ semantic clusters → high entropy → flag for verification
+```
+
+This is the same underlying idea as [Self-Consistency: Voting Across Multiple Reasoning Paths](/learn/prompt-engineering/self-consistency-sampling), but repurposed: instead of using resampling to pick the majority answer, you use the *shape of the disagreement* itself as the signal.
+
+## Where it earns its cost
+
+Semantic entropy is expensive — N extra generations plus a clustering pass, per query. That rules it out for every-request use in a chat product. It earns its keep in narrower spots: pre-shipping a fact-heavy answer in a pipeline where being wrong is costly, batch-scoring a dataset to find which questions a model is unreliable on, or as the trigger condition in an [Escalation Design: Handing Off to a Human When Confidence Drops](/learn/hallucinations/escalation-design-for-uncertain-answers) system, where you only pay the resampling cost on the subset of queries that look risky by a cheaper first-pass heuristic.
+
+The honest limitation: semantic entropy catches uncertainty the model *has* — cases where different samples genuinely diverge. It does not catch confident, consistent hallucination, where the model reliably produces the same wrong answer every time. For that failure mode you need external grounding, not resampling.
+
+**Related:** [Confidence Signals: What Model Certainty Actually Reflects](/learn/hallucinations/confidence-and-uncertainty-signals), [Ensemble Cross-Checking: Catching Hallucinations Through Disagreement](/learn/hallucinations/ensemble-cross-checking), [Self-Consistency: Voting Across Multiple Reasoning Paths](/learn/prompt-engineering/self-consistency-sampling)

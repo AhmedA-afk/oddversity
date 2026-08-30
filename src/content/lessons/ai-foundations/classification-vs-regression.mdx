@@ -1,0 +1,45 @@
+---
+title: "Classification vs. Regression: The Two Basic Prediction Tasks"
+track: "ai-foundations"
+status: live
+summary: "Picking a category versus predicting a number — the shape almost every ML problem reduces to, and why that choice drives everything downstream."
+duration: "4 min read"
+---
+
+Before you pick a model, an architecture, or a loss function, you have to answer one question: is the output a label or a number? Nearly every supervised learning problem is one of these two shapes, and getting the shape wrong quietly breaks everything built on top of it.
+
+## The core difference
+
+**Classification** predicts a category from a fixed set: is this email spam or not spam, is this image a cat or a dog, will this customer churn or stay. The output space is discrete and finite. Even when there are a thousand possible classes, the model is still choosing from a menu, not generating a new value.
+
+**Regression** predicts a continuous quantity: a house price, tomorrow's temperature, how many minutes until a delivery arrives. The output space is a number line. There's no menu — the model has to land close to a specific real value, and being off by 2 is worse than being off by 0.2.
+
+The distinction sounds obvious until edge cases show up. Predicting a star rating from 1 to 5 looks like regression (it's ordered, numeric-looking) but is often treated as classification, because the gap between a 3 and a 4 isn't necessarily the same "distance" as between a 4 and a 5. Predicting age in years is regression even though the output looks discrete, because the underlying quantity is continuous and ordering matters uniformly.
+
+## Why the loss function has to match
+
+This isn't a labeling exercise — it determines how a model is graded during training, which shapes what it learns.
+
+Regression models are typically trained with something like mean squared error, which penalizes distance from the true value:
+
+```
+MSE = average((prediction - actual)^2)
+```
+
+A prediction of $310k when the true price is $300k gets a small penalty. A prediction of $500k gets a much larger one, because the error is squared. The model is pushed toward the correct neighborhood, not just the correct answer.
+
+Classification models are trained with something like cross-entropy loss, which penalizes low confidence in the correct class, not distance:
+
+```
+Loss = -log(predicted probability of the true class)
+```
+
+There's no "neighborhood" for cross-entropy — mistaking a cat for a dog and mistaking a cat for an airplane are not different in kind, only in the model's assigned probability. See [Loss Functions: How a Model Knows It's Wrong](/learn/ai-foundations/loss-functions-explained) for how this generalizes.
+
+## Same problem, different framing
+
+The same real-world question can be posed either way, and the framing changes what the model optimizes for. "Will this loan default?" as classification gives you a yes/no plus a confidence score. "What's the probability of default, as a percentage?" is closer to regression, and produces a number you can rank, threshold, or feed into a risk calculation. Neither is wrong — but training one as if it were the other (say, using MSE on class labels encoded as 0 and 1) produces a model that's technically fittable but poorly calibrated, because squared error doesn't respect the probabilistic structure of a binary outcome.
+
+This choice sits upstream of everything: which loss function applies, how you'll evaluate the model (accuracy and F1 vs. RMSE and R²), and what output layer the network needs. Get this one classification right, and the rest of the pipeline follows naturally.
+
+**Related:** [Supervised Learning, Explained](/learn/ai-foundations/supervised-learning-explained), [Loss Functions: How a Model Knows It's Wrong](/learn/ai-foundations/loss-functions-explained)

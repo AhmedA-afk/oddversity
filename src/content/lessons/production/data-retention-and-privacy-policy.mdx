@@ -1,0 +1,31 @@
+---
+title: "Set a Data Retention Policy for AI Systems"
+track: "production"
+status: live
+summary: "Decide what user data an AI feature can store, for how long, and under what legal basis, before you ship it."
+duration: "6 min read"
+---
+
+Every prompt you log, every response you cache, every trace you keep for debugging is a piece of user data sitting on your servers. If you didn't decide on purpose how long it lives, you've made a retention policy by accident — and accidental policies are the ones regulators and incident responders find first.
+
+## What "retention" actually covers
+
+An AI feature touches user data in more places than people expect: the raw prompt and response, any documents fed into context for retrieval, the [structured logs](/learn/production/structured-logging-for-llm-calls) around each call, cached completions, [traces](/learn/production/tracing-multi-step-ai-pipelines) that captured intermediate steps, and eval datasets you sampled from real traffic. Each of these needs its own answer to three questions: what's stored, why, and for how long. "We log everything for 90 days" is not a policy — it's a default that happened to stick.
+
+Start by classifying what actually flows through the system. A support bot's chat history probably contains PII by default. A code-review assistant's payloads might contain proprietary source. A structured-extraction pipeline over public documents might carry almost no sensitive data at all. The retention rules for these three should not be identical, even if they share the same logging pipeline today.
+
+## Retention needs a legal basis, not just a rationale
+
+GDPR (EU/UK users) and CCPA/CPRA (California users) don't ban retention — they require that you can name why you're keeping something and that "why" bounds "how long." Debugging and abuse prevention justify days to a few weeks. Product analytics or model improvement justifies longer, but usually needs its own disclosure and, in the EU, a lawful basis beyond "it was convenient." Legal hold or fraud investigation is the exception that justifies longer retention on a specific record, not on your whole dataset.
+
+Practically, this means: don't keep raw prompts and completions indefinitely "just in case." Set a default TTL — say, 30 days for raw payloads used in debugging — and auto-delete on schedule rather than relying on someone remembering to clean up. Anything you keep past that window for a real reason (evals, fine-tuning) should go through [PII redaction](/learn/production/pii-redaction-in-llm-logs) first and live in a separate, access-controlled store, not the general log pipeline.
+
+## Provider retention is a separate contract from yours
+
+Your policy also depends on what the model provider does with your data, and that's governed by their terms, not yours. Most major API providers offer a zero-data-retention (ZDR) option or short default retention (often around 30 days) for API traffic, distinct from consumer product retention — but it usually isn't the default and may need a signed agreement or enterprise tier. Check this explicitly per provider and per product surface (an API key and a chat UI from the same vendor can have completely different retention terms), and don't assume "the vendor doesn't train on API data" also means "the vendor deletes it immediately."
+
+## Write it down where engineers will see it
+
+The policy only works if it's enforced in code, not just in a document. Concretely: a deletion job that runs against your log store on a schedule, a documented TTL per data category, redaction before anything crosses into a longer-lived store, and a data map showing which tables and vendors hold user data and for how long. When [an incident happens](/learn/production/incident-postmortems-for-ai), the retention policy is what tells you whether the exposed data is still even out there.
+
+**Related:** [Redact PII Before It Hits Your Logs](/learn/production/pii-redaction-in-llm-logs), [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Run a Postmortem After a Model Incident](/learn/production/incident-postmortems-for-ai)

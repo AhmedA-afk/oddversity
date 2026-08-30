@@ -1,0 +1,31 @@
+---
+title: "Designing Chat UX That Doesn't Feel Broken"
+track: "genai-app-dev"
+status: live
+summary: "Handle message history, stop/regenerate, typing indicators, and error states so a chat interface feels trustworthy."
+duration: "6 min read"
+---
+
+A chat interface looks trivial to build — a scrollable list of bubbles and a text box — until real usage exposes every edge case you skipped: a request that hangs, a user who wants to bail mid-answer, a model that goes off the rails and needs a redo. The interface that handles those moments well is what makes a chat product feel trustworthy instead of janky.
+
+## Give the user an exit: stop and regenerate
+
+Once you're [streaming tokens to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), the user is watching text arrive in real time — which means they can also see it going somewhere they don't want. A visible **Stop** button that cancels the in-flight request (aborting the fetch or closing the SSE connection) is not a nice-to-have; without it, users sit through answers they've already decided to discard, burning both their patience and your token budget.
+
+**Regenerate** solves a different problem: the answer finished, but it was mediocre, generic, or missed the point. Re-running the same prompt with a fresh sample often produces a noticeably better result, especially at non-zero sampling temperature. Both actions are cheap to build and disproportionately improve how in-control the product feels.
+
+## Typing indicators are a promise — don't break it
+
+A "thinking" or typing indicator tells the user something is happening. That's fine right up until it lies. Common ways it lies: it appears instantly for a fast local response (making a snappy app feel slow), it never resolves because a request silently failed, or it stays generic ("Thinking...") through a 15-second [tool call](/learn/tools-function-calling/what-is-tool-calling) when the user has no idea whether the app is searching, calling an API, or stuck.
+
+The fix is matching the indicator to what's actually happening: skip it for sub-200ms responses, and for longer multi-step work, show what step you're on ("Searching your documents...", "Calling calendar API...") rather than one static spinner for the whole duration. This is especially important once your backend is doing more than one LLM call per turn.
+
+## Errors need a face, not a dead end
+
+LLM calls fail — [rate limits](/learn/genai-app-dev/rate-limits-and-retry-strategies), timeouts, provider outages, content filters. The worst version of chat UX is a message that silently vanishes or a spinner that spins forever. The user needs three things when a call fails: a plain-language explanation of what went wrong, a retry action that doesn't force them to retype their message, and confirmation that their own message wasn't lost. Store the user's turn in local state the moment they send it, independent of whether the response ever arrives — that way a failure never costs them their own words.
+
+## History is state, not just a log
+
+The message list a user scrolls through is also the [conversation memory](/learn/context-engineering/conversation-memory-and-state) you send back to the model on the next turn, so UI and context management aren't separate concerns. If you [trim history for context limits](/learn/genai-app-dev/trimming-conversation-history) or summarize older turns to save tokens, the UI has to stay honest about it — either keep the full transcript visible while sending a trimmed version to the model, or make it clear when older context has been compacted. A chat UI that shows one thing and sends another to the model is the kind of mismatch that produces confusing, inconsistent answers the user can't debug.
+
+**Related:** [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Trimming Conversation History for Context Limits](/learn/genai-app-dev/trimming-conversation-history), [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies)

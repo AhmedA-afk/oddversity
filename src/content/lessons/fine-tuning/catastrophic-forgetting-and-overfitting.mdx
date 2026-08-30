@@ -1,0 +1,37 @@
+---
+title: "Diagnose Catastrophic Forgetting and Overfitting"
+track: "fine-tuning"
+status: live
+summary: "Tell apart a fine-tune that forgot general skills from one that just memorized the training set."
+duration: "6 min read"
+---
+
+A fine-tuned model that aces your eval but feels dumber everywhere else has one of two problems, and they need opposite fixes. Knowing which one you have saves you from re-running a job with the wrong knob turned.
+
+## Two failures that look similar
+
+**Catastrophic forgetting** is when new training overwrites weights the base model relied on for unrelated skills. You fine-tune on customer-support transcripts and the model gets great at support tickets but suddenly fumbles basic arithmetic or loses its ability to write clean code — capabilities it had before training and never saw a single example of during it. The training objective pulled weights toward the new task and dragged general competence down with them.
+
+**Overfitting** is different: the model memorizes the training set instead of learning the underlying task. It nails prompts that look like training examples and falls apart on anything slightly novel. Loss on the training set keeps dropping while loss on a held-out validation set flattens or rises — the classic overfitting curve from [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting).
+
+They can also compound: a model that overfits a narrow dataset often forgets general ability at the same time, because every gradient step is spent narrowing the model toward one distribution.
+
+## How to tell them apart
+
+Run three checks after training, not just one:
+
+- **General-capability probes.** Hold out a small suite of prompts unrelated to your fine-tuning task (general reasoning, coding, instruction-following) and compare pass rate before and after. A sharp drop here is forgetting, regardless of how the task-specific eval looks.
+- **Train vs. held-out loss on the target task.** If train loss is near zero but held-out loss is high, that's overfitting on the task itself.
+- **Near-duplicate prompts.** Feed in validation examples that are paraphrases of training examples, not exact matches. A model that only does well on verbatim training phrasing is memorizing, not generalizing.
+
+Perplexity on a general text sample is a cheap first signal for forgetting — see [Perplexity: How Language Models Are Scored](/learn/maths-foundations/perplexity-explained) — but don't stop there, since perplexity can stay flat while task-specific reasoning still degrades.
+
+## What causes each, and the fix
+
+Forgetting gets worse with more training steps, a higher learning rate, and full-parameter fine-tuning on a narrow dataset — the model has more freedom to drift from its pretrained weights. Parameter-efficient methods constrain that drift by construction, which is why [LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning) tend to forget less than full fine-tuning for the same task gain — see [Full Fine-Tuning vs Parameter-Efficient Fine-Tuning](/learn/fine-tuning/full-fine-tuning-vs-peft). Mixing a slice of general-purpose data into the fine-tuning set (replay) also helps directly.
+
+Overfitting gets worse with too few unique examples, too many epochs over the same data, and a dataset with low diversity in phrasing. The fix is more and more varied examples, early stopping based on held-out loss, and checking your [fine-tuning run hyperparameters](/learn/fine-tuning/fine-tuning-run-hyperparameters) — especially epoch count and learning rate — rather than training longer to force the eval number down.
+
+Either way, don't trust a single task-specific score. Run both checks before you decide the fine-tune is ready, which is exactly what a proper [evaluation pass](/learn/fine-tuning/evaluating-a-fine-tuned-model) before shipping is for.
+
+**Related:** [Full Fine-Tuning vs Parameter-Efficient Fine-Tuning](/learn/fine-tuning/full-fine-tuning-vs-peft), [Set Hyperparameters for a Fine-Tuning Run](/learn/fine-tuning/fine-tuning-run-hyperparameters), [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model)

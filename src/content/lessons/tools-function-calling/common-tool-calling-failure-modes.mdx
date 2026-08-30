@@ -1,0 +1,35 @@
+---
+title: "Common Tool-Calling Failure Modes"
+track: "tools-function-calling"
+status: live
+summary: "Recognize hallucinated arguments, wrong tool selection, and infinite tool loops, and know the fix for each."
+duration: "5 min read"
+---
+
+Tool calling fails in a small number of recognizable ways. Once you can name the failure, the fix is usually obvious — the hard part is noticing it's happening before it burns a user's trust (or your API budget).
+
+## Hallucinated arguments
+
+The model calls a real tool with a made-up value: a `user_id` that doesn't exist, a file path it never saw, a date it invented to fill a required field. This happens most when a required argument has no obvious source in context — the model would rather guess than leave the call empty, because it was trained to produce complete, well-formed calls.
+
+The fix is to make the "I don't have this" path cheaper than guessing. Mark fields optional when they're genuinely optional, add a nullable default in the schema, and say explicitly in the tool description something like "only pass `user_id` if the user gave one — do not infer it." Pair that with validation on the receiving end: reject calls with suspicious values (an id that doesn't match your ID format, a date outside a sane range) instead of executing them and failing downstream where the error is harder to trace.
+
+## Wrong tool selection
+
+The model picks `search_orders` when it meant `search_invoices`, or calls `send_email` when the user asked it to draft one. This is usually a naming and description problem, not a reasoning problem — two tools with overlapping names or vague one-line descriptions are genuinely hard to disambiguate at call time, even for a careful model. See [writing tool descriptions models actually follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow) for how to fix the descriptions, and [designing a tool schema](/learn/tools-function-calling/designing-a-tool-schema) for structural fixes like consolidating near-duplicate tools into one tool with a parameter.
+
+If two tools are close enough in purpose that the model keeps confusing them, the real fix is often to merge them rather than write a better description.
+
+## Infinite or repeating tool loops
+
+The model calls a tool, gets a result, and calls the same tool again with the same or near-identical arguments — sometimes forever. This tends to happen when a tool result doesn't actually answer the question the model was trying to resolve (an empty result set, a vague error string like `"failed"`), so the model retries hoping for a different outcome instead of recognizing it needs a different tool or should stop and ask.
+
+Guard against this at the harness level, not just the prompt level: cap the number of tool calls per turn, and detect repeated identical calls and short-circuit them with a message like "this call was already tried and returned X — do not repeat it." Returning informative errors (see [handling tool errors and retries](/learn/tools-function-calling/handling-tool-errors-and-retries)) also helps, since a model told *why* a call failed is far less likely to just retry it verbatim.
+
+## Malformed or partial calls
+
+Less common with modern APIs but still possible: truncated JSON, an argument in the wrong type, a tool name that's close-but-not-exact. These are usually infrastructure issues — a context window running out mid-generation, or a schema that's ambiguous about types — and the fix lives in validation and retry logic rather than prompting. [Testing and debugging tool calls](/learn/tools-function-calling/testing-and-debugging-tool-calls) covers how to catch these before they reach production.
+
+The common thread across all four modes: the model is doing something reasonable given incomplete information. Fixing failure modes is mostly about giving it better information — clearer schemas, better error messages, tools that don't overlap — before reaching for more prompting.
+
+**Related:** [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Testing and Debugging Tool Calls](/learn/tools-function-calling/testing-and-debugging-tool-calls)

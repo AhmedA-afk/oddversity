@@ -1,0 +1,40 @@
+---
+title: "Thinking Then Structuring: Reasoning in Prose Before Emitting the Schema"
+track: "structured-outputs"
+status: live
+summary: "Why forcing a schema from the first token trades away reasoning quality, and how to let the model think in prose first."
+duration: "5 min read"
+---
+
+Ask a model to solve a multi-step problem and hand back JSON in the same breath, and it often gets the JSON right but the answer wrong. The fix is almost embarrassingly simple: let it think in prose first, then structure.
+
+## Why structure-first hurts reasoning
+
+When you force a schema from token one — strict JSON mode, a tool call with no room to think, a prefilled `{` — every token the model emits has to simultaneously advance the answer and satisfy the grammar. There's no space for "wait, let me reconsider" or "actually, given X, the answer should account for Y." The model commits to a field's value the instant it starts generating that field, because backtracking inside a structured object is expensive or outright disallowed by constrained decoding.
+
+This is the same tradeoff covered in [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting): reasoning quality tracks with how much the model gets to "talk before it answers." Structured output formats, taken naively, remove that room entirely.
+
+## The pattern: scratchpad, then schema
+
+The practical fix is a two-part response, either as one generation or two calls:
+
+1. **Free-text reasoning first** — work through the problem, weigh options, catch contradictions, in plain prose with no format constraints.
+2. **Structured object last** — only after the reasoning is on the page, emit the JSON/tool call that summarizes the conclusion.
+
+With Claude, this maps directly onto [extended thinking](/learn/prompt-engineering/extended-thinking-and-reasoning-effort): let the model reason in a thinking block, then make the tool call or emit the schema afterward. With models that don't support a separate thinking channel, the same effect comes from prompting explicitly — "first reason step by step in a paragraph, then on a new line output only the JSON object" — and parsing out the trailing structured chunk.
+
+A minimal version, prompt-only:
+
+```
+Think through this in 2-3 sentences of plain prose.
+Then, on a new line, output ONLY the JSON object matching
+the schema below. Nothing after the JSON.
+```
+
+The key discipline is that your parser must skip the prose and grab the last fenced or bracket-delimited block — don't try to parse the whole response as JSON.
+
+## When to skip this
+
+For genuinely simple extractions — pulling a date, a name, a category out of a sentence — there's no reasoning to protect, and structure-first is faster and cheaper. Reserve thinking-then-structuring for tasks with real decision-making inside them: classification with ambiguous cases, multi-field outputs where fields depend on each other, or anything where you'd want a human to show their work before committing to an answer. Reasoning traces you don't need also cost tokens and latency, so this is a tradeoff to make deliberately, not a default to apply everywhere — see [schema design choices that reduce model errors](/learn/structured-outputs/schema-design-for-reliability) for the broader set of levers.
+
+**Related:** [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Extended Thinking: Controlling How Much a Model Reasons Before Answering](/learn/prompt-engineering/extended-thinking-and-reasoning-effort), [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability)

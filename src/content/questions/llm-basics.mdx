@@ -1,0 +1,54 @@
+---
+title: "LLM basics interview questions"
+topic: "LLM basics"
+description: "Eight questions that test whether you can explain language models clearly and reason about their limits."
+order: 1
+---
+
+## 1. What is a large language model?
+
+A large language model is a neural network trained to assign probabilities to sequences of tokens. During generation it repeatedly uses the preceding context to predict a next token, then appends that token and continues. The model is not a database lookup, although its learned parameters contain statistical information about language and the data it saw.
+
+The practical distinction matters: a model can produce a fluent answer without having retrieved a verified fact. Start with [how LLMs work](/learn/ai-foundations/how-llms-work) and [next-token prediction](/learn/llm-foundations/next-token-prediction).
+
+## 2. What is a token?
+
+A token is a unit chosen by a tokenizer. It may represent a whole word, part of a word, punctuation, or whitespace. Tokenization is model-specific, so the same text can consume different numbers of tokens across model families.
+
+Tokens affect context limits, latency, and cost. A good answer names all three instead of treating tokens as characters. See [tokenization](/learn/llm-foundations/tokenization-explained) and [tokens, context, and cost](/learn/ai-foundations/tokens-context-cost).
+
+## 3. Why can an LLM hallucinate?
+
+The training objective rewards plausible continuations, not truth. If the prompt is underspecified, the evidence is absent, or the model has weak signal for a fact, it can generate a confident continuation that is unsupported.
+
+Mitigations include retrieval with citations, constrained outputs, abstention rules, and evaluation against a representative test set. None is a universal fix. Oddversity covers [why models hallucinate](/learn/hallucinations/why-models-hallucinate) and [teaching models to say I do not know](/learn/hallucinations/teaching-models-to-say-i-dont-know).
+
+## 4. What is the difference between training and inference?
+
+Training updates model parameters using many examples and an optimization procedure. Inference uses fixed parameters to compute an output for a given input. Prompting, retrieval, and tool calls change the input or surrounding application state; they do not retrain the base model.
+
+This distinction helps with debugging. If a behavior changes after adding documents to a request, investigate the context pipeline before proposing fine-tuning.
+
+## 5. What is a context window?
+
+A context window is the bounded amount of tokenized input and generated output a model can process in one request. It is not the same as durable memory, and a larger window does not guarantee that every detail will be used equally well.
+
+Treat context as a budget: retrieve relevant material, remove repetition, preserve provenance, and reserve room for the answer or tool results. The [context engineering track](/learn/context-engineering) develops that mental model.
+
+## 6. What does temperature change?
+
+Temperature changes how sharply the model samples from its next-token probability distribution. Lower values usually make high-probability choices more likely; higher values spread probability across more alternatives.
+
+It does not add knowledge or make a model reason better. Use lower randomness for extraction and routing, then measure whether any setting improves the actual task rather than relying on a “creative” label.
+
+## 7. Why do transformers use attention?
+
+Attention lets each position compute weighted relationships with other positions in the sequence. That gives the network a way to combine information from relevant tokens while processing a sequence in parallel during training.
+
+The original Transformer paper introduced an architecture based on attention rather than recurrence. The [attention lesson](/learn/llm-foundations/attention-mechanism-explained) gives the implementation intuition, and the [paper](https://arxiv.org/abs/1706.03762) is the primary source.
+
+## 8. When should you use a smaller model?
+
+Use the smallest model that meets the task's quality, latency, and safety requirements. Smaller models can be cheaper and faster, and they may be easier to run privately. A larger model can still win when the task needs broad knowledge, complex synthesis, or robust instruction following.
+
+Decide with a fixed evaluation set and production-like inputs. Compare total system cost, including retries, retrieval, tool calls, and human review, not just the per-token price.

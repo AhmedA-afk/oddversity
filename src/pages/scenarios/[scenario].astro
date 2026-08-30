@@ -1,0 +1,35 @@
+---
+import Layout from '../../components/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const scenarios = await getCollection('scenarios');
+  return scenarios.map((entry) => ({ params: { scenario: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+<Layout title={entry.data.title} description={entry.data.description} type="learning-resource" breadcrumbs={[{ name: 'Scenarios', url: '/scenarios' }, { name: entry.data.scenario, url: `/scenarios/${entry.id}` }]}>
+  <article class="scenario-doc container">
+    <a class="back mono" href="/scenarios">← All scenarios</a>
+    <span class="eyebrow">{entry.data.scenario}</span>
+    <h1>{entry.data.title}</h1>
+    <p class="lede">{entry.data.description}</p>
+    <div class="prose"><Content /></div>
+  </article>
+</Layout>
+
+<style is:global>
+  .scenario-doc { max-width: 820px; padding-top: 48px; }
+  .scenario-doc .back { display: block; margin-bottom: 32px; color: var(--muted); font-size: 11px; }
+  .scenario-doc .back:hover { color: var(--accent); text-decoration: none; }
+  .scenario-doc h1 { font-size: clamp(34px, 5vw, 50px); margin-top: 14px; max-width: 18ch; }
+  .scenario-doc .lede { margin-top: 16px; color: var(--muted); font-size: 17px; line-height: 1.65; max-width: 60ch; }
+  .scenario-doc .prose { max-width: 720px; margin-top: 44px; font-size: 16px; line-height: 1.72; }
+  .scenario-doc .prose h2 { font-size: 25px; margin-top: 1.9em; scroll-margin-top: 88px; }
+  .scenario-doc .prose p { margin-top: 1em; }
+  .scenario-doc .prose ol { padding-left: 1.4em; margin-top: 1em; }
+  .scenario-doc .prose li { margin-top: .55em; }
+  .scenario-doc .prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+</style>

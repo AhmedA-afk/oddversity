@@ -1,0 +1,10 @@
+id,age,education,hours_per_week,capital_gain,income_over_50k
+a1,45,Bachelors,45,0,1
+a2,29,HS-grad,38,0,0
+a3,52,Masters,50,1000,1
+a4,34,HS-grad,45,0,0
+a5,41,Doctorate,42,0,1
+a6,25,Bachelors,30,0,0
+a7,38,HS-grad,55,0,1
+a8,33,Masters,41,500,1
+

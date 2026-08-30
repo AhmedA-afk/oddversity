@@ -1,0 +1,29 @@
+---
+title: "Grokking and Double Descent"
+track: "llm-foundations"
+status: live
+summary: "Two training-curve surprises where more training or a bigger model makes things worse before it makes them better."
+duration: "5 min read"
+---
+
+Both phenomena break the tidy story of training curves that only get better with more data, more steps, or more parameters. Each has a real mechanism behind it, and each has practical consequences for how you read a loss curve.
+
+## Grokking: generalization arrives late, and suddenly
+
+Train a small transformer on a synthetic task like modular addition (predict `a + b mod p`), and something strange happens. Training accuracy hits 100% almost immediately — the network memorizes the training pairs. Validation accuracy sits near chance for a long time after that, sometimes tens of thousands of steps. Then, abruptly, validation accuracy jumps to near 100% too. The model looks fully overfit for most of training, and then it "grokks" the underlying structure.
+
+The mechanism, as best understood: the network first finds a memorizing solution because it's easy to reach by gradient descent. Weight decay and other regularization keep quietly pushing the weights toward a simpler, lower-norm solution that happens to generalize — in the modular arithmetic case, literally a circuit that computes something like Fourier-based rotations. Once that simpler circuit's weights cross a threshold where it out-competes the memorized lookup table, generalization appears almost as a phase transition. Turn off weight decay and grokking usually vanishes — the model stays memorized forever.
+
+Grokking was first documented clearly on small algorithmic datasets, not on production language models, so don't expect to watch it happen during a normal pretraining run. Its relevance is what it reveals: a model with 100% train accuracy and flat validation accuracy hasn't necessarily failed — it may be mid-transition, and its internal representation is still changing even though the loss curve looks stuck. See [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting) for the baseline story this complicates.
+
+## Double descent: more capacity can un-hurt you
+
+Classical statistics predicts a U-shaped curve: test error falls as a model gets more expressive, then rises again once the model is complex enough to overfit — the textbook [bias-variance tradeoff](/learn/ai-foundations/bias-variance-tradeoff). Double descent is what happens when you keep increasing capacity (model size, or training epochs) past that point. Test error rises as expected near the interpolation threshold — the point where the model has just enough capacity to fit the training data exactly — but then, past that threshold, it falls again, often below the first minimum.
+
+The same shape shows up along three different axes: model size (more parameters than needed to fit the data), training time (train far longer than the point where you'd normally stop), and even data size for a fixed model. The mechanism is roughly that right at the interpolation threshold, the model has to contort itself into one fragile fit — small changes in the data produce wildly different fits, which is high variance. With more capacity beyond that point, there are many ways to fit the training data, and gradient descent tends to land on flatter, simpler ones among them, which generalize better again.
+
+## Why this matters for practice
+
+Neither effect means "bigger is free" or "just keep training forever" — both are sensitive to regularization, learning rate, and task structure, and can fail to appear at all outside the settings where they were shown. The practical takeaway is narrower: a validation curve that gets worse mid-training isn't proof you should stop, and a model that looks overparameterized for its dataset isn't automatically overfit. Confirm behavior on held-out data using proper [train/validation/test splits](/learn/ai-foundations/train-validation-test-splits) rather than reading a single curve shape as a verdict.
+
+**Related:** [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting), [The Bias-Variance Tradeoff](/learn/ai-foundations/bias-variance-tradeoff), [Train/Validation/Test Splits, Done Right](/learn/ai-foundations/train-validation-test-splits)

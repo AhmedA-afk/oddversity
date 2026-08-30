@@ -1,0 +1,39 @@
+---
+title: "Citations: Making Every Claim Traceable to a Source"
+track: "hallucinations"
+status: live
+summary: "Force every factual claim to point at a specific source or span so it can be checked instead of trusted on faith."
+duration: "6 min read"
+---
+
+A model that says "the contract renews automatically after 12 months" is asserting a fact. A model that says "the contract renews automatically after 12 months (Section 4.2)" is making a claim you can check in ten seconds. Citations don't stop a model from hallucinating — they turn every unverifiable assertion into a verifiable one.
+
+## Why citations work
+
+Hallucination is expensive mainly because it's invisible: fluent, confident prose gives you no signal about which sentences are grounded and which are made up. A citation requirement doesn't fix the model's reasoning, it changes what counts as a complete answer. If the model can't point to a source span, the honest move is to say it doesn't know — see [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know) — rather than fill the gap with something plausible-sounding.
+
+This is also why citations pair naturally with [grounding on supplied documents](/learn/hallucinations/grounding-with-source-documents): you can only cite a source if the source was actually given to the model as context, rather than pulled from parametric memory.
+
+## What a good citation actually points to
+
+A citation that just names a document ("according to the handbook") is barely better than nothing — the reader still has to search the whole document to check it. A citation that's useful points to a specific, small span:
+
+- A page and paragraph, if the source is a PDF
+- A chunk ID, if you're retrieving from a vector store — see [chunking strategies](/learn/rag/chunking-strategies-for-documents)
+- A line range, if the source is code or a log
+- A URL plus an exact quoted sentence, if the source is a web page
+
+The narrower the span, the cheaper it is for a human (or a second automated check) to verify. This is the same idea used in [grounding answers with citations](/learn/rag/grounding-answers-with-citations) for retrieval-augmented systems specifically.
+
+## Enforcing it, not just asking for it
+
+Asking nicely in the prompt ("please cite your sources") gets you citations that are sometimes fabricated — a model under-grounded on a claim will invent a footnote just as readily as it invents the fact itself. Two things make citations trustworthy in practice:
+
+1. **Structural enforcement.** Require the output as structured data — an answer field plus a `source_id` field per claim — so a missing or malformed citation is a parsing failure, not a style choice. Tool schemas and JSON schemas make this checkable mechanically.
+2. **Post-hoc verification.** After generation, run a cheap pass that confirms the cited span actually contains the claimed fact — string match, embedding similarity, or a smaller model doing entailment checking. This closes the loop that a citation instruction alone can't: the model saying it cited something isn't proof that it did.
+
+## Where citations fall short
+
+Citations verify that a source *exists* for a claim, not that the claim correctly represents the source. A model can cite Section 4.2 accurately and still misread what Section 4.2 says, or cite a real span while drawing an inference the span doesn't actually support. Citations narrow the search space for a human reviewer — they don't replace review, and they're one input into a broader [fact-checking pipeline](/learn/hallucinations/fact-checking-pipelines) rather than a stand-alone fix.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [Grounding Answers with Citations](/learn/rag/grounding-answers-with-citations), [Fact-Checking Pipelines Before Output Ships](/learn/hallucinations/fact-checking-pipelines)

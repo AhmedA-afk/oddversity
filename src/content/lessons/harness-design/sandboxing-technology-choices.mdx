@@ -1,0 +1,33 @@
+---
+title: "Docker, gVisor, and Firecracker: Choosing a Sandbox Boundary"
+track: "harness-design"
+status: live
+summary: "Compare container, gVisor, and microVM isolation for untrusted tool execution, and when each is worth the startup cost."
+duration: "6 min read"
+---
+
+When your harness lets a model run shell commands, write files, or hit the network, you're deciding how much you trust code you didn't write and can't fully predict. The sandbox boundary you pick trades isolation strength against startup latency, and the tradeoff isn't the same at every layer of the stack.
+
+## Plain containers: fast, shared kernel
+
+A standard Docker container isn't a sandbox in the security sense — it's process isolation via Linux namespaces and cgroups, all sharing the host kernel. Starting one takes tens of milliseconds because there's no OS to boot, just a new set of namespaces around an existing kernel. That's fine for isolating well-behaved code from itself, but every container shares the same kernel attack surface. A kernel bug (and there's a steady stream of them — mount handling, io_uring, cgroup edge cases) can let a process escape the container entirely. For a harness running truly untrusted, model-generated code, a bare container is a permission boundary, not a security boundary.
+
+## gVisor: userspace kernel, no boot cost
+
+gVisor sits between the container and the host kernel and reimplements most Linux syscalls in userspace (its `runsc` runtime), intercepting what the sandboxed process does before it ever reaches the real kernel. This shrinks the exposed kernel surface dramatically — the sandboxed process talks to gVisor's Go-based syscall emulator, not directly to the host. Startup stays container-fast because there's still no VM to boot. The cost is syscall-heavy workloads: anything doing lots of small file I/O or networking pays a real overhead tax versus a native container, because every syscall gets intercepted and re-implemented. It's a solid middle ground when you need real containment for tool execution but can't afford a VM per call.
+
+## Firecracker: a whole machine, in milliseconds
+
+Firecracker is a microVM — a stripped-down KVM-based virtual machine built by AWS for Lambda and Fargate. Each sandboxed run gets its own kernel, memory space, and virtual devices, giving you the same isolation guarantee as a full VM: escaping it means escaping the hypervisor, not just a namespace. The trick that makes it usable per-request is a minimal device model (Firecracker drops most of what QEMU emulates) that gets boot times down to around 125ms and a memory footprint under 5MB per microVM. That's slow next to a container's tens of milliseconds, but fast enough to spin one up per agent turn if your harness needs it.
+
+## Picking a boundary for your harness
+
+Match the boundary to what the tool call can actually touch:
+
+- **Trusted, in-repo tools** (linting, running your own test suite) — a plain container or even no sandbox is fine; the risk is bugs, not adversarial input.
+- **Model-generated code you'll execute** (a Python snippet the model wrote to answer a data question) — gVisor is the common choice: real containment, container-speed startup.
+- **Fully untrusted, high-stakes execution** (running arbitrary code from an external MCP server, or multi-tenant SaaS where one customer's agent must never see another's) — Firecracker or an equivalent microVM, accepting the extra ~100ms per session.
+
+The general pattern: isolation strength and startup latency move together, so the right choice is set by what's on the other side of the sandbox boundary, not by a fixed policy. This is the deeper mechanics behind the broader question of [sandboxing tool execution in a harness](/learn/harness-design/subprocess-isolation-and-sandboxing) — that lesson covers the harness-side wiring; this one covers what's actually enforcing the boundary underneath it.
+
+**Related:** [Sandboxing Tool Execution in a Harness](/learn/harness-design/subprocess-isolation-and-sandboxing), [Sandboxing Tool Execution](/learn/tools-function-calling/sandboxing-tool-execution), [Sandboxing Untrusted MCP Servers](/learn/mcp/sandboxing-untrusted-servers)

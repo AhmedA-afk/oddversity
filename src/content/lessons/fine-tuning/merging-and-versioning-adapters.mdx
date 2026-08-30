@@ -1,0 +1,29 @@
+---
+title: "Merge and Version LoRA Adapters"
+track: "fine-tuning"
+status: live
+summary: "Decide whether to merge a LoRA adapter into the base model or swap it at serving time, and keep variants straight."
+duration: "6 min read"
+---
+
+You trained a LoRA adapter. Now you have two files instead of one — a base model and a small set of low-rank matrices — and a choice to make before you can serve it: merge them into a single set of weights, or keep them separate and swap the adapter in at inference time.
+
+## Merge vs. swap
+
+Merging is arithmetic: for each adapted layer, you compute `W_merged = W_base + (alpha/r) * B @ A` and save the result as one normal checkpoint. The upside is simplicity — it deploys like any other model, runs at full speed with no extra overhead, and works with inference engines that have no idea what a LoRA is. The downside is that you lose the ability to turn the adapter off. If you trained ten task-specific adapters off the same base, merging gives you ten full-size checkpoints instead of one base model plus ten tiny adapter files.
+
+Swapping keeps the base model loaded once and attaches adapter weights at request time. This is the shape most production serving stacks now support directly — vLLM, TGI, and similar engines can hold dozens of LoRA adapters in GPU memory alongside a single base model and route each request to the right one, batching requests for *different* adapters together on the same forward pass. That's the practical reason multi-tenant or multi-task deployments favor swapping: one A100 serving fifty customer-specific adapters is a very different cost story than fifty merged checkpoints each needing their own memory.
+
+The tradeoff is a small latency and engine-compatibility cost, and a bit more serving infrastructure to reason about. If you only ever ship one adapter and never need to toggle it, merge and simplify your life.
+
+### When merging is the wrong call
+
+Don't merge if you expect to keep training further rounds on top of the same base — merged weights make it harder to isolate what the adapter changed, and you lose the option to A/B the adapter against the un-adapted base in production. Also don't merge quantized bases carelessly: merging a LoRA into a 4-bit `GPTQ` or `AWQ` checkpoint can require dequantizing first, merging in full precision, then re-quantizing, or you'll bake in rounding error. Check your quantization tooling's guidance before merging into a quantized base — see [Quantize a Model](/learn/fine-tuning/quantization-gguf-awq-gptq) for the mechanics.
+
+## Versioning adapters like you version code
+
+An adapter file is worthless without knowing exactly what it's an adapter *for*: which base model checkpoint, which training data snapshot, which hyperparameters, and which eval scores it produced. Treat each adapter the way you'd treat a model artifact in any ML registry — tag it with the base model's exact revision hash (not just "the 8B model," but the specific weights it was trained against), the dataset version, rank and alpha, and the eval results from before you shipped it. Mixing an adapter trained against last month's base checkpoint with this month's base is a quiet way to get garbage output with no error message.
+
+A simple naming convention goes a long way: `{base-model}-{task}-r{rank}-v{n}`. Store adapters in a registry (even a tagged directory in object storage works) alongside their eval report, not just the weights. When you're swapping between many task adapters at serving time, this discipline is what keeps "which adapter is live for which customer" answerable six months later.
+
+**Related:** [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Quantize a Model: GGUF, AWQ, and GPTQ](/learn/fine-tuning/quantization-gguf-awq-gptq), [Optimize Inference Serving: Batching and KV Cache](/learn/fine-tuning/inference-serving-optimization)

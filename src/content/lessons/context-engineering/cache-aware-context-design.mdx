@@ -1,0 +1,36 @@
+---
+title: "Cache-Aware Context Design: Ordering for Cache Hits"
+track: "context-engineering"
+status: live
+summary: "Keep stable content in a fixed prefix so prompt caching keeps paying off instead of resetting on every turn."
+duration: "6 min read"
+---
+
+Prompt caching lets a provider skip reprocessing tokens it has already seen, cutting both latency and cost on repeat calls. But it only works if the tokens it already saw show up again in the exact same order, in the exact same place. Get the ordering wrong and every turn pays full price.
+
+## How the cache actually matches
+
+Providers that support prompt caching (Anthropic, OpenAI, and others) work off a prefix match: they hash the request token-by-token from the start and reuse cached computation up to the first point where this request diverges from a previous one. Everything after that divergence point has to be recomputed, even if the diverging content is a single token in the middle of an otherwise identical prompt.
+
+This means cache hits aren't about whether stable content is present in the request — it's about whether stable content stays in a fixed prefix position. A system prompt, tool definitions, and a large reference document that never change turn to turn are ideal candidates. A timestamp, a user ID, or "today's date is..." dropped into the system prompt is not — it invalidates the entire cache on every single call, even though 99% of the surrounding text is identical.
+
+## Ordering your context for stability
+
+The practical rule: put content in decreasing order of stability, and never insert something volatile before something stable.
+
+```
+[system prompt + tool schemas]   <- changes rarely, put first
+[long reference docs / few-shot examples]  <- changes occasionally
+[conversation history]           <- grows every turn, append-only
+[current user turn]              <- always new, put last
+```
+
+Conversation history itself stays cacheable as long as you only append to it rather than editing or reordering earlier turns — each new turn extends the same prefix instead of breaking it. This is why summarization or history-trimming (see /learn/context-engineering/summarization-for-compaction) has a caching cost: rewriting earlier turns invalidates every cache entry built on the old version, so it's worth doing in batches rather than continuously.
+
+A common mistake is injecting "helpful" dynamic context — retrieved documents, current date, session metadata — near the top of the prompt because it feels like it belongs with the instructions. Move it as late as possible, right before the user's actual query, so it can't poison the prefix for everything that follows.
+
+## What breaks a cache without you noticing
+
+Tool definitions are part of the prefix too (see /learn/tools-function-calling/token-cost-of-tool-schemas). Reordering your tool list, adding a tool mid-session, or having a framework serialize the same schema slightly differently between calls will all silently invalidate the cache — the diff can be as small as a changed key order in JSON. If your latency or cost suddenly jumps without a prompt change you're aware of, check whether something upstream is touching the order or formatting of the "stable" part of your context before you look anywhere else.
+
+**Related:** [Prompt Caching for Speed and Cost](/learn/genai-app-dev/prompt-caching-for-speed-and-cost), [Context Ordering: Why Position Changes What the Model Notices](/learn/context-engineering/context-ordering-and-recency-effects), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies)

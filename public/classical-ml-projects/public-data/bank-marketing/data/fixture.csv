@@ -1,0 +1,10 @@
+id,balance,housing,previous,subscribed
+b1,2000,no,0,1
+b2,300,no,0,0
+b3,1400,yes,0,0
+b4,800,yes,3,1
+b5,2200,no,1,1
+b6,100,yes,0,0
+b7,700,no,2,1
+b8,1500,no,0,1
+

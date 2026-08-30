@@ -1,0 +1,31 @@
+---
+title: "Matrices as Transformations"
+track: "maths-foundations"
+status: live
+summary: "A matrix isn't a grid of numbers to memorize — it's a machine that rotates, scales, and mixes vectors, which is exactly what a neural network layer does."
+duration: "5 min read"
+---
+
+Forget the grid-of-numbers definition for a second. A matrix is a function: you feed it a vector, it hands back a new vector. What it does to that vector — stretch it, spin it, squash it flat, mix its coordinates together — is the actual content of the matrix. Everything else is bookkeeping.
+
+## A matrix moves vectors
+
+Take a 2D vector like `[1, 0]`. Multiply it by a matrix, and you get a different vector back. Do this for every point in a shape — a square, a circle, a scatter of points — and the matrix reshapes the whole thing at once. A matrix like `[[2, 0], [0, 2]]` doubles every vector's length: pure scaling. A matrix like `[[0, -1], [1, 0]]` rotates every vector 90 degrees. A matrix like `[[1, 1], [0, 1]]` shears the space, sliding the top of a square sideways while the bottom stays put.
+
+The columns of the matrix tell you exactly what it does: each column is where the corresponding basis vector — `[1,0]` or `[0,1]` — lands after the transformation. Read the columns, and you've read the matrix's whole behavior without computing a single product.
+
+## Why this is how neural networks compute
+
+A neural network layer is, at its core, `y = Wx + b`: multiply the input vector `x` by a weight matrix `W`, add a bias, and (usually) squash the result with a nonlinearity. That matrix multiplication is not incidental — it's a learned transformation of the input space. Early in training, `W` is random and the transformation is noise. As training proceeds, gradient descent nudges the entries of `W` so the transformation increasingly separates the vectors you want separated (cat embeddings from dog embeddings, spam from not-spam) and collapses together the ones you want treated the same.
+
+Stack layers, and you're composing transformations: rotate this way, scale that way, mix these dimensions together, repeat. A deep network is a long chain of matrix transformations interleaved with nonlinearities, gradually warping raw input space into a shape where the answer becomes a simple cut.
+
+## Combining two dimensions into one
+
+Matrices also do something a single number can't: mix dimensions. A matrix can take a 2D point and produce output where the first coordinate is some combination of both inputs — like `0.7` times the first input plus `0.3` times the second. This is exactly what happens when a model layer combines multiple input features into a new, more useful signal. It's also the mechanical basis of the [dot product](/learn/maths-foundations/dot-product-explained): each output coordinate of a matrix-vector product is literally a dot product between an input vector and one row of the matrix.
+
+## What to actually take away
+
+You don't need to hand-compute matrix products to reason about models. What you need is the picture: a matrix is a specific, describable reshaping of space, weight matrices in a network are transformations learned by data, and stacking layers means stacking transformations. When you later meet [embeddings](/learn/maths-foundations/the-geometry-of-embeddings) or the [attention mechanism](/learn/llm-foundations/attention-mechanism-explained), you're seeing this same idea — vectors getting moved around by matrices — applied at a much larger scale.
+
+**Related:** [The Dot Product, Explained](/learn/maths-foundations/dot-product-explained), [Gradients: Slopes in Many Dimensions](/learn/maths-foundations/gradients-and-slopes), [The Geometry of Embeddings](/learn/maths-foundations/the-geometry-of-embeddings)

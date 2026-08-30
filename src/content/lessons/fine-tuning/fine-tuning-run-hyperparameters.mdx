@@ -1,0 +1,35 @@
+---
+title: "Set Hyperparameters for a Fine-Tuning Run"
+track: "fine-tuning"
+status: live
+summary: "Learning rate, epochs, batch size, and warmup: the knobs that separate a model that learns from one that overfits."
+duration: "6 min read"
+---
+
+Most fine-tuning failures aren't bad data, they're bad knobs. Get the learning rate wrong and the model either barely moves or forgets everything it knew. Get epochs wrong and it memorizes your training set instead of learning the pattern behind it.
+
+## Learning rate: the knob that matters most
+
+Learning rate controls how far each training step nudges the weights. For full fine-tuning, rates typically sit in the 1e-5 to 5e-5 range. For LoRA (see [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning)), you can go higher, often 1e-4 to 2e-4, because you're only updating a small set of adapter weights, not the whole network.
+
+Too high, and loss spikes or the model's outputs degrade into repetition and nonsense. Too low, and after your full budget of steps the model looks almost identical to the base model. If you're unsure, start conservative and watch the loss curve. A smooth, gently declining curve is what you want. A jagged one that spikes and swings is a signal to cut the rate in half.
+
+## Epochs: watch the gap, not just the loss
+
+An epoch is one full pass through your training set. For fine-tuning on a few thousand examples, 2 to 4 epochs is a common range. More than that and you risk catastrophic forgetting: the model starts overwriting general capabilities to better fit your narrow dataset (covered in [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting)).
+
+The tell isn't training loss alone, it's the gap between training loss and validation loss. If training loss keeps dropping while validation loss flattens or rises, you've crossed into memorization. Stop there, not later. Many training setups support early stopping on validation loss so you don't have to babysit this by hand.
+
+## Batch size and gradient accumulation
+
+Batch size trades off two things: how noisy each gradient update is, and how much GPU memory you burn. Small batches (4-8) give noisier, sometimes more exploratory updates and fit on smaller GPUs. Larger batches (32+) give smoother, more stable updates but need more memory.
+
+When your hardware can't fit the batch size you want, use gradient accumulation: run several small "micro-batches," accumulate their gradients, then apply one update. A micro-batch of 4 accumulated over 8 steps behaves like a batch of 32, at a fraction of the memory cost. Most training frameworks expose this as a simple `gradient_accumulation_steps` setting.
+
+## Warmup and scheduling
+
+Jumping straight to your target learning rate on step one can destabilize training, especially early when the model's gradients are still noisy. A warmup period, usually the first 3-10% of total steps, ramps the learning rate up from near zero. After warmup, a decay schedule (commonly cosine or linear) tapers the rate back down toward the end of training, so the model settles rather than overshoots.
+
+As a starting point: warmup ratio 0.03-0.1, cosine decay to near zero by the final step, learning rate in the ranges above depending on full fine-tuning vs LoRA, and 2-4 epochs with validation-loss early stopping. Treat these as a first guess, not a formula. Run a short pilot, look at the loss curves, and adjust one knob at a time rather than changing everything between runs.
+
+**Related:** [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting), [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model)

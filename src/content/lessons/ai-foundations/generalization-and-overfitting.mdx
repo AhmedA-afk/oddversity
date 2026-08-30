@@ -1,0 +1,33 @@
+---
+title: "Generalization vs. Overfitting"
+track: "ai-foundations"
+status: live
+summary: "A model that memorizes its training data instead of the pattern behind it fails the moment it sees something new."
+duration: "5 min read"
+---
+
+Imagine a student who memorizes every answer on last year's practice exam word-for-word, but bombs the real test because the questions are phrased differently. That student learned the *answers*, not the *material*. Machine learning models can fail the exact same way, and the name for it is overfitting.
+
+## What generalization actually means
+
+A model is trained on a set of examples so it can perform well on examples it has never seen. That ability to handle new, unseen input is generalization — it's the entire point of training a model in the first place. Nobody needs a model that only works on data already sitting in the training set; you could just look up the answer directly.
+
+Generalization works when the model learns the underlying pattern connecting inputs to outputs. If you train a model to recognize cats, generalization means it learns "whiskers, pointed ears, fur texture, general shape" — features that hold up across photos it's never encountered.
+
+## What overfitting looks like
+
+Overfitting is what happens when a model, instead of learning that pattern, learns the noise and idiosyncrasies specific to its training examples. Given enough capacity and not enough constraint, a model can essentially memorize: "this exact pixel arrangement equals cat," "this exact sentence equals positive sentiment." It scores close to perfect on the data it trained on and falls apart on anything new.
+
+The telltale sign is a gap between training performance and performance on held-out data. A model scoring 99% on its training set but 60% on fresh examples isn't a good model — it's a model that crammed for the wrong exam. This is why practitioners always split data into a training set and a separate held-out (validation or test) set: training accuracy alone tells you almost nothing about whether the model actually generalized.
+
+## Why it happens
+
+Overfitting tends to show up when a model has more capacity to memorize than the training data has genuine signal to teach it, or when there just isn't enough training data to make memorization impractical. A model with millions of parameters trained on a few hundred examples has plenty of room to memorize every one of them rather than being forced to find the general rule.
+
+The opposite failure, underfitting, is a model too simple or too undertrained to capture the pattern at all — it does poorly on both training and new data. Generalization sits in the middle: enough capacity and training to capture the real signal, not so much that it starts capturing noise instead.
+
+## Why this matters for working with LLMs
+
+Large language models are pretrained on enormous, varied datasets specifically because scale and diversity push models toward generalization rather than memorization — see [The Data the Model Learned From](/learn/ai-foundations/the-data-the-model-learned-from). It's also why [AI Benchmarks](/learn/ai-foundations/benchmarks-and-what-they-miss) can mislead: a model that has effectively "seen" a benchmark's questions during training can look like it generalizes when it's actually just recalling.
+
+**Related:** [How LLMs Work](/learn/ai-foundations/how-llms-work), [Training vs. Inference](/learn/ai-foundations/training-vs-inference), [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss)

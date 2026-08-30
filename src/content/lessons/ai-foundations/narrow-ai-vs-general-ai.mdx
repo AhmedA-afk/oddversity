@@ -1,0 +1,27 @@
+---
+title: "Narrow AI vs. General AI"
+track: "ai-foundations"
+status: live
+summary: "Every AI system in use today, including LLMs, is narrow — not the general intelligence the word 'AI' implies."
+duration: "4 min read"
+---
+
+When someone says "AI," they usually picture something like the AI from movies — a system that can reason, learn, and act across any domain the way a person can. Nothing that exists today does that. Every system in production, from spam filters to Claude itself, is narrow AI: extremely capable within a bounded scope, and not capable at all outside it.
+
+## What "narrow" actually means
+
+A narrow AI system is built and trained for a specific class of task. A chess engine plays world-class chess and cannot hold a conversation. An image classifier can spot tumors in scans and cannot write an email. Even a large language model, despite feeling general-purpose because it handles so many *kinds* of text tasks, is still narrow in a deeper sense: it does one thing — predict the next token — extraordinarily well, and everything it appears to "do" (coding, translating, reasoning through a math problem) is that single skill applied to different inputs.
+
+This is easy to miss because the surface area is so wide. A model that can draft a legal memo, debug Python, and explain a recipe in the same conversation looks general. But ask it to physically adjust a machine on a factory floor, or to genuinely update its own goals based on an experience it had, and the illusion breaks. The breadth of tasks isn't the same as general intelligence — it's a very large narrow skill (next-token prediction) trained on a very large and varied dataset. See [How LLMs Work](/learn/ai-foundations/how-llms-work) for what that skill actually consists of.
+
+## Artificial General Intelligence (AGI)
+
+The term for the movie version — a system with human-level, transferable intelligence across essentially any domain, able to learn new tasks the way a person can without being purpose-built for them — is Artificial General Intelligence, or AGI. As of 2026, AGI does not exist. It's a research target and a subject of genuine, unresolved debate among researchers about what it would even mean to achieve it, not a category any shipping product belongs to, regardless of how a product is marketed.
+
+## Why this distinction matters practically
+
+Confusing narrow AI with general intelligence leads to two mirror-image mistakes. One is over-trusting a model: assuming that because it wrote a fluent, confident paragraph about a topic, it "understands" that topic the way a person would, or that its competence in one area implies competence in an unrelated one. The other is under-trusting it: dismissing a genuinely useful narrow tool because it isn't the sci-fi version.
+
+The more useful frame is to ask, for any given system: what specific task was this trained and evaluated on, and how far outside that task am I now asking it to operate? That question is what [A Mental Model for What LLMs Can and Can't Do](/learn/ai-foundations/what-llms-can-and-cannot-do) builds out in practice, and it's also why [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss) matters — a benchmark score tells you about performance on that narrow slice, not about general capability.
+
+**Related:** [How LLMs Work](/learn/ai-foundations/how-llms-work), [A Mental Model for What LLMs Can and Can't Do](/learn/ai-foundations/what-llms-can-and-cannot-do), [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss)

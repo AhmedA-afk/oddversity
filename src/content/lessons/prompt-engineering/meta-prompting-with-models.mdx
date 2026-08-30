@@ -1,0 +1,43 @@
+---
+title: "Meta-Prompting: Using a Model to Write Your Prompts"
+track: "prompt-engineering"
+status: live
+summary: "Use one model call to draft, critique, or rewrite the prompt a second call will actually run."
+duration: "5 min read"
+---
+
+You don't have to write every prompt from scratch. Meta-prompting means asking a model to write, critique, or rewrite a prompt — then handing that output to the call that does the real work.
+
+## The basic pattern
+
+Split the job into two calls. The first is the "prompt engineer" call: you describe the task, give a few example inputs and desired outputs, and ask the model to draft a system prompt for it. The second call is the "worker" call: it takes that drafted prompt and actually runs the task on new inputs.
+
+This works because critiquing and structuring a prompt is itself a language task the model is good at — spotting ambiguous instructions, suggesting missing constraints, proposing a clearer output format. You're not asking the model to be smarter at the underlying task; you're asking it to be a better prompt engineer than your first draft.
+
+A minimal version looks like this:
+
+```
+Meta call:
+"I want a prompt that classifies support tickets into
+billing / bug / feature-request / other. Here are 5
+example tickets and their correct labels: [...]
+Write a system prompt for a model that will do this
+classification reliably. Include the label definitions
+and an instruction for what to do with ambiguous cases."
+
+Worker call:
+system: <output of the meta call>
+user: <a new support ticket>
+```
+
+## Where it actually earns its keep
+
+Meta-prompting pays off in three situations. First, cold-start: you don't yet know the failure modes of a task, so a model surfaces edge cases (what about tickets in two categories at once?) that you'd otherwise only find after shipping. Second, iteration at scale: if you're maintaining dozens of prompts across features, having a model draft the first pass and a human edit it is faster than writing each one by hand — see [Automatic Prompt Optimization with Tools Like DSPy](/learn/prompt-engineering/automatic-prompt-optimization) for the tooled, systematic version of this idea. Third, self-critique loops: after the worker call runs, feed its output back to a "critic" call — did this follow the instructions? what would you change? — and use the critique to revise the prompt for next time.
+
+## The failure mode to watch
+
+Meta-prompting compounds errors if you skip verification. A model can confidently draft a prompt that looks well-structured but encodes a subtly wrong assumption about your task — and because it reads fluently, it's easy to ship without checking. Always run the drafted prompt against real examples with known correct answers before trusting it, the same way you'd check any other prompt change; see [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics). And don't let the meta call replace your own judgment on the actual task requirements — it's a drafting tool, not a substitute for knowing what "correct" means for your use case.
+
+Treat the meta-prompt itself as a versioned artifact too, not a throwaway — track it the way you'd track any other prompt so you can tell whether a later "improvement" actually improved anything.
+
+**Related:** [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics), [Automatic Prompt Optimization with Tools Like DSPy](/learn/prompt-engineering/automatic-prompt-optimization), [Prompt Versioning: Treating Prompts Like Code](/learn/prompt-engineering/prompt-versioning-and-change-management)

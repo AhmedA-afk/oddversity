@@ -1,0 +1,33 @@
+---
+title: "Extended Thinking: Controlling How Much a Model Reasons Before Answering"
+track: "prompt-engineering"
+status: live
+summary: "Setting reasoning-effort and thinking-budget controls, and knowing when more deliberation helps versus just burns tokens."
+duration: "6 min read"
+---
+
+Reasoning models can think before they answer — generating a private scratchpad of deliberation the API bills you for but the user never sees by default. The knob that controls how much of that thinking happens is usually the single highest-leverage setting you'll touch on a reasoning model, and most people leave it on a default that's wrong for their task.
+
+## Two ways providers expose the knob
+
+Anthropic's Claude models expose a **thinking budget** — a token count you set (say, 1024 or 32000) that caps how long the model can deliberate before it has to commit to a response. OpenAI's reasoning models instead expose a **reasoning effort** level — typically `low`, `medium`, or `high` — which maps internally to a similar tradeoff without giving you direct token control. Both are answering the same question: how much private compute does the model get before it has to produce the visible output?
+
+Neither knob makes the model "smarter" in a fixed sense. It gives the same model more room to catch its own mistakes, explore alternative approaches, and verify arithmetic or logic before committing to an answer. That room has diminishing, and sometimes negative, returns.
+
+## When more thinking actually helps
+
+Extended thinking earns its cost on tasks with real branching: multi-step math, debugging a subtle logic error, planning a sequence of tool calls where an early wrong turn wastes the rest, or any problem where a correct-sounding first draft is a specific known failure mode. If you can't write a short checklist of sub-steps the task requires, thinking budget is buying you a rewording of the same shallow answer, not a better one.
+
+A rough tell: if a competent person would need to think for more than a few seconds — not because the question is long, but because it's genuinely hard — the task is a thinking-budget candidate. Formatting a table, summarizing a doc, or answering "what does this function do" almost never is.
+
+## The failure mode: paying for nothing
+
+Cranking reasoning effort to maximum on every call is a common and expensive mistake. On simple, well-specified tasks, high thinking budgets mostly add latency and cost without changing the answer — the model reaches the same conclusion it would have reached immediately, just after a longer detour. Worse, on some tasks over-thinking can actively hurt: a model that keeps second-guessing a correct first instinct can talk itself into a wrong one, especially on questions with a crisp right answer and no real branching to explore.
+
+Treat reasoning effort the way you'd treat any other cost-sensitive parameter: start low, and raise it only for the specific task classes where you've verified — not assumed — that it improves outcomes. In production, this usually means routing by task type rather than setting one global effort level, similar to how you'd think about [model routing by task complexity](/learn/production/model-routing-by-task-complexity). Log outcomes across effort levels the way you would any other prompt variant — see [evaluating prompts before you ship them](/learn/prompt-engineering/prompt-evaluation-basics) — before trusting a default that "feels" safer.
+
+## Thinking is not the same as showing work
+
+Extended thinking is distinct from asking a non-reasoning model to write out its reasoning in the visible response, which is [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting). Chain-of-thought is a prompting technique that works on any model by changing what the output contains. Extended thinking is a platform feature: a separate reasoning phase, on a model built to use it, that's billed and configured independently of the final answer. You can combine them — a reasoning model that also gets prompted to structure its visible answer well — but raising the thinking budget on a model that wasn't asked to reason carefully about the actual decision points won't substitute for a well-scoped prompt.
+
+**Related:** [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Reasoning Models and Test-Time Compute](/learn/llm-foundations/reasoning-models-test-time-compute), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity)

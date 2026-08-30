@@ -1,0 +1,90 @@
+---
+import Layout from '../../components/Layout.astro';
+import { getCollection } from 'astro:content';
+import { ogImage } from '../../data/og-images';
+
+const guides = (await getCollection('guides')).sort(
+  (a, b) => Date.parse(b.data.published) - Date.parse(a.data.published),
+);
+const levels = ['beginner', 'intermediate', 'advanced'] as const;
+const byLevel = levels.map((level) => ({ level, items: guides.filter((g) => g.data.level === level) }));
+const itemList = guides.map((g) => ({ name: g.data.title, url: `/guides/${g.id}` }));
+const faq = guides.map((g) => ({ q: g.data.question, a: g.data.description }));
+---
+<Layout
+  title="Guides"
+  description={`${guides.length} task-shaped walkthroughs for building with AI — RAG pipelines, MCP servers, agent loops, evals, structured output, cost and security. Free, with runnable code.`}
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Guides', url: '/guides' }]}
+  itemList={itemList}
+  faq={faq}
+  image={ogImage('page-guides')}
+  imageAlt="Oddversity guides"
+>
+  <section class="head container">
+    <span class="eyebrow">Guides</span>
+    <h1>One task, start to finish.</h1>
+    <p class="sub">
+      A lesson explains one idea. A guide takes one real job — build the retrieval pipeline,
+      ship the MCP server, write the first eval — and walks it end to end, with the decisions
+      explained and the failure modes named. Code you can run, not pseudocode.
+    </p>
+  </section>
+
+  {byLevel.map(({ level, items }) => items.length > 0 && (
+    <section class="container grp">
+      <div class="grp-head">
+        <h2>{level === 'beginner' ? 'Start here' : level === 'intermediate' ? 'Building' : 'Harder problems'}</h2>
+        <span class="grp-rule"></span>
+        <span class="mono count">{items.length}</span>
+      </div>
+      <div class="list">
+        {items.map((g) => (
+          <a class="guide" href={`/guides/${g.id}`}>
+            <div class="gmain">
+              <span class="q mono">“{g.data.question}”</span>
+              <h3>{g.data.title}</h3>
+              <p>{g.data.description}</p>
+              <div class="chips">
+                {g.data.tags.map((t) => <span class="chip">{t}</span>)}
+              </div>
+            </div>
+            <div class="gmeta">
+              <span class="mono">{g.data.duration}</span>
+              <span class="mono steps">{g.data.steps.length} steps</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+</Layout>
+
+<style>
+  .head { padding-block: 56px 12px; }
+  .head h1 { font-size: clamp(32px, 5vw, 46px); letter-spacing: -.022em; margin-top: 14px; }
+  .sub { margin-top: 18px; color: var(--muted); max-width: 64ch; font-size: 15.5px; line-height: 1.7; }
+  .grp { padding-top: 48px; }
+  .grp-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .grp-head h2 { font-size: 20px; letter-spacing: -.014em; }
+  .grp-rule { flex: 1; height: 1px; background: var(--rule); }
+  .count { font-size: 11px; color: var(--muted); }
+  .list { display: flex; flex-direction: column; }
+  .guide {
+    display: flex; gap: 28px; align-items: flex-start; justify-content: space-between;
+    padding: 22px 4px; border-top: 1px solid var(--rule);
+  }
+  .guide:last-child { border-bottom: 1px solid var(--rule); }
+  .guide:hover { text-decoration: none; background: var(--paper); }
+  .gmain { min-width: 0; }
+  .q { display: block; font-size: 12px; color: var(--muted); }
+  .guide h3 { margin-top: 7px; font-size: 21px; letter-spacing: -.014em; }
+  .guide:hover h3 { color: var(--accent); }
+  .guide p { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 72ch; }
+  .guide .chips { margin-top: 12px; }
+  .gmeta { flex: none; text-align: right; display: flex; flex-direction: column; gap: 6px; padding-top: 22px; }
+  .gmeta span { font-size: 11px; color: var(--muted); }
+  @media (max-width: 700px) {
+    .guide { flex-direction: column; gap: 10px; }
+    .gmeta { flex-direction: row; gap: 12px; padding-top: 0; text-align: left; }
+  }
+</style>

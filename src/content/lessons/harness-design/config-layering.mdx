@@ -1,0 +1,54 @@
+---
+title: "Config Layering: Global, Project, and Local Settings"
+track: "harness-design"
+status: live
+summary: "How a harness merges settings from user, project, and session scopes into one coherent config with a clear precedence order."
+duration: "5 min read"
+---
+
+A harness runs the same binary for every user, but no two setups look alike — one person wants a different default model, one repo needs a stricter sandbox, one session needs a permission bumped just for the next command. Config layering is how a harness reconciles all three without turning settings into a guessing game.
+
+## The three scopes
+
+Most harnesses split configuration into a small number of scopes, ordered from broadest to narrowest:
+
+- **Global (user)** — lives in the user's home directory. Applies to every project they touch: default model, editor preferences, global permission allowlists.
+- **Project** — checked into the repo itself, so it travels with the code and applies to every contributor. This is where a team pins the sandbox policy or denies a dangerous tool for everyone who opens the repo.
+- **Local (session or machine)** — the narrowest scope, often gitignored. One person's API key on one machine, or a permission they granted for this session only.
+
+Each scope is just a file with the same schema. The harness doesn't treat them as different formats — it treats them as different priorities.
+
+## Precedence: narrow beats broad
+
+The rule that makes layering predictable: **the more specific scope wins**. Local overrides project, project overrides global. If a team's project config pins a sandbox policy, it wins over whatever a contributor set globally on their own machine — that's the point of checking it in. If that contributor then overrides one field locally, their local file wins over both, but only for that field.
+
+Crucially, this is a merge, not a replacement. A harness walks the scopes from broadest to narrowest and merges key by key, so a project file that sets one field doesn't blank out everything the global file specified elsewhere:
+
+```json
+// global: ~/.config/harness/settings.json
+{ "model": "default-model", "permissions": { "allow": ["Read", "Grep"] } }
+
+// project: .harness/settings.json (checked into the repo)
+{ "permissions": { "deny": ["Bash(curl:*)"] } }
+
+// local: .harness/settings.local.json (gitignored)
+{ "model": "faster-model" }
+
+// effective config for this session
+{
+  "model": "faster-model",
+  "permissions": { "allow": ["Read", "Grep"], "deny": ["Bash(curl:*)"] }
+}
+```
+
+Notice the effective config keeps `allow` from global and adds `deny` from project — a naive "last file wins" replacement would have silently dropped the allowlist.
+
+## Where deny floors break the rule
+
+Merge-by-priority has one deliberate exception. A `deny` rule set by an org or project is usually treated as a floor, not a default — no narrower scope, including a user's own local file, is allowed to remove it. If ordinary merging applied everywhere, a user could paste an `allow` rule locally and quietly punch a hole through a security boundary someone else put in place on purpose. Keeping deny floors outside the normal override chain is what makes project-level policy actually enforceable rather than advisory — the deeper mechanics of that live in [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers).
+
+## Why layering earns its complexity
+
+The alternative — one flat settings file — forces an ugly choice: either every setting is global (so a team can't enforce anything project-specific) or every setting is per-repo (so a user has to redeclare their preferences in every project they touch). Layering lets each scope own what it's actually responsible for: the user owns their defaults, the team owns shared policy, and the session owns the ephemeral stuff neither should have to know about. That division is also what makes [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems) and [Keeping Secrets Out of Prompts, Logs, and Transcripts](/learn/harness-design/secrets-in-the-harness) tractable — both depend on knowing exactly which scope a given rule or credential came from, and being able to reason about precedence deterministically instead of hoping the right file loaded last.
+
+**Related:** [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Keeping Secrets Out of Prompts, Logs, and Transcripts](/learn/harness-design/secrets-in-the-harness)

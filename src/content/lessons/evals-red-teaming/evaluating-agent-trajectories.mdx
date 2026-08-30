@@ -1,0 +1,43 @@
+---
+title: "Evaluating Agent Trajectories, Not Just Final Answers"
+track: "evals-red-teaming"
+status: live
+summary: "Score the sequence of tool calls an agent made, not just its final answer, since a right answer can hide a wrong process."
+duration: "6 min read"
+---
+
+An agent that books the correct flight after canceling three real reservations by mistake did not succeed. Final-answer grading would call that a pass. Trajectory evaluation looks at the path, not just the destination, and it's the only way to catch that kind of failure.
+
+## Why the final answer isn't enough
+
+A single-turn LLM call has one output to grade: the text it returned. An agent has a trajectory — a sequence of thoughts, tool calls, tool results, and intermediate decisions that led somewhere. Two agents can land on the identical correct answer through very different paths: one calls the search tool once with a precise query, the other calls it eight times, hits a rate limit, silently drops an error, and guesses its way to the same number. Grading only the endpoint treats these as equivalent. In production they aren't — the second agent is one flaky API away from a wrong answer, and it's burning ten times the tokens and latency to get there.
+
+Trajectory evaluation exists to catch process failures that a correct final answer hides: redundant or looping tool calls, ignoring an error instead of handling it, calling a destructive tool (delete, send, purchase) when a read-only one would do, or reaching the right answer by a lucky guess rather than by using the evidence the tools actually returned.
+
+## What you actually score
+
+Break the trajectory into checkable claims and grade each one, either with hand-written assertions or an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) reading the full trace:
+
+- **Tool selection** — did it call the right tool for the step, not just any tool that returned plausible-looking data?
+- **Argument correctness** — were the parameters it passed actually derived from prior context, or invented?
+- **Step count and redundancy** — did it repeat a call whose result it already had?
+- **Error handling** — when a tool call failed, did it retry sensibly, ask for help, or silently plow ahead on stale or missing data?
+- **Order and dependencies** — did it read before writing, check availability before booking, confirm before deleting?
+
+Frameworks like LangSmith and Braintrust represent a trajectory as an ordered list of steps and support two grading styles. **Exact-match trajectory grading** compares the agent's step sequence against a golden reference — useful for narrow, deterministic tasks where there's basically one correct path, but brittle the moment a task has multiple valid solutions. **In-order or any-order subset matching** instead checks that a required set of tool calls happened, in order or not, without demanding the trajectory match step-for-step — this tolerates the agent taking a different but still-valid route, which is the common case for open-ended agentic tasks.
+
+```
+trajectory = [
+  {"step": 1, "tool": "search_flights", "args": {...}},
+  {"step": 2, "tool": "check_seat_availability", "args": {...}},
+  {"step": 3, "tool": "book_flight", "args": {...}},
+]
+# exact-match: sequence must equal a golden trajectory
+# subset-match: {search_flights, book_flight} must appear, in order
+```
+
+## Building this into your eval suite
+
+Trajectory checks slot into the same harness as your other evals — they just need the full trace as input, not only the final message. Store each run's complete tool-call log alongside its output when you build your [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset), so you can grade both the answer and the path against reference examples. Combine automated trajectory assertions (cheap, fast, run on every commit) with periodic [human review](/learn/evals-red-teaming/human-evaluation-and-annotation) of a sample of traces — humans catch the "technically passed every check but this is a weird way to solve the problem" cases that rule-based grading misses. When you're deciding whether a change made the agent better or worse, diff trajectories across versions the same way you'd diff final-answer scores in [eval-driven iteration](/learn/evals-red-teaming/eval-driven-iteration) — a shorter, cleaner trajectory to the same correct answer is a real improvement even when the accuracy number doesn't move.
+
+**Related:** [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Reading an Agent's Trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev)

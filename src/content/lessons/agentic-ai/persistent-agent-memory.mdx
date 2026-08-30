@@ -1,0 +1,32 @@
+---
+title: "Persistent Memory Architectures: Beyond the Context Window"
+track: "agentic-ai"
+status: live
+summary: "Vector stores, episodic logs, and structured facts: three ways agents remember across sessions, not just turns."
+duration: "6 min read"
+---
+
+An agent's context window is a whiteboard — everything on it is gone the moment the session ends. Persistent memory is a filing cabinet next to the whiteboard: something the agent writes to deliberately and reads from on the next session, so it doesn't relearn your preferences, your codebase, or your name every single time.
+
+## Three shapes of memory
+
+**Vector-store memory** embeds chunks of past interaction (a summary, a fact, a snippet) and retrieves the nearest neighbors to the current query. It's cheap to build and scales well, but retrieval is fuzzy — you get things that are *semantically similar*, not necessarily the *right* facts, and two contradictory memories can both score high enough to surface. This is the same machinery as [RAG](/learn/rag/what-is-rag-and-when-to-use-it), just pointed at the agent's own history instead of a document set.
+
+**Episodic logs** store what actually happened, in order — full transcripts or structured events, timestamped, one per session or task. Nothing is compressed at write time, so nothing is silently lost, but reading one back means summarizing or filtering it, which pushes the cost downstream. This is the natural fit when an agent needs to explain *why* it did something, not just *what* it currently believes.
+
+**Structured-fact memory** keeps a small set of explicit key-value or schema'd records — "user's timezone is IST," "project uses pnpm not npm" — updated in place rather than appended. It's the most reliable to retrieve (no similarity search, no summarization drift) but only works for things you can anticipate as fields ahead of time. Claude Code's own memory files (CLAUDE.md, `~/.claude/CLAUDE.md`) are this pattern: durable facts written in plain text, read in full on every session start.
+
+## Why most production systems use all three
+
+A single scheme breaks down in a predictable way: pure vector recall drifts and contradicts itself over time; pure logs get too expensive to search as they grow; pure structured facts can't capture anything you didn't design a field for. Systems like Letta (formerly MemGPT) split memory into tiers instead — a small "core" block of structured facts kept in context at all times, and a larger "archival" store (vector or log-based) the agent queries on demand via a tool call. That tiering is really a specific application of the general context-engineering move covered in [Structured Memory Stores](/learn/context-engineering/structured-memory-stores) — choosing the right store for the kind of recall you need, not defaulting to one for everything.
+
+## Retrieval is the hard part, not storage
+
+Writing memory is easy — the failure mode is almost always retrieval. Two traps show up constantly:
+
+- **Staleness without contradiction.** "User prefers dark mode" written in March and never updated looks exactly as confident as a fact written yesterday. Structured stores need an update path, not just an append path, or old facts silently outvote new ones.
+- **Over-retrieval.** Pulling ten marginally-relevant memories into context to be safe just reproduces [context rot](/learn/context-engineering/context-rot) — the agent now has to figure out which of ten "facts" to trust, which is strictly harder than having none.
+
+The practical rule: treat persistent memory as its own small retrieval problem, with the same discipline you'd apply to RAG — write concisely, retrieve narrowly, and give facts a way to expire or get overwritten. Compare this to what's actually available inside a single running session — [Short-Term vs Long-Term Memory](/learn/agentic-ai/agent-memory-short-vs-long-term) covers that boundary — persistent memory is the long-term half, engineered so it survives the process exiting.
+
+**Related:** [Short-Term vs Long-Term Memory](/learn/agentic-ai/agent-memory-short-vs-long-term), [Structured Memory Stores: Vector, Key-Value, or Knowledge Graph](/learn/context-engineering/structured-memory-stores), [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state)

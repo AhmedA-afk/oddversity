@@ -1,0 +1,29 @@
+---
+title: "Grouped-Query and Multi-Query Attention"
+track: "llm-foundations"
+status: live
+summary: "How GQA and MQA shrink the KV cache so long-context inference stays fast and affordable to serve."
+duration: "5 min read"
+---
+
+Multi-head attention gives every query head its own key and value projections. That's great for quality and terrible for memory: at inference time you're storing a full set of K and V vectors per head, per token, in the [KV cache](/learn/llm-foundations/the-kv-cache) — and that cache is usually the thing that runs out of GPU memory first, not the model weights.
+
+## The core trick: share keys and values across heads
+
+Multi-query attention (MQA) is the extreme version: keep many query heads, but collapse all of them down to a single shared key head and single shared value head. Every query head attends using the same K and V. The cache shrinks by roughly the number of heads — for a 32-head model, that's a 32x reduction in KV cache size. Google introduced this in 2019, and it shipped in models like PaLM and Falcon because it made serving dramatically cheaper.
+
+The catch is quality. Forcing every head to share one K/V representation throws away some of the diversity that made [multi-head attention](/learn/llm-foundations/multi-head-attention) useful in the first place — different heads can no longer specialize in what they attend to as freely.
+
+Grouped-query attention (GQA) is the compromise that most modern open models actually ship with. Instead of one shared K/V for all heads, you split the query heads into groups — say 8 groups out of 32 heads — and each group shares its own K/V pair. Set the group count to 1 and you get MQA; set it equal to the head count and you're back to ordinary multi-head attention. GQA sits in between, and empirically it recovers almost all the quality of full multi-head attention while still cutting the KV cache by the group ratio (4x, 8x, whatever you choose).
+
+## Why this matters more as context windows grow
+
+The KV cache scales with sequence length, not just model size. A model doing full multi-head attention over 100K+ tokens of context can spend more memory on cached activations than on the weights themselves, especially when you're serving many concurrent requests and batching their caches together. Halving or quartering that per-token cost is often the difference between a context window your GPU can actually hold and one it can't — which is why GQA is one of the standard levers alongside techniques like [speculative decoding](/learn/llm-foundations/speculative-decoding) for keeping long-context inference affordable.
+
+## Converting an existing model
+
+You don't have to train GQA in from scratch. A common recipe, "uptraining," takes a model that was pretrained with full multi-head attention, averages the K and V projections within each group to initialize the smaller GQA projections, and then continues training for a small fraction of the original compute budget to let the model adapt. This is how several production model families retrofitted GQA onto architectures that predated it, getting most of the memory win without a full retrain.
+
+The practical takeaway: if you're choosing or configuring a model for a latency- or memory-sensitive serving setup, GQA's group count is a real lever, not just an architecture footnote — fewer groups means a smaller cache and cheaper long-context serving, at a quality cost that's usually small enough to be worth it.
+
+**Related:** [The KV Cache: How LLMs Avoid Recomputing the Past](/learn/llm-foundations/the-kv-cache), [Multi-Head Attention: Why One Attention Pattern Isn't Enough](/learn/llm-foundations/multi-head-attention), [Speculative Decoding: Generating Tokens Faster](/learn/llm-foundations/speculative-decoding)

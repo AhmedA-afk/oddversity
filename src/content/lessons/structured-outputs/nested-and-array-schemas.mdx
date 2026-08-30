@@ -1,0 +1,50 @@
+---
+title: "Nested Objects and Arrays in Output Schemas"
+track: "structured-outputs"
+status: live
+summary: "How to shape schemas for lists, nested objects, and optional fields so the model fills them in correctly."
+duration: "6 min read"
+---
+
+A flat schema — a handful of top-level string and number fields — is the easy case. Real extraction tasks usually need more: a list of line items, a nested address object, a field that's only sometimes present. Getting those right is what separates a schema that "mostly works" from one that holds up in production.
+
+## Arrays of objects
+
+The most common nested shape is a list of structured items — order line items, search results, extracted entities. Each element gets its own object schema, and that schema needs the same care as a top-level one: required fields, tight types, no ambiguity about what belongs where.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "quantity": { "type": "integer" },
+          "unit_price": { "type": "number" }
+        },
+        "required": ["name", "quantity", "unit_price"]
+      }
+    }
+  },
+  "required": ["items"]
+}
+```
+
+A model asked to extract line items from a messy invoice can now only produce objects that match this shape, for every item in the array. That's the value of nesting the schema instead of asking for a loose block of text you'd have to re-parse.
+
+## Nested objects vs. flattened fields
+
+You can often model the same data two ways: a nested `address` object with `street`, `city`, `zip`, or flattened fields like `address_street`, `address_city`, `address_zip`. Nesting mirrors your actual data model, keeps related fields grouped, and matches how you'll deserialize into a class or struct on the other end — see [Pydantic and Zod](/learn/structured-outputs/pydantic-zod-schema-patterns) for how that mapping works in code. Flattening is sometimes worth it for very shallow, very stable structures where nesting adds ceremony without adding clarity. Default to nesting when the sub-structure has more than two or three fields, or when it repeats elsewhere in the schema.
+
+## Optional fields without ambiguity
+
+Marking a field optional (leaving it out of `required`) tells the model it's fine to omit — but "omit" and "return null" are different behaviors, and providers don't always default to the one you expect. Be explicit: if a field is nullable, say so with a type union (`["string", "null"]`) rather than relying on the model to guess whether missing means absent or unknown. This matters more as schemas get deeper — an optional field three levels into a nested object is an easy place for a model to either hallucinate a placeholder or drop the field silently. Tighter typing here connects directly to the broader question of [schema design choices that reduce errors](/learn/structured-outputs/schema-design-for-reliability).
+
+## Depth is a cost, not a convenience
+
+Every level of nesting adds a chance for the model to misplace a value — put a field one level too shallow, wrap a scalar in an object it didn't need, or drop an array down to a single item. Two or three levels deep is normal and reliable; five or six levels invites errors, especially with smaller or faster models. If your real data model is deeply nested, consider flattening the extraction schema and reconstructing the nested shape afterward in code — you keep the reliability of a shallow schema without giving up your actual object model downstream.
+
+**Related:** [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability), [Pydantic and Zod: Deriving Schemas from Code](/learn/structured-outputs/pydantic-zod-schema-patterns)

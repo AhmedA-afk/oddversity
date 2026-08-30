@@ -1,0 +1,39 @@
+---
+title: "Stateful vs. Stateless MCP Server Design"
+track: "mcp"
+status: live
+summary: "Decide whether your MCP server remembers a session in memory or treats every call as a fresh, independent request."
+duration: "6 min read"
+---
+
+An MCP server has to make a foundational choice early: does it keep anything in memory between requests, or does it treat every tool call as if it just woke up? That choice ripples into how you deploy, scale, and recover the server.
+
+## What "state" means here
+
+A stateless server derives everything it needs from the request itself — arguments, an auth token, maybe a database lookup keyed by an ID the client sends. Call it twice with the same input and you get the same behavior, because there's no session sitting in process memory between calls.
+
+A stateful server keeps something in RAM across calls within a session: an open database transaction, a half-built plan, a cache of files it already read, a conversation-scoped scratchpad. The [Streamable HTTP transport](/learn/mcp/streamable-http-deep-dive) formalizes this with a session ID the client sends on every request, letting a server correlate calls back to the same in-memory context.
+
+## Why it matters more than it looks
+
+The tradeoff shows up the moment you think about running more than one server process. A stateless server is trivial to horizontally scale — put five instances behind a load balancer, any of them can answer any request, and a crashed instance loses nothing because there was nothing to lose. This is the same reasoning behind [running MCP servers in production](/learn/mcp/running-mcp-servers-in-production): stateless servers fit naturally into normal web infrastructure — autoscaling groups, rolling deploys, health-checked pods.
+
+A stateful server breaks that model. If a client's session lives in the memory of instance 3, every subsequent call in that session has to route back to instance 3, or the server needs to externalize the state (Redis, a database, sticky sessions at the load balancer) which mostly cancels out the convenience of keeping it in memory in the first place. It also means a server restart or crash can silently drop a client's in-flight context, which is a much worse failure mode over HTTP than it is for a local stdio server that dies with its one client anyway.
+
+## When state actually earns its keep
+
+Statelessness isn't free either — it just moves the cost. If a tool needs the last five turns of context, a stateless server has to either receive that context on every call (expensive, redundant) or fetch it from a durable store on every call (adds latency to every request instead of paying once at session start).
+
+State is worth it when:
+
+- **Setup is expensive and reusable.** A tool that opens a browser session, an authenticated connection to a legacy system, or loads a large in-memory index shouldn't redo that work on every call.
+- **The interaction is genuinely a sequence**, not a batch of independent facts — think an interactive debugging session where each tool call depends on what the last one found.
+- **You control deployment topology** tightly enough to keep sessions pinned to one process, or you're fine paying for an external session store.
+
+Reach for stateless when the server is mostly a thin wrapper over an API or database that's already the real source of truth — in that case, keeping a second copy of state in server memory is just a cache-invalidation problem you invented for yourself.
+
+## A practical middle ground
+
+Most production MCP servers land somewhere in between: stateless about business data (always re-fetch from the database, never trust an in-memory copy) but stateful about session-scoped conveniences (an open connection, a per-session id used to look up [resource subscriptions](/learn/mcp/resource-subscriptions)). Design the tool schema so a client *could* replay a call against a fresh server instance and get a correct answer — even if in practice you're optimizing the happy path with cached state. That discipline is what keeps a stateful server debuggable instead of becoming a black box only its own memory understands.
+
+**Related:** [Streamable HTTP: Sessions, Resumption, and Reconnects](/learn/mcp/streamable-http-deep-dive), [Running MCP Servers in Production](/learn/mcp/running-mcp-servers-in-production), [Resource Subscriptions: Notifying Clients When Data Changes](/learn/mcp/resource-subscriptions)

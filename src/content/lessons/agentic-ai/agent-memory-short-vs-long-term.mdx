@@ -1,0 +1,33 @@
+---
+title: "Short-Term vs Long-Term Memory"
+track: "agentic-ai"
+status: live
+summary: "Why an agent's context window and its persistent memory are different systems that solve different problems."
+duration: "5 min read"
+---
+
+An agent forgets everything the moment its context window fills up or the session ends — unless you build it a way to remember. That's two separate jobs: holding what's relevant right now, and carrying what matters into the future.
+
+## Short-term memory is the context window
+
+Short-term memory is whatever's currently sitting in the prompt: the system instructions, the last few tool calls and results, the running conversation. It's fast, it's free to use once it's there, and it disappears the instant the session ends or gets compacted away. This is the same context that [the agent loop](/learn/agentic-ai/the-agent-loop) reads on every turn to decide what to do next.
+
+The problem is size. A long-running agent — one doing multi-step research, or one that's been open for hours — will eventually generate more tool output than fits in the window. When that happens you're not choosing whether to lose information, only how: summarizing old turns down to their conclusions, dropping tool results you no longer need, or rolling the oldest messages off entirely. This is the same tradeoff covered in [compaction](/learn/context-engineering/summarization-for-compaction), just applied specifically to an agent's own trace instead of a chat transcript.
+
+## Long-term memory is deliberate storage
+
+Long-term memory is anything the agent writes down somewhere that outlives the context window — a file on disk, a row in a database, an entry in a vector store. Nothing lands there automatically. The agent (or the harness around it) has to decide something is worth keeping, then explicitly save it, and later explicitly retrieve it back into context when it's relevant again.
+
+Three patterns cover most real systems:
+
+- **Flat files** — a markdown scratchpad, a `TODO.md`, a running log the agent appends to and rereads at the start of each session. Simple, inspectable, and enough for a single agent with a handful of durable facts.
+- **Structured summaries** — periodically distilling raw history into compact notes ("user prefers concise answers," "project uses Postgres, not MySQL") rather than storing the whole transcript.
+- **Vector stores** — embedding past interactions or facts so the agent can pull back only what's semantically relevant to the current task, instead of rereading everything. This is retrieval applied to the agent's own memory, using the same [embeddings and semantic similarity](/learn/rag/embeddings-and-semantic-similarity) machinery RAG systems use over documents.
+
+## Why the split matters
+
+Treating these as one thing is where memory systems go wrong. Cramming everything into the context window burns tokens and triggers [context rot](/learn/context-engineering/context-rot) long before the window is technically full. Writing everything to long-term storage without a retrieval step just builds a write-only archive nobody reads back. The working pattern is closer to how you'd manage your own notes: keep only the active task in your head, write down what you'll need later, and go look it up when it becomes relevant again — not before.
+
+A concrete split: within one task, short-term memory carries the plan and the last few tool results — see [planning before acting](/learn/agentic-ai/planning-and-task-decomposition). Across tasks or sessions, long-term memory carries the facts that shouldn't have to be rediscovered every time — user preferences, prior decisions, what's already been tried and failed.
+
+**Related:** [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction), [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity)

@@ -1,0 +1,40 @@
+---
+title: "Versioning MCP Servers Without Breaking Clients"
+track: "mcp"
+status: live
+summary: "Change a server's tools and schemas over time without breaking clients already connected to it."
+duration: "5 min read"
+---
+
+An MCP server is a dependency someone else's agent trusts. The moment you ship it, you've made a promise about what its tools do and what they expect — and every rename, removed field, or repurposed parameter breaks a client silently, usually mid-task, with no compiler to catch it.
+
+## Why MCP versioning is harder than API versioning
+
+A REST API breaks loudly: a client hits a 404 or a schema mismatch and someone notices. MCP tools are discovered dynamically — a host calls `tools/list`, hands the results to a model, and the model decides how to call them based on the [tool schema](/learn/mcp/mcp-tool-discovery-and-schemas) it just read. If you rename a parameter, nothing throws an error at connection time. The model just starts calling the tool wrong, or stops calling it at all, and the failure looks like a model problem instead of a server problem.
+
+There's also no single client to coordinate with. Once a server is published, you don't know who's connected — a teammate's local config, a hosted agent, a registry listing pinned by version. You're versioning for an audience you can't message.
+
+## Additive changes are free, everything else costs
+
+The safe move is to only add: new tools, new optional fields, new resources. A model that's never heard of `refund_order_v2` just ignores it; a client reading `tools/list` for the first time sees the new surface with no migration required. This is the same instinct behind [designing a tool schema](/learn/tools-function-calling/designing-a-tool-schema) well from the start — leave room to extend without redefining.
+
+Non-additive changes are the dangerous ones:
+
+- Renaming a tool or a parameter
+- Removing a field a client might depend on
+- Changing what a parameter *means* (same name, new behavior) — this is worse than a rename because nothing signals the change
+- Tightening validation on an input that used to be accepted
+
+If you must make one of these, don't overwrite the old tool in place. Publish the new behavior under a new name (`search_docs_v2`), keep the old tool working, and mark it deprecated in its description — a line like "Deprecated, use search_docs_v2" is often enough for a model to self-migrate, since it reads tool descriptions as part of [tool discovery](/learn/mcp/mcp-tool-discovery-and-schemas). Give it a real deprecation window before removal, not a same-day cutover.
+
+## Protocol version vs. your server's version
+
+Keep two version concerns separate. The MCP *protocol* version is negotiated during initialization — the client and server agree on which spec revision they both speak, independent of anything you built. Your *server's* version — its tool set, its schemas, its business logic — is yours to manage, typically with ordinary semver on the package a client installs (`npm`, `pip`, a container tag).
+
+Treat a major version bump the way you'd treat any breaking release: document what changed, and expect that some connected clients will stay on the old major for a while because nobody re-pins a working config. Design for that world rather than assuming everyone upgrades on your schedule — it's the same discipline covered in [running MCP servers in production](/learn/mcp/running-mcp-servers-in-production).
+
+## Test before you assume it's safe
+
+Don't ship a schema change on faith. Run the new server through [an MCP inspector](/learn/mcp/inspecting-and-testing-mcp-servers) and, if you can, replay a real client session against it. A field that looks unused in your own testing is often the one field a production agent's prompt explicitly tells it to read.
+
+**Related:** [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas), [Running MCP Servers in Production](/learn/mcp/running-mcp-servers-in-production), [Inspecting and Testing MCP Servers](/learn/mcp/inspecting-and-testing-mcp-servers)

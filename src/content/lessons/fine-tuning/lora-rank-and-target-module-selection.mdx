@@ -1,0 +1,39 @@
+---
+title: "Pick LoRA Rank and Target Modules"
+track: "fine-tuning"
+status: live
+summary: "Two knobs decide most of a LoRA run's outcome: which weight matrices you adapt and how large a rank you give them."
+duration: "6 min read"
+---
+
+LoRA doesn't touch the base model's weights — it freezes them and trains a pair of small low-rank matrices alongside each targeted layer. Before you can call `get_peft_model`, you have to decide two things: which layers get an adapter, and how wide that adapter is. Get both wrong and you'll either underfit a task the model could easily learn, or burn memory and overfit on a small dataset.
+
+## Rank: how much new capacity you're adding
+
+Rank (`r`) sets the bottleneck dimension of the low-rank matrices A and B that get multiplied and added to the frozen weight. A rank-8 adapter has far fewer trainable parameters than rank-64, and that's the whole tradeoff:
+
+- **Low rank (4–16)** is enough for narrow behavioral shifts — tone, format, a fixed instruction style, a single-domain classifier. It trains fast, resists overfitting on small datasets, and merges cleanly.
+- **Higher rank (32–128)** matters when the task requires the model to absorb real new knowledge or a substantially different skill — teaching a base model a new language's grammar, or a reasoning style far from its pretraining distribution. More rank means more capacity to memorize your training set too, so it raises overfitting risk if your dataset is small or repetitive.
+
+There's no formula that spits out the right number — teams typically start at r=8 or r=16, watch the eval curve, and go up only if the model is clearly underfitting (training loss won't drop, or the model can't reproduce the target behavior even on training examples). Going from r=16 to r=64 rarely buys as much as people expect; the returns flatten fast once the adapter can express the target shift at all. If you're unsure why overfitting shows up before capacity does, see [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting).
+
+## Target modules: which weights actually move
+
+The original LoRA paper only adapted the attention projections (`q_proj`, `v_proj`). That's still a reasonable default for light steering tasks, but it leaves the MLP/feed-forward layers — which hold most of a transformer's parameters and a large share of its factual and reasoning capacity — completely frozen.
+
+Current practice for most fine-tunes is to target **all linear layers**: the attention projections (`q_proj`, `k_proj`, `v_proj`, `o_proj`) and the MLP projections (`gate_proj`, `up_proj`, `down_proj` in Llama-style architectures). This spreads the same rank budget across more matrices, which empirically tends to match or beat a higher-rank, attention-only adapter at similar or lower total trainable-parameter counts — because the [feed-forward block](/learn/llm-foundations/the-feed-forward-block) is doing real work too.
+
+```text
+target_modules = [
+  "q_proj", "k_proj", "v_proj", "o_proj",
+  "gate_proj", "up_proj", "down_proj",
+]
+```
+
+If you're memory-constrained rather than capacity-constrained, the cheaper lever is dropping `alpha` or `r`, not narrowing `target_modules` back down to attention-only — you lose more from skipping the MLP layers than you gain from a smaller matrix count.
+
+## How rank and targets interact
+
+Think of total adapter capacity as roughly `rank × number of targeted modules`. Two adapters with the same trainable-parameter count can behave very differently depending on how that budget is spread: a high rank on few modules concentrates capacity narrowly, while a lower rank across all linear layers spreads it thin but touches every part of the network's computation. For most instruction-following and domain-adaptation fine-tunes, spreading wins — start with `r=16` across all linear layers, and only push rank up if evals show the model is still capacity-starved after checking your dataset quality first (see [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset)).
+
+**Related:** [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Set Hyperparameters for a Fine-Tuning Run](/learn/fine-tuning/fine-tuning-run-hyperparameters), [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting)

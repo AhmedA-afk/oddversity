@@ -1,0 +1,9 @@
+{
+  "C": 10.0,
+  "gamma": 1.0,
+  "selected_kernel": "rbf",
+  "validation_accuracy": {
+    "linear": 0.5,
+    "rbf": 1.0
+  }
+}

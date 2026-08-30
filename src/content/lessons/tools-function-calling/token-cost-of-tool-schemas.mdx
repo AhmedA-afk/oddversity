@@ -1,0 +1,35 @@
+---
+title: "The Token Cost of Tool Schemas"
+track: "tools-function-calling"
+status: live
+summary: "Tool definitions are sent on every turn and can eat thousands of tokens before the model reads your prompt — here's how to measure and cut that cost."
+duration: "5 min read"
+---
+
+Every tool you register gets serialized into the system context on every single API call — not just the turn where it's used. If you're not measuring that cost, you're paying it blind.
+
+## Why the bill is bigger than it looks
+
+A tool schema isn't just its name and a one-line description. The model sees the full JSON Schema: every parameter, every type, every enum value, every nested object, and — critically — every description string you wrote to make the tool "self-explanatory." A single well-documented tool with five parameters, a couple of enums, and a nested object or two can easily run 200–500 tokens. Ten tools like that is 2,000–5,000 tokens spent before the model has read a word of the user's actual request.
+
+This compounds in agentic setups. If you're calling an [MCP server](/learn/mcp/what-is-mcp) or two, or wiring up a coding-agent-style toolbelt, the tool list can quietly become the largest single line item in your context budget — larger than the conversation history for a fresh session, and paid again on every turn since most APIs resend the full tool list each request.
+
+## How to actually measure it
+
+Don't guess — count. Take the exact JSON your SDK sends for `tools` (log the outgoing request, or serialize your schema array yourself) and run it through the tokenizer for your model family. Compare that number against your typical system-prompt size and your typical user-turn size. If tool schemas are 20-30%+ of a typical request's non-history tokens, that's worth trimming — both for raw cost and because [more tokens in context](/learn/context-engineering/context-rot) is not free even when it's "just" a schema the model didn't need this turn.
+
+Also check whether your provider charges for cached tool definitions differently — a long-lived, unchanging tool list is a strong candidate for prompt caching, since it's identical across a session's turns.
+
+## Where the tokens actually go
+
+Three places, roughly in order of impact:
+
+1. **Descriptions, not structure.** JSON Schema's brackets and keys are cheap; the English prose in `description` fields is expensive. A tool with six terse one-line descriptions can cost half of one with six paragraph-length ones.
+2. **Enums and examples.** Every value in an enum list is tokens, every time, on every call — not just when relevant. A `country` enum with 195 entries is a standing tax on every request that includes the tool.
+3. **Tool count itself.** Ten narrow tools each with their own boilerplate (auth params, pagination params repeated per-tool) cost more than three broader tools that share a parameter shape.
+
+## Trimming without breaking reliability
+
+The instinct to just delete description text is the wrong lever — vague descriptions cause misfires, and a misfire costs far more (a wrong call, a retry, a correction turn) than the tokens you saved. Instead: consolidate near-duplicate tools, hoist shared parameters instead of repeating them across tools, cap enum lists (retrieve valid values via a lookup tool instead of enumerating them inline when the list is long or changes often), and — at real scale — stop sending every tool on every call at all. See [tool selection at scale](/learn/tools-function-calling/tool-selection-at-scale) for how to load only the tools relevant to the current turn, and [progressive tool disclosure](/learn/context-engineering/progressive-tool-disclosure) for the more general context-engineering version of the same idea.
+
+**Related:** [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [Tool Selection at Scale: When You Have Hundreds of Tools](/learn/tools-function-calling/tool-selection-at-scale), [Progressive Tool Disclosure: Hiding Tools Until They're Needed](/learn/context-engineering/progressive-tool-disclosure)

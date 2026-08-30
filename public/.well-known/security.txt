@@ -1,0 +1,15 @@
+# Security contact for oddversity.com
+# https://securitytxt.org
+
+Contact: https://oddversity.com/about
+Preferred-Languages: en
+Canonical: https://oddversity.com/.well-known/security.txt
+
+# This is a static content site. It stores no user accounts, sets no
+# tracking cookies, and holds no personal data on any server. Reader
+# progress lives in the reader's own browser via localStorage.
+#
+# Reports that are in scope: anything that could let a third party alter
+# what a reader sees, or reach data belonging to another reader.
+#
+# Please allow a reasonable window before public disclosure.

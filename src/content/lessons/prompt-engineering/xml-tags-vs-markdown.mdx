@@ -1,0 +1,58 @@
+---
+title: "XML Tags vs. Markdown: Structuring Prompts for Reliability"
+track: "prompt-engineering"
+status: live
+summary: "Why wrapping instructions, examples, and data in XML tags parses more consistently than markdown headers for most models."
+duration: "5 min read"
+---
+
+Both markdown headers and XML tags organize a prompt into labeled chunks. Only one of them gives the model an unambiguous, machine-checkable boundary for where a section starts and ends — and that difference shows up most when your prompt has moving parts.
+
+## The core problem: where does a section end?
+
+A markdown header like `## Examples` tells the model a section has begun, but nothing marks where it stops. The model has to infer the boundary from context — usually the next header, a blank line, or just "this looks like it's over now." That inference is usually fine. It breaks down when the content itself contains something that looks like a header, when two sections butt up against each other with no clean separator, or when the prompt is long enough that the model's attention to formatting cues degrades.
+
+An XML tag pair has an explicit close. Content between an opening tag and its matching closing tag is unambiguously "inside" that section, no matter what it contains:
+
+```text
+<instructions>
+Summarize the document below in three bullet points.
+Do not include information that is not in the document.
+</instructions>
+
+<document>
+## Q3 Revenue Report
+Revenue grew 12% year over year...
+</document>
+```
+
+Notice the document itself contains a markdown header. If you had used `## Instructions` and `## Document` as your only structure, that inner `##` would visually collide with your own section markers. Wrapped in `<document>` tags, it can't be confused for prompt structure — it's just data.
+
+## Why this matters more as prompts grow
+
+A short, single-purpose prompt rarely needs this rigor — a couple of markdown headers work fine. The gap widens as you add pieces: few-shot examples, retrieved context, a system role, user input, and formatting instructions, all stacked into one prompt. Each additional section is another opportunity for the model to misjudge where one part ends and the next begins, especially when a section contains multi-line or user-supplied content that wasn't written with your prompt's formatting conventions in mind.
+
+Nesting is the other advantage markdown doesn't give you cleanly. You can put tags inside tags to express real structure:
+
+```text
+<examples>
+  <example>
+    <input>Refund request, order #4482</input>
+    <output>Escalate to billing</output>
+  </example>
+  <example>
+    <input>General product question</input>
+    <output>Answer directly</output>
+  </example>
+</examples>
+```
+
+Markdown has no native equivalent to this — you'd be relying on indentation and heading levels, which models parse far less reliably than an explicit nested tag.
+
+## When markdown is still the right call
+
+Don't reach for XML by default. If your prompt is short, has one obvious section, or you're just asking a direct question, markdown headers or even plain prose are simpler and just as reliable. XML tags earn their overhead when a prompt has multiple distinct sections that need to stay separated — instructions from data, examples from the task, retrieved documents from everything else. Anthropic's own docs recommend this pattern for exactly that reason, and it composes well with other structuring techniques: instructions in one tag, output format spelled out in another, and the actual content the model should act on in a third.
+
+Pick a small, consistent set of tag names (`instructions`, `context`, `examples`, `output_format`) and reuse them across your prompts. Consistency matters more than the specific names — the goal is that both you and the model can predict where to look.
+
+**Related:** [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Prompt Templates: Building Reusable, Parameterized Prompts](/learn/prompt-engineering/prompt-templates-and-variables), [Few-Shot Prompting: Teaching by Example](/learn/prompt-engineering/few-shot-prompting)

@@ -1,0 +1,27 @@
+---
+title: "Reinforcement Learning: Learning From Reward"
+track: "ai-foundations"
+status: live
+summary: "No labeled examples, just trial, error, and a reward signal — the loop behind RLHF, game-playing AI, and robotics."
+duration: "5 min read"
+---
+
+Supervised learning teaches from an answer key. Reinforcement learning (RL) teaches from consequences: an agent takes actions in an environment, gets a reward, and adjusts its behavior to get more reward next time. Nobody hands it the correct move — it has to find one by acting.
+
+## The loop: agent, environment, reward
+
+Every RL setup has the same four pieces. An **agent** observes a **state** of the **environment**, picks an **action**, and receives a **reward** plus a new state in response. Repeat. A chess-playing agent sees the board (state), moves a piece (action), and gets a reward at the end of the game — say, +1 for a win, -1 for a loss, 0 otherwise.
+
+The hard part is that reward is often sparse and delayed. The move that lost the game might have happened move 12, not move 40 where the queen was actually captured. RL's central problem is **credit assignment**: figuring out which of the many actions taken along the way actually deserved the blame or the praise. Most RL algorithms solve this by learning a **value function** — an estimate of how good a state (or state-action pair) is in expectation, so the agent isn't just reacting to the final score, it's propagating that score backward through the sequence of decisions that led to it.
+
+## Exploration vs. exploitation
+
+An agent that only ever does what it currently believes is best will never discover something better. One that only tries new things never cashes in what it's learned. Every RL system has to balance **exploitation** (take the action with the best known expected reward) against **exploration** (try something uncertain to learn more). This is not a solved tension — it's a dial, tuned per problem, and it's why RL training runs can look erratic even when they're working as intended: the agent is deliberately trying worse-looking moves to see if they're actually better.
+
+## Why this matters for LLMs
+
+You've almost certainly used the output of RL without thinking of it that way. Modern chat models are shaped by a reward signal after pretraining — human raters (or an AI judge) compare model responses, and that preference data trains a reward model, which then steers the language model toward outputs people actually prefer. This is the "RL" half of RLHF, and it's why the same base model can go from finishing your sentence to holding a helpful conversation. Robotics and game-playing agents (the systems that learned to beat professionals at Go and Dota) use the identical loop, just with a physical or game-score reward instead of a human preference.
+
+The common thread: whenever you see a system get better by trying things and being told "more of that" or "less of that" rather than "here's the right answer," that's reinforcement learning.
+
+**Related:** [Instruction Tuning and RLHF](/learn/llm-foundations/instruction-tuning-and-rlhf), [Reward Modeling and PPO: What's Inside 'RLHF'](/learn/fine-tuning/rlhf-reward-modeling-and-ppo), [Supervised Learning, Explained](/learn/ai-foundations/supervised-learning-explained)

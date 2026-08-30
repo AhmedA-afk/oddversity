@@ -1,0 +1,27 @@
+---
+title: "Interpretability: Peering Inside the Black Box"
+track: "ai-foundations"
+status: live
+summary: "Nobody fully knows what's inside a trained model. Here's how researchers probe, decompose, and trace it anyway."
+duration: "5 min read"
+---
+
+Ask an engineer why a neural network gave a specific answer and the honest reply is usually "the weights say so." A model with billions of parameters isn't a program anyone wrote line by line — it's a function learned from data, and the people who trained it can't read it off like source code. Interpretability is the field trying to change that.
+
+## Why "black box" isn't just a figure of speech
+
+You can inspect every weight in a model and still not know what it's doing, for the same reason you can list every neuron firing in a brain and still not know what someone is thinking. The knowledge isn't stored in any single weight — it's distributed across millions of them, combined in nonlinear ways across many layers. Worse, individual neurons are usually **polysemantic**: one neuron might fire for "the number eight," "German text," and "images of ferns" all at once, because the model is packing more concepts into its architecture than it has neurons to spare. That's what makes a trained model hard to read even when it's fully open in front of you — see [what a neural network actually is](/learn/ai-foundations/what-is-a-neural-network) for the underlying structure being probed.
+
+## The main tools researchers actually use
+
+Two broad approaches dominate. **Probing** trains a small, separate classifier on a model's internal activations to test whether some concept — sentiment, part of speech, a fact — is linearly recoverable from them. If a simple probe can pull "this is a question" out of a hidden layer, that information is represented there, even if you can't say which neuron holds it.
+
+**Mechanistic interpretability** goes further: it tries to reverse-engineer the actual computation, not just detect what's present. A key technique here is the **sparse autoencoder**, which re-expresses a layer's tangled activations as a much larger set of sparse, mostly-monosemantic "features" — directions in activation space that correspond to something interpretable, like "code containing a security vulnerability" or "sycophantic praise." Anthropic's interpretability team has published this line of work on Claude models, decomposing internal activations into thousands of such features and then tracing how features in one part of the network causally influence features downstream — building "attribution graphs" that resemble a wiring diagram for a single response, showing (for example) a model planning a rhyme several words before it writes the line that needs it.
+
+## What this buys you — and what it doesn't yet
+
+Interpretability work has already produced real, checkable findings: features tied to specific behaviors can sometimes be found and even dialed up or down to change a model's output, which is both a research result and evidence the feature means what researchers think it means. That matters directly for [AI alignment and safety](/learn/ai-foundations/ai-alignment-and-safety-basics) — you can't reliably audit a system for deception or hidden goals if you can't inspect its reasoning at all.
+
+But be clear-eyed about the limits. Current techniques cover a small fraction of a large model's total computation, they're expensive to run, and "we found a feature that correlates with X" is not the same as "we understand why the model does X." Interpretability doesn't yet give you a debugger for a frontier LLM — it gives you a growing set of case studies. That's also why it's a poor substitute for [benchmarks](/learn/ai-foundations/benchmarks-and-what-they-miss) or evals as a way to know whether a model is safe to ship: interpretability tells you about mechanism, evals tell you about behavior, and right now you need both.
+
+**Related:** [AI Alignment and Safety, Briefly](/learn/ai-foundations/ai-alignment-and-safety-basics), [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network), [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss)

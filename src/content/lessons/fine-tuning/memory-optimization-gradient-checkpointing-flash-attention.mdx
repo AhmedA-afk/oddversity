@@ -1,0 +1,39 @@
+---
+title: "Fit Bigger Batches with Gradient Checkpointing and Flash Attention"
+track: "fine-tuning"
+status: live
+summary: "Trade compute for memory so longer contexts and larger batches fit on the GPUs you actually have."
+duration: "6 min read"
+---
+
+Your fine-tuning run OOMs at batch size 4 when you wanted 32. Before reaching for more GPUs, know that most of the memory pressure comes from two specific places — activations and attention's quadratic scratch space — and both have well-understood fixes that cost some speed instead of some VRAM.
+
+## Where the memory actually goes
+
+During training, GPU memory splits into four buckets: model weights, optimizer states (Adam keeps two extra floats per parameter), gradients, and activations — the intermediate tensors saved during the forward pass so backprop can compute gradients from them. For a deep transformer with long sequences, activations dominate. Every layer's attention scores, feed-forward outputs, and normalization intermediates all get held in memory simultaneously, because standard backprop needs every one of them later.
+
+This is why doubling your sequence length can more than double memory: activation memory scales with both depth and sequence length, and attention's internal score matrix scales quadratically with sequence length on top of that.
+
+## Gradient checkpointing: recompute instead of store
+
+Gradient checkpointing (also called activation checkpointing) throws most activations away during the forward pass and only keeps a handful of "checkpoints" — say, the input to each transformer block. During the backward pass, it recomputes the discarded activations on the fly from the nearest checkpoint, rather than reading them back from memory.
+
+The trade is explicit: you cut activation memory dramatically — often 60-70% — at the cost of a second forward pass through the recomputed segments, typically adding 20-30% to step time. That's usually a great trade, because GPU memory is a hard wall (you either fit or you crash) while extra compute time is a soft cost you can wait out. In practice, enabling it is close to a one-line change:
+
+```python
+model.gradient_checkpointing_enable()
+```
+
+Most Hugging Face `Trainer` and `PEFT`-based fine-tuning setups expose this as a config flag. The main gotcha: it can silently disable `use_cache` for generation-style forward passes, and it occasionally interacts badly with certain custom attention implementations, so verify loss curves look identical to a checkpointing-off run on a small batch before trusting a long one.
+
+## Flash Attention: never materialize the full score matrix
+
+Standard attention computes a full sequence-length × sequence-length score matrix, applies softmax, then multiplies by values — and that intermediate matrix is what makes attention memory quadratic in sequence length. At 32k tokens, that matrix alone is enormous, independent of anything gradient checkpointing controls.
+
+Flash Attention restructures the computation to fuse the score, softmax, and value-weighting steps into tiled chunks that fit in fast on-chip SRAM, so the full score matrix is never written to slower GPU memory at all. It's mathematically identical to standard attention — same output, same gradients — just computed with a different memory access pattern. That's why it's a near-free upgrade: you get both lower memory and, usually, faster wall-clock attention, with no accuracy trade-off. Most modern training frameworks (Axolotl, Unsloth, and recent PyTorch/Transformers versions) enable it by default or via a single `attn_implementation="flash_attention_2"` argument, provided your GPU architecture supports it.
+
+## Stacking them
+
+These two techniques attack different bottlenecks and stack cleanly: Flash Attention removes the quadratic score-matrix memory inside each attention call, and gradient checkpointing removes the linear-in-depth activation storage across layers. Combine them with mixed-precision training and, for very large models, [FSDP or DeepSpeed ZeRO](/learn/fine-tuning/distributed-training-with-fsdp-and-deepspeed) sharding, and you can often push batch size or context length up by an order of magnitude on the same hardware. Start with Flash Attention (it's nearly free), add gradient checkpointing when you're still memory-bound, then reach for multi-GPU sharding only once single-GPU tricks are exhausted.
+
+**Related:** [Set Hyperparameters for a Fine-Tuning Run](/learn/fine-tuning/fine-tuning-run-hyperparameters), [Train Across GPUs with FSDP and DeepSpeed ZeRO](/learn/fine-tuning/distributed-training-with-fsdp-and-deepspeed), [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning)

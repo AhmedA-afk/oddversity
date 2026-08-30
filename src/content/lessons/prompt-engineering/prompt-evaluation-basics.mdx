@@ -1,0 +1,29 @@
+---
+title: "Evaluating Prompts Before You Ship Them"
+track: "prompt-engineering"
+status: live
+summary: "Test prompt variants against a fixed set of cases and a rubric instead of eyeballing one output and shipping."
+duration: "5 min read"
+---
+
+You tweak a prompt, run it once, the output looks better, and you ship it. That's not evaluation, it's a coin flip — the next input might break the "fix." Real prompt evaluation means running every candidate against the same set of cases and scoring them the same way.
+
+## Build a small test set first
+
+Before comparing prompt variants, collect 10-20 representative inputs: a mix of typical cases, edge cases, and inputs that broke a previous version. Write down what a good output looks like for each one. This set is your fixed benchmark — every prompt variant runs against exactly these inputs, so differences in output come from the prompt, not from you testing on different examples each time. Keep the set small enough to review by hand at first; you can grow it later.
+
+## Score with a rubric, not a gut feeling
+
+For each output, grade against a short rubric rather than a vague "good/bad." A rubric might check: did it follow the required format, did it stay within length, did it avoid the specific failure mode you're testing for, is the answer factually consistent with the source. Score each case pass/fail or on a small numeric scale, then total across the test set. This turns "prompt B feels a bit better" into "prompt B passed 17/20 versus 12/20 for prompt A" — a number you can defend and track over time.
+
+Two people can disagree on rubric interpretation, so write the rubric criteria concretely enough that a second person — or a model acting as judge — would score the same output the same way.
+
+## Compare variants, not just one prompt
+
+Write two or three real variants of the prompt — different instruction ordering, different phrasing of a constraint, with or without an example — and run all of them against the full test set. Ship the one with the best score, not the one that happened to look best on the single case you were staring at when you wrote it. This is also how you catch regressions: when you change a prompt for one failing case, rerun the whole set to confirm you didn't break the other nineteen.
+
+## Keep the loop cheap
+
+This does not need infrastructure to start. A spreadsheet with input, expected behavior, and a score column per prompt variant is enough for early iteration. Once the test set outlives casual editing and starts guarding against regressions on every prompt change, it graduates into a proper eval suite with automated scoring — often using a model as the judge itself, which is how [LLM-as-Judge](/learn/evals-red-teaming/llm-as-judge) works, and how teams eventually [ship changes by eval diff](/learn/evals-red-teaming/eval-driven-iteration) rather than by feel.
+
+**Related:** [Prompt Anti-Patterns to Stop Doing](/learn/prompt-engineering/prompt-anti-patterns), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge)

@@ -1,0 +1,32 @@
+---
+title: "Automating Adversarial Probes"
+track: "evals-red-teaming"
+status: live
+summary: "Turn one-off red-teaming into an automated suite that fuzzes your agent on every release."
+duration: "6 min read"
+---
+
+A manual red-team exercise finds real problems, but it only runs once. Automating adversarial probes means building a suite of attack prompts that runs on every release the same way your regression tests do, so a fix that reopens an old jailbreak gets caught before it ships.
+
+## From one-off attacks to a repeatable suite
+
+Start from the outputs of a manual [red-team exercise](/learn/evals-red-teaming/adversarial-red-teaming-process): every prompt that broke the agent becomes a fixed test case. That alone is valuable, but static prompts get stale fast — attackers (and your own users) rarely repeat an exact phrasing. Automated adversarial testing adds a generator that mutates or synthesizes new probes on top of that fixed set, so the suite keeps finding fresh failures instead of just confirming the old ones stay fixed.
+
+Two generation strategies cover most needs:
+
+- **Fuzzing** — programmatic mutation of known-bad prompts: swap synonyms, change encoding (base64, leetspeak, translated text), nest instructions inside roleplay or fake system messages, vary injection points in a document an agent might retrieve.
+- **Model-generated attacks** — use a second LLM as an adversary, prompted to produce novel jailbreak attempts, [prompt injections](/learn/evals-red-teaming/prompt-injection-basics), or scope-escape attempts against a description of your agent. This scales better than hand-writing prompts and tends to surface phrasings a human wouldn't think of.
+
+## Grading at scale
+
+Neither approach helps if a human has to read every transcript. You need automated grading, typically an [LLM-as-judge](/learn/evals-red-teaming/llm-as-judge) that scores each response against a rubric: did the agent execute the injected instruction, leak the system prompt, or take an action outside its declared scope? Keep the rubric binary or low-cardinality (pass/fail, or a small severity scale) — a judge asked for a 1–10 "safety score" produces noise you can't act on.
+
+Run the judge on both the response and, where relevant, the agent's tool calls — a prompt injection that gets refused in text but still triggers a tool call is a failure your grader needs to see.
+
+## Wiring it into CI
+
+The mechanics mirror [regression testing built from real bugs](/learn/evals-red-teaming/building-a-regression-suite): store probes and expected outcomes as data, run them against every candidate build, and fail the pipeline on a new pass-rate drop rather than on any single failure — adversarial prompts are inherently noisier than functional evals, so a threshold beats a hard gate. Track the pass rate over time the same way you'd track any other [eval metric across model versions](/learn/evals-red-teaming/eval-and-safety-metrics-dashboards), because a slow erosion is exactly what a single red-team day won't catch.
+
+Treat this suite as a floor, not a ceiling. Automated probes catch known attack families reliably; they rarely discover genuinely novel exploits the way a skilled human red-teamer does. Keep running periodic manual exercises and feed everything they find back into the automated corpus — that loop is what keeps the suite from going stale.
+
+**Related:** [Running a Structured Red-Team Exercise](/learn/evals-red-teaming/adversarial-red-teaming-process), [Turning Bugs into a Regression Suite](/learn/evals-red-teaming/building-a-regression-suite), [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge)

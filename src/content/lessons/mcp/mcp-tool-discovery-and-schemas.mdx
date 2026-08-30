@@ -1,0 +1,46 @@
+---
+title: "MCP Tool Discovery and Schemas"
+track: "mcp"
+status: live
+summary: "How a client lists a server's tools and schemas at connection time and hands them to the model."
+duration: "5 min read"
+---
+
+Before a model can call a tool, something has to tell it that the tool exists and what arguments it takes. In MCP, that "something" happens right after the connection handshake, and it's simpler than most people expect.
+
+## The tools/list call
+
+Once a client has connected to a server (see [Connecting a Client to an MCP Server](/learn/mcp/connecting-a-client-to-an-mcp-server)), it sends a `tools/list` request. The server responds with an array of tool definitions, each one shaped roughly like this:
+
+```json
+{
+  "name": "get_weather",
+  "description": "Get current weather for a city",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "city": { "type": "string" },
+      "units": { "type": "string", "enum": ["celsius", "fahrenheit"] }
+    },
+    "required": ["city"]
+  }
+}
+```
+
+Three fields do all the work: a `name` the model will use to invoke the tool, a `description` that tells the model when and why to reach for it, and an `inputSchema` written in plain JSON Schema that defines the exact shape of arguments the tool accepts. Nothing here is MCP-specific — it's the same JSON Schema you'd use anywhere (see [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs)).
+
+## From server list to model prompt
+
+This is the part that's easy to miss: the client doesn't just display this list, it translates it. Most AI providers accept tool definitions in their own tool-calling format (Claude's API, OpenAI's, etc.), so the client reshapes each MCP tool's `name`, `description`, and `inputSchema` into that provider's expected structure and passes the whole set to the model as part of the request. The model never talks to the MCP server directly — it only sees whatever schema shape the client handed it. If you've worked with [Tool Schemas as a Structured-Extraction Mechanism](/learn/structured-outputs/tool-function-schemas) or [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema) before, this will look familiar, because it's exactly that same mechanism, just sourced from a remote server instead of hardcoded in your app.
+
+## Discovery happens again, not just once
+
+Tool discovery isn't a one-time boot step baked into the client. A well-behaved client re-runs `tools/list` whenever it reconnects, and servers can send a `notifications/tools/list_changed` message mid-session if their tool set changes — a plugin gets enabled, a feature flag flips, an admin adds a new capability. The client is expected to re-fetch the list when it gets that notification, so the model's available tools can shift during a long-running session without a full restart.
+
+## Why the description field carries more weight than it looks like
+
+Because the model only sees `name`, `description`, and `inputSchema`, the description is effectively the entire pitch for when to use a tool. A vague description ("does stuff with files") gives the model nothing to decide on; a specific one ("reads a file's contents given an absolute path; fails on directories") gives it a decision rule. This is why MCP server authors spend real effort on descriptions the same way API designers spend effort on docstrings — the schema is the contract, but the description is what actually steers behavior at inference time.
+
+Put together, discovery is the bridge between "a server exists" and "a model can act" — everything downstream, from execution to error handling, depends on this list being accurate and current.
+
+**Related:** [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts), [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [MCP and the Context Window](/learn/mcp/mcp-context-window)

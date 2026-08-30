@@ -1,0 +1,33 @@
+---
+title: "Set SLOs for Latency, Cost, and Quality"
+track: "production"
+status: live
+summary: "Define measurable targets for an AI feature so you catch degradation before users do."
+duration: "6 min read"
+---
+
+An SLO (service-level objective) is a number you commit to in advance, so "is this feature healthy" stops being a vibe check. For AI features, one target isn't enough — latency, cost, and quality drift independently, and each one can quietly wreck the product while the others look fine.
+
+## Why one SLO isn't enough
+
+A model upgrade can cut latency in half while quietly raising cost per request. A new prompt can improve quality while doubling token usage. A cheaper model swap can hold cost flat while tanking accuracy on edge cases. If you only watch one dimension, the other two move for free — and nobody notices until support tickets pile up. Treat latency, cost, and quality as three separate SLOs, each with its own target and its own alert.
+
+## Writing an SLO you can actually alert on
+
+A usable SLO has three parts: a metric, a percentile or aggregate, and a window. "Fast" is not an SLO. "p95 time-to-first-token under 800ms, measured over a rolling 5-minute window" is. Some starting points:
+
+- **Latency** — track time-to-first-token separately from total completion time; users judge a [streamed response](/learn/genai-app-dev/streaming-responses-to-the-ui) by the first, not the last. Set both a p50 (typical experience) and a p99 (tail — where angry users live).
+- **Cost** — cap dollars per request and dollars per active user, not just a daily total. A slow cost leak on one endpoint hides inside an aggregate bill for weeks; a per-request budget catches it on day one. This builds directly on [tracking cost per request](/learn/production/token-and-cost-tracking).
+- **Quality** — pick a metric that's cheap to compute on every request, or every Nth one: an eval score, a refusal rate, a "did the tool call succeed" rate, a thumbs-down rate. Quality SLOs are the easiest to skip and the most expensive to skip — see [catching regressions with evals](/learn/production/eval-based-regression-testing).
+
+## Setting the actual numbers
+
+Don't guess a target — pull one from your existing [structured logs](/learn/production/structured-logging-for-llm-calls). Look at your current p50/p95/p99 for latency and cost over the last few weeks, then set the SLO slightly tighter than where you already sit. An SLO you're already violating on day one just trains everyone to ignore alerts.
+
+Leave headroom for a real budget: an SLO isn't "the value we hit on average," it's "the value we promise not to cross without paging someone." Give yourself an error budget — e.g., latency can exceed target for 2% of requests in a week before it's treated as an incident. That budget is what tells you whether last Tuesday's slow queries were noise or a trend.
+
+## Turning SLOs into alerts
+
+An SLO with no alert attached is a document nobody reads. Wire each one to a threshold that fires *before* the user-facing symptom, not after: alert at 80% of error-budget burn, not at 100%. Route latency and cost alerts to whoever owns the model/provider config, and route quality alerts to whoever owns prompts and evals — they're rarely the same fix. Once alerts exist, pair them with an [on-call playbook](/learn/production/on-call-playbooks-for-ai) so the page comes with a next step, not just a number.
+
+**Related:** [Track Cost Per Request and Per User](/learn/production/token-and-cost-tracking), [Catch Regressions with Evals in CI](/learn/production/eval-based-regression-testing), [Write an On-Call Playbook for AI Failures](/learn/production/on-call-playbooks-for-ai)

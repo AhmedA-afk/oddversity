@@ -1,18 +1,203 @@
 ---
+import '../styles/fonts.css';
 import '../styles/global.css';
+import { site, absoluteUrl } from '../data/site';
+import 'katex/dist/katex.min.css';
 import TopBar from './TopBar.astro';
 import Footer from './Footer.astro';
 
-interface Props {
+export interface Props {
   title?: string;
   description?: string;
+  type?: 'website' | 'article' | 'learning-resource' | 'course' | 'collection';
+  breadcrumbs?: Array<{ name: string; url: string }>;
+  publishedTime?: string;
+  modifiedTime?: string;
+  image?: string;
+  /** Renders a FAQPage block. Answers should be plain text. */
+  faq?: Array<{ q: string; a: string }>;
+  /** Renders a HowTo block alongside the page's main schema. */
+  howto?: { name: string; description: string; steps: string[]; totalTime?: string };
+  /** Renders an ItemList block — use on index/hub pages so engines see the set. */
+  itemList?: Array<{ name: string; url: string }>;
+  /** Extra Course fields for track pages. */
+  course?: { provider?: string; level?: string; lessonCount?: number; sections?: string[] };
+  /** Set true on thin or duplicative routes. */
+  noindex?: boolean;
+  /** Alternative text for the social card. */
+  imageAlt?: string;
+  /** Suppress the site chrome (used by 404 etc. — currently always false). */
+  wide?: boolean;
 }
+
 const {
-  title = 'Fieldguide',
-  description = 'A free, hands-on learning platform for the agentic-AI era. Learn to actually build with AI.',
+  title = site.name,
+  description = 'A free, hands-on learning platform for the agentic-AI era. A structured path from your first prompt to production agents — 680+ lessons, quizzes, guides and interview prep.',
+  type = 'website',
+  breadcrumbs = [],
+  publishedTime,
+  modifiedTime,
+  image = '/og.png',
+  imageAlt = `${site.name} — ${site.tagline}`,
+  faq,
+  howto,
+  itemList,
+  course,
+  noindex = false,
 } = Astro.props;
 
-const fullTitle = title === 'Fieldguide' ? 'Fieldguide — learn to build with AI' : `${title} · Fieldguide`;
+const SITE = site.url;
+const fullTitle = title === site.name ? `${site.name} — learn to build with AI` : `${title} · Oddversity`;
+const canonical = new URL(Astro.url.pathname.replace(/\/$/, '') || '/', SITE).href;
+const imageUrl = new URL(image, SITE).href;
+const abs = (u: string) => new URL(u, SITE).href;
+
+const socialLinks = [
+  site.social.x && `https://x.com/${site.social.x}`,
+  site.social.github && `https://github.com/${site.social.github}`,
+  site.social.linkedin && `https://www.linkedin.com/in/${site.social.linkedin}`,
+  site.social.mastodon,
+].filter(Boolean) as string[];
+
+const publisher = {
+  '@type': 'Organization',
+  '@id': `${SITE}/#organization`,
+  name: site.name,
+  url: SITE,
+  description: site.description,
+  logo: { '@type': 'ImageObject', url: absoluteUrl('/icons/icon-512.png'), width: 512, height: 512 },
+  ...(socialLinks.length ? { sameAs: socialLinks } : {}),
+  ...(site.contact.email ? { email: site.contact.email } : {}),
+};
+
+// A named byline is the strongest authorship signal there is, so use one the
+// moment site.ts has a name in it — and fall back to the organization until then.
+const person = site.author.name
+  ? {
+      '@type': 'Person',
+      '@id': `${SITE}/#author`,
+      name: site.author.name,
+      url: SITE,
+      ...(site.author.sameAs.length ? { sameAs: [...site.author.sameAs] } : {}),
+    }
+  : null;
+const authorRef = person ? { '@id': `${SITE}/#author` } : { '@id': `${SITE}/#organization` };
+
+const graph: Record<string, unknown>[] = [
+  {
+    '@type': 'WebSite',
+    '@id': `${SITE}/#website`,
+    name: site.name,
+    url: SITE,
+    description: site.description,
+    inLanguage: site.locale,
+    publisher: { '@id': `${SITE}/#organization` },
+  },
+  publisher,
+  ...(person ? [person] : []),
+];
+
+if (type === 'article' || type === 'learning-resource') {
+  graph.push({
+    '@type': type === 'article' ? 'Article' : 'LearningResource',
+    '@id': `${canonical}#content`,
+    name: title,
+    headline: title,
+    description,
+    url: canonical,
+    image: imageUrl,
+    inLanguage: 'en',
+    isPartOf: { '@id': `${SITE}/#website` },
+    publisher: { '@id': `${SITE}/#organization` },
+    author: authorRef,
+    isAccessibleForFree: true,
+    ...(type === 'learning-resource'
+      ? { educationalUse: 'self-study', learningResourceType: 'lesson', teaches: title }
+      : {}),
+    ...(publishedTime ? { datePublished: publishedTime } : {}),
+    ...(modifiedTime ? { dateModified: modifiedTime } : {}),
+  });
+}
+
+if (type === 'course' && course) {
+  graph.push({
+    '@type': 'Course',
+    '@id': `${canonical}#course`,
+    name: title,
+    description,
+    url: canonical,
+    inLanguage: 'en',
+    provider: { '@id': `${SITE}/#organization` },
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', category: 'Free' },
+    hasCourseInstance: {
+      '@type': 'CourseInstance',
+      courseMode: 'online',
+      courseWorkload: course.lessonCount ? `PT${Math.max(1, Math.round(course.lessonCount * 0.15))}H` : undefined,
+    },
+    ...(course.level ? { educationalLevel: course.level } : {}),
+    ...(course.sections && course.sections.length
+      ? {
+          hasPart: course.sections.map((name, i) => ({
+            '@type': 'Syllabus',
+            name,
+            position: i + 1,
+          })),
+        }
+      : {}),
+  });
+}
+
+if (faq && faq.length > 0) {
+  graph.push({
+    '@type': 'FAQPage',
+    '@id': `${canonical}#faq`,
+    mainEntity: faq.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  });
+}
+
+if (howto) {
+  graph.push({
+    '@type': 'HowTo',
+    '@id': `${canonical}#howto`,
+    name: howto.name,
+    description: howto.description,
+    ...(howto.totalTime ? { totalTime: howto.totalTime } : {}),
+    step: howto.steps.map((s, i) => ({ '@type': 'HowToStep', position: i + 1, name: s })),
+  });
+}
+
+if (itemList && itemList.length > 0) {
+  graph.push({
+    '@type': 'ItemList',
+    '@id': `${canonical}#list`,
+    itemListElement: itemList.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      url: abs(item.url),
+    })),
+  });
+}
+
+if (breadcrumbs.length > 0) {
+  graph.push({
+    '@type': 'BreadcrumbList',
+    '@id': `${canonical}#breadcrumbs`,
+    itemListElement: breadcrumbs.map((crumb, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: crumb.name,
+      item: abs(crumb.url),
+    })),
+  });
+}
+
+const jsonLd = { '@context': 'https://schema.org', '@graph': graph };
 ---
 <!doctype html>
 <html lang="en">
@@ -21,14 +206,49 @@ const fullTitle = title === 'Fieldguide' ? 'Fieldguide — learn to build with A
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={Astro.url.href} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+    <meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="theme-color" content="#FBFAF8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#18181A" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+
+    <meta property="og:type" content={type === 'article' ? 'article' : 'website'} />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={imageAlt} />
+    {site.social.x && <meta name="twitter:site" content={`@${site.social.x}`} />}
+    {site.author.name && <meta name="author" content={site.author.name} />}
+    {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+    {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+
+    <link rel="alternate" type="application/rss+xml" title={`${site.name} — guides and articles`} href="/rss.xml" />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    {/* Self-hosted: the two faces needed for first paint, fetched in parallel
+        with the stylesheet instead of after it. */}
+    <link rel="preload" href="/fonts/source-serif-4-400-normal-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/ibm-plex-sans-400-normal-latin.woff2" as="font" type="font/woff2" crossorigin />
+
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
     <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    />
     <script is:inline>
       (function () {
         try {
@@ -43,12 +263,32 @@ const fullTitle = title === 'Fieldguide' ? 'Fieldguide — learn to build with A
     <TopBar />
     <main id="main"><slot /></main>
     <Footer />
+    <script src="/site.js" is:inline defer></script>
+    {/* Analytics is opt-in via src/data/site.ts and cookieless by construction.
+        With no provider configured, no third-party script loads at all — which
+        is what the privacy page says, so it must stay true. */}
+    {site.analytics.provider === 'plausible' && site.analytics.id && (
+      <script
+        is:inline
+        defer
+        data-domain={site.analytics.id}
+        src={`${site.analytics.host || 'https://plausible.io'}/js/script.js`}
+      />
+    )}
+    {site.analytics.provider === 'umami' && site.analytics.id && (
+      <script
+        is:inline
+        defer
+        data-website-id={site.analytics.id}
+        src={`${site.analytics.host || 'https://cloud.umami.is'}/script.js`}
+      />
+    )}
     <style>
       .skip {
         position: absolute; left: -9999px; top: 0; z-index: 100;
         background: var(--accent); color: var(--accent-contrast);
         padding: 8px 14px; border-radius: 6px;
-        font: 500 13px/1 'IBM Plex Sans', sans-serif;
+        font: 500 13px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif;
       }
       .skip:focus { left: 12px; top: 12px; }
       main { min-height: 62vh; }

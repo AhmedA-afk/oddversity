@@ -1,0 +1,33 @@
+---
+title: "Structured Output vs. Tool Calls"
+track: "tools-function-calling"
+status: live
+summary: "Two ways to get JSON out of a model, and why picking the wrong one adds pointless latency and cost."
+duration: "5 min read"
+---
+
+Both structured output and tool calls get you clean, parseable JSON back from a model. They look almost identical in the API response. But they exist to solve different problems, and reaching for the wrong one costs you real latency, real cost, or a genuinely broken agent loop.
+
+## Two different jobs
+
+Tool calling exists so the model can act: call a search API, run code, book a meeting, look something up it doesn't already know. The model decides *whether* to call a tool, picks *which* one, and fills in the arguments. There's a real round trip — your code executes something and typically hands a result back to the model to continue reasoning with.
+
+Structured output (sometimes called JSON mode, or constrained decoding against a schema) exists so the model's *final answer* comes back in a shape your code can parse without regex or a fragile "please respond in JSON" prompt. There's no execution step. You're not asking the model to do anything in the world — you're asking it to format what it already knows. Extracting a name, date, and amount from a support ticket is a structured output problem, not a tool-calling one, because nothing needs to happen except formatting.
+
+The test: does anything outside the model need to *run*? If yes, that's a [tool call](/learn/tools-function-calling/what-is-tool-calling). If the model just needs to hand back facts in a shape, that's structured output.
+
+## Why using tool calls for pure extraction is wasteful
+
+A surprisingly common pattern is defining a fake "tool" — `save_extracted_data(name, date, amount)` — that never actually executes, purely to coerce a schema out of the model via tool-calling machinery. It works, because [tool schemas are themselves a structured-extraction mechanism](/learn/structured-outputs/tool-function-schemas) under the hood — both ultimately rely on the same constrained decoding. But it adds overhead you don't need: an extra round trip where your code has to intercept the "call," skip execution, and unwrap the arguments as if they were a real result. Native structured output modes (response format constrained to a JSON schema) skip that theater — one call, one parse, done.
+
+The reverse mistake is worse: using structured output for a task that actually needs a tool. If you ask the model to "return the current stock price as JSON," it will confidently fabricate a plausible-looking number, because structured output only constrains *shape*, not *truth*. It has no mechanism to go fetch anything. That's a hallucination waiting to happen, and it's why [why models hallucinate](/learn/hallucinations/why-models-hallucinate) matters here — a schema can't rescue an answer that needed a live lookup instead.
+
+## A practical rule
+
+- **Extraction, classification, summarizing into fields, reformatting** → structured output.
+- **Anything requiring a side effect, an external fetch, or letting the model choose among several possible actions** → tool calling.
+- **Multiple candidate actions where the model must pick one and justify why** → tool calling, since [tool choice](/learn/tools-function-calling/tool-choice-and-forcing-tool-use) gives you control over whether and which tool fires; structured output has no equivalent "pick one of these behaviors" concept.
+
+If you're only ever going to use one "tool" and it never touches the outside world, you almost certainly want structured output instead — it's cheaper, it's one hop instead of two, and it says what it means.
+
+**Related:** [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling), [Tool Schemas as a Structured-Extraction Mechanism](/learn/structured-outputs/tool-function-schemas), [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate)

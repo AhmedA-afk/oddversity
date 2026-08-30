@@ -1,0 +1,32 @@
+---
+title: "Context Handoff Between Agents: Passing the Slice, Not the Stack"
+track: "context-engineering"
+status: live
+summary: "Why a subagent should get a curated slice of context, not the parent's full transcript, and how to build that slice."
+duration: "5 min read"
+---
+
+The easiest way to hand work to a subagent is to forward the whole parent transcript. It's also usually wrong: it burns tokens the subagent doesn't need, drags in dead ends and false starts, and lets the parent's framing bias an agent whose job is to look at the problem fresh.
+
+## Why the full stack backfires
+
+A parent agent's transcript is a record of *how it got somewhere*, not a briefing on *where things stand*. It's full of tool calls that failed and were retried, exploratory reads that turned up nothing, and reasoning about paths the parent abandoned. Forwarding all of that to a subagent doesn't give it more information — it gives it noise that competes with the signal, and reasoning that ran into a wall no longer has any decision behind it. This is a specific case of the problem described in [context poisoning](/learn/context-engineering/context-poisoning-and-distraction): a stale or wrong assumption from the parent's history can quietly steer the subagent's output.
+
+There's also a structural reason to isolate: subagent context isolation exists so a subagent can reason with a clean, task-shaped context instead of inheriting the parent's entire state. Handoff design is what decides whether that isolation actually pays off, or whether you undo it by stuffing the full stack back in through the initial prompt.
+
+## What to pass instead
+
+Build the handoff as a deliberate summary, not a transcript slice:
+
+- **The task**, stated as an instruction, not as the sequence of turns that produced it.
+- **Decided facts** the subagent needs to not re-derive: file paths, IDs, constraints, prior conclusions that are settled.
+- **Explicit boundaries**: what's out of scope, what's already been tried and ruled out (so the subagent doesn't repeat it), and what "done" looks like.
+- **Pointers, not payloads**, for anything large — a file path or a query the subagent can run itself, via [just-in-time context loading](/learn/context-engineering/just-in-time-context-loading), rather than the file's full contents pasted inline.
+
+This is the same discipline as writing a good handoff memo between two human contributors: you don't attach your entire inbox, you write down what the next person actually needs to act.
+
+## Sizing the slice
+
+If the subagent's task is narrow, its input context should be too — that's the whole point of delegating rather than just continuing in the same context window. Treat the handoff as its own [token budget](/learn/context-engineering/token-budgeting-strategies): every fact you include should earn its place by being something the subagent would otherwise have to ask for, search for, or get wrong. When in doubt, write the handoff as if you were paying per token to send it, because in a real sense you are — that context now occupies the subagent's window for the rest of its run.
+
+**Related:** [Context Isolation: Why Subagents Get a Clean Slate](/learn/agentic-ai/subagent-context-isolation), [Context Poisoning: How One Bad Result Contaminates Everything After It](/learn/context-engineering/context-poisoning-and-distraction), [Just-in-Time Context: Letting the Agent Fetch Instead of Preload](/learn/context-engineering/just-in-time-context-loading)

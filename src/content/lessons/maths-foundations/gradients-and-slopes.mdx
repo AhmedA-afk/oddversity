@@ -1,0 +1,40 @@
+---
+title: "Gradients: Slopes in Many Dimensions"
+track: "maths-foundations"
+status: live
+summary: "A gradient is a multi-dimensional slope — a vector pointing toward the steepest increase of a function."
+duration: "5 min read"
+---
+
+A slope tells you how a line rises or falls. A gradient does the same job for a function with many inputs at once — it's a vector that says, at this exact point, which direction increases the output fastest, and by how much.
+
+## From one slope to many
+
+Picture a hiker on a hillside described by height `= f(x, y)`, where `x` and `y` are position. At any spot, the ground isn't equally steep in every direction — it's steep going north, gentle going east, flat along some diagonal. The gradient collects the slope in each individual direction (each partial derivative) into a single vector: `∇f = (∂f/∂x, ∂f/∂y)`.
+
+That vector has two properties worth remembering:
+
+- **Direction**: it points toward the steepest increase of `f` at that point. Walk that way and you gain height fastest.
+- **Magnitude**: its length tells you how steep that steepest path is. A long gradient vector means a sharp slope; a near-zero one means you're standing somewhere close to flat — a peak, valley, or saddle.
+
+Walk the opposite direction — negative the gradient — and you descend fastest. That single fact is the entire idea behind gradient descent: nudge your position (or a model's parameters) a small step in the direction the gradient points away from, and you're moving downhill toward a lower value as efficiently as a local, one-step decision allows.
+
+## Why this matters for a neural network
+
+A neural network's "hillside" isn't two-dimensional — it's a loss function over every weight in the network, which can mean billions of dimensions. You can't picture that landscape, but the math doesn't care: the gradient is still just a vector, one entry per weight, and each entry answers the same question — if I nudge this one weight slightly, does the loss go up or down, and how much?
+
+That's what makes gradients the right tool for training. Instead of guessing which of billions of weights to adjust, [backpropagation](/learn/maths-foundations/backpropagation-intuition) computes the exact gradient of the loss with respect to every weight in one efficient pass, and the training step moves each weight a little against its own gradient entry.
+
+## A concrete two-weight example
+
+Say a tiny model has two weights, `w1` and `w2`, and a loss function `L(w1, w2)`. If at the current values the gradient works out to:
+
+```
+∇L = (4, -1)
+```
+
+that means increasing `w1` slightly increases the loss steeply (slope 4), while increasing `w2` slightly decreases the loss gently (slope -1). A training step subtracts a small multiple of this vector from the weights — shrinking `w1`, nudging `w2` up a touch — because that's the direction of steepest descent. Repeat that thousands of times and the weights walk downhill into a low-loss region.
+
+The gradient itself doesn't tell you how big a step to take — that's a separate choice, explored in [gradient descent, intuitively](/learn/maths-foundations/gradient-descent-intuition). It only tells you which way is downhill, and how sharply.
+
+**Related:** [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition), [Backpropagation: How Networks Assign Blame](/learn/maths-foundations/backpropagation-intuition), [Matrices as Transformations](/learn/maths-foundations/matrices-as-transformations)

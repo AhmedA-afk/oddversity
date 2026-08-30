@@ -1,0 +1,33 @@
+---
+title: "Tree-of-Thought Prompting: Branching Instead of Committing to One Chain"
+track: "prompt-engineering"
+status: live
+summary: "Explore several reasoning paths at once, score them mid-way, and prune the weak ones instead of following one chain to the end."
+duration: "6 min read"
+---
+
+Chain-of-thought commits to one line of reasoning and hopes it doesn't go wrong. Tree-of-thought (ToT) hedges that bet: the model generates several candidate next steps, evaluates them, keeps the promising ones, and drops the rest — a search process instead of a single guess.
+
+## Why one chain isn't enough
+
+A chain-of-thought prompt asks the model to think step by step, but every step is generated once and never revisited. If step two is subtly wrong, everything downstream inherits the error, and the model has no mechanism to notice or backtrack. That's fine for tasks with a short, forgiving reasoning path. It's a real liability for tasks where an early choice can quietly dead-end the whole solution — planning problems, puzzles, multi-constraint arithmetic, code that has to satisfy several requirements at once.
+
+ToT, introduced by Yao et al. in "Tree of Thoughts" (2023), reframes the task as search over a tree of partial solutions rather than generation of one linear transcript.
+
+## How the branching actually works
+
+The pattern has three moving parts:
+
+1. **Generate.** At each step, prompt the model to propose several distinct next thoughts (three to five is typical) rather than one continuation.
+2. **Evaluate.** Ask the model — or a second prompt — to score or rank each candidate: is this on track, plausible, or clearly a dead end?
+3. **Prune and expand.** Keep the top candidates, discard the rest, and repeat generation from the survivors. This is breadth-first or best-first search, with the model playing both the proposer and the judge.
+
+You can run this as a single elaborate prompt for shallow trees ("Generate three approaches to this problem, evaluate each in one sentence, then continue only with the best one"), or as an explicit loop in code for deeper search, where your harness calls the model repeatedly, tracks a frontier of candidate states, and applies its own pruning logic between rounds. The deeper and more consequential the decision, the more it's worth moving the loop out of the prompt and into code you control.
+
+## What the extra branches actually buy you
+
+The point isn't more tokens — it's recoverability. A single chain has no way to say "step two was a mistake" once step five has been written. A tree lets a bad branch simply not get selected, without contaminating the branches that were fine. This is why ToT tends to help most on tasks with a discrete, checkable structure — game-like puzzles, planning with hard constraints, code that must pass specific tests — and helps far less on tasks where there's no clean way to score a partial answer, like open-ended writing.
+
+It's also considerably more expensive: generating N candidates at each of D steps costs roughly N×D model calls compared to one chain-of-thought pass. Reserve it for problems where getting it right is worth that multiple, and consider [self-consistency sampling](/learn/prompt-engineering/self-consistency-sampling) first — it gets some of the same error-correction benefit from parallel full attempts voted at the end, at a flatter cost and far less prompt engineering.
+
+**Related:** [Self-Consistency: Voting Across Multiple Reasoning Paths](/learn/prompt-engineering/self-consistency-sampling), [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Tree of Thoughts and MCTS: Search-Based Planning for Agents](/learn/agentic-ai/tree-search-for-agent-planning)

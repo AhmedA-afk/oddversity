@@ -1,0 +1,35 @@
+---
+title: "Scaling Laws: Why Bigger Models Keep Getting Better"
+track: "ai-foundations"
+status: live
+summary: "The empirical relationship between compute, data, and parameters that predicted a decade of AI progress — and where it bends."
+duration: "5 min read"
+---
+
+Plot a language model's loss against the compute spent training it, on log-log axes, and you get a straight line. That line is a scaling law, and it's one of the few genuinely predictive results in deep learning: knowing the line, you can forecast how good a model trained on 10x the compute will be before you spend a dollar training it.
+
+## The basic finding
+
+In 2020, OpenAI researchers (Kaplan et al.) showed that a transformer's test loss falls as a smooth power law in three things: model size (parameters), dataset size (tokens), and compute (roughly parameters times tokens times a constant). Each factor helps on its own, but the real payoff came from the follow-up question: if you have a fixed compute budget, how should you split it between a bigger model and more data?
+
+Kaplan's original answer favored parameters heavily — train huge models on comparatively modest data. Most labs followed that recipe for a couple of years, which is part of why models like GPT-3 (175B parameters, ~300B tokens) look badly undertrained by today's standards.
+
+## Chinchilla and the correction
+
+In 2022, DeepMind's "Chinchilla" paper re-ran the experiment more carefully and found the earlier guidance was off: for compute-optimal training, parameters and tokens should scale roughly 1:1 — not parameters-heavy. Their headline result was a 70B-parameter model trained on 1.4 trillion tokens that outperformed the 280B-parameter Gopher model trained on far fewer tokens, using the same training compute. Bigger wasn't the lever; more data relative to size was.
+
+This reframed "how good can this model be" as an optimization problem with a real answer: given a compute budget C, there's a specific (parameters, tokens) pair that minimizes loss, and it's computable in advance. That's why frontier labs now talk about "compute-optimal" training runs rather than just "big" ones.
+
+## Why the line eventually bends
+
+Three things break the clean power law in practice:
+
+- **Data is finite.** The Chinchilla-optimal ratio assumes you can always buy proportionally more high-quality tokens. High-quality public text is running out, which is why labs lean on synthetic data, multimodal data, and repeated epochs — see [The Data the Model Learned From](/learn/ai-foundations/the-data-the-model-learned-from).
+- **Loss isn't capability.** A lower cross-entropy loss reliably predicts better next-token prediction, but the mapping from loss to what users actually care about — reasoning, following instructions, not hallucinating — is much noisier. Some capabilities appear to jump rather than scale smoothly; see [Emergent Abilities in LLMs](/learn/llm-foundations/emergent-abilities-in-llms).
+- **Compute has a new place to go.** The biggest shift since Chinchilla isn't a new pretraining law — it's that labs discovered a second axis to scale: compute spent *at inference time*, letting a model think longer before answering, rather than only at training time. That's the idea behind reasoning models, and it means "spend more compute" no longer only means "train a bigger model."
+
+## Why this matters practically
+
+Scaling laws are the reason AI progress over the last several years looked less like sporadic breakthroughs and more like a predictable curve you could budget against — which is exactly why so much of the industry's capital went into more compute rather than new architectures. Understanding the law also tells you what *not* to expect: if data or algorithmic efficiency plateaus, the smooth line stops extrapolating, and that's the live debate about where progress goes next.
+
+**Related:** [Foundation Models, Explained](/learn/ai-foundations/foundation-models-explained), [The AI Hardware Stack: GPUs, TPUs, and Why They Matter](/learn/ai-foundations/ai-hardware-stack), [Emergent Abilities in LLMs](/learn/llm-foundations/emergent-abilities-in-llms)

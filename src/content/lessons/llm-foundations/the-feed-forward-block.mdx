@@ -1,0 +1,37 @@
+---
+title: "The Feed-Forward Block: The Transformer's Other Half"
+track: "llm-foundations"
+status: live
+summary: "The per-token MLP sandwiched between attention layers, which quietly holds most of a transformer's parameters."
+duration: "5 min read"
+---
+
+Every transformer layer has two sub-blocks: attention, which lets tokens exchange information, and a feed-forward network (FFN), which processes each token alone. The FFN gets less attention (pun intended) than the attention mechanism, but it typically holds two-thirds or more of a model's parameters.
+
+## What it actually does
+
+The FFN is a small two-layer MLP applied independently to every token's vector, with no mixing across positions. For a hidden size `d`, the standard recipe is:
+
+```
+h = W1 @ x         # project up, d -> 4d (roughly)
+h = activation(h)   # a nonlinearity, e.g. SwiGLU or GELU
+y = W2 @ h          # project back down, 4d -> d
+```
+
+The "up-project, nonlinearity, down-project" shape is the whole trick. The up-projection expands each token into a much wider space (often 4x the model's hidden size, though modern models tune this ratio), the nonlinearity lets the network carve that wider space into useful, non-linear regions, and the down-projection compresses back to the residual stream's width so the result can be added back in.
+
+Because it runs on one token at a time, the FFN can't look at neighbors, order, or context the way attention does. Attention decides what information a token gets to see; the FFN decides what to do with it. Together they form the "communicate, then compute" rhythm repeated at every layer — see [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture) for how the two fit together, and [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained) for the other half.
+
+## Why it holds most of the parameters
+
+Attention's weight matrices scale with `d^2` (query, key, value, and output projections). The FFN's matrices scale with `d * 4d = 4d^2` — roughly four times as many weights per layer, before you even account for variants that widen the ratio further. Stack that across dozens of layers and the FFN dominates parameter count in most dense transformers. This is part of why [Mixture of Experts, Explained](/learn/llm-foundations/mixture-of-experts-explained) targets the FFN specifically: swapping one dense FFN for many small "expert" FFNs, only a few of which activate per token, is the highest-leverage place to trade parameters for compute.
+
+## Why the nonlinearity matters
+
+Without an activation function between the two linear projections, the whole block would collapse into one linear map — no matter how wide the hidden layer, stacking two linear layers is still linear. The nonlinearity is what lets the FFN approximate genuinely complex, curved functions of a token's representation instead of a rigid transformation. Researchers describe the FFN as a place where the model stores and retrieves factual and pattern-like associations: the up-projection acts like a bank of pattern detectors, and the down-projection recombines whichever detectors fired into an update for the residual stream.
+
+## Where it sits in the layer
+
+A full transformer layer looks like: attention sub-block wrapped in a residual connection and normalization, then an FFN sub-block wrapped the same way. Both sub-blocks read from and write back to the same residual stream, which is why [Residual Connections and Layer Norm](/learn/llm-foundations/residual-connections-and-layer-norm) matters as much for the FFN as for attention — without the residual path, stacking dozens of these blocks would be unstable to train.
+
+**Related:** [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), [Mixture of Experts, Explained](/learn/llm-foundations/mixture-of-experts-explained), [Residual Connections and Layer Norm](/learn/llm-foundations/residual-connections-and-layer-norm)

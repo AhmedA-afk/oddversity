@@ -1,0 +1,48 @@
+---
+title: "Structured Content and Output Schemas in MCP Tools"
+track: "mcp"
+status: live
+summary: "Return typed, validated JSON from a tool result instead of a text blob the client has to parse."
+duration: "5 min read"
+---
+
+A tool that returns a stringified JSON blob inside a text block works, but the client has to guess its shape and parse it blind. MCP's `structuredContent` and `outputSchema` fields let a server declare exactly what a tool returns and hand it back as real data.
+
+## The problem with text-only results
+
+Early MCP tools returned results as a list of content blocks, almost always a single text block. If the underlying data was structured — a list of search hits, a weather reading, a database row — the server serialized it to a JSON string and stuffed it into that text field. The client (or the model reading the result) then had to re-parse a string to get structured values back, with no guarantee the shape matched what was promised in the tool description. Every consumer wrote its own ad hoc parsing and validation, and drift between what the docs claimed and what the server actually sent was invisible until something broke downstream.
+
+## Declaring an output schema
+
+A tool definition can include an `outputSchema` alongside its `inputSchema` — a JSON Schema describing the shape of the result:
+
+```json
+{
+  "name": "get_weather",
+  "inputSchema": {
+    "type": "object",
+    "properties": { "city": { "type": "string" } },
+    "required": ["city"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "tempC": { "type": "number" },
+      "conditions": { "type": "string" }
+    },
+    "required": ["tempC", "conditions"]
+  }
+}
+```
+
+When a tool declares an `outputSchema`, its result should include a `structuredContent` field: an actual JSON object matching that schema, not a string. Clients that understand the schema can validate the result against it before trusting it, exactly the way they'd validate any other typed API response — see [JSON Schema for outputs](/learn/structured-outputs/json-schema-for-outputs) for how that contract-checking works in the wider structured-output world.
+
+## Keeping backward compatibility
+
+Existing clients only know how to read text content blocks, so a well-behaved server still includes a text block alongside `structuredContent` — typically the same data serialized as JSON — so nothing breaks if the client ignores the new field. Model-facing consumers benefit either way: a model reading the text block gets readable JSON, and a client-side integration that binds the result straight into a UI component or a downstream function call can skip parsing entirely and use `structuredContent` directly.
+
+## Why this matters for agents
+
+Structured output turns a tool result from "text the model has to interpret" into "data the harness can route." A results table can render straight from `structuredContent`, a value can be forwarded to another tool's input without a round trip through the model, and a mismatch between declared schema and actual output becomes a validation error the server can catch, rather than a silent misparse three steps downstream. It's the same shift that [structured output vs. tool calls](/learn/tools-function-calling/structured-output-vs-tool-calls) covers for plain function calling, applied to the result side of an MCP tool call instead of the input side.
+
+**Related:** [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts), [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas), [JSON Schema for Outputs](/learn/structured-outputs/json-schema-for-outputs)

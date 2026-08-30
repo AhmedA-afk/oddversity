@@ -1,0 +1,31 @@
+---
+title: "Prompt Portability: Writing Prompts That Survive a Model Swap"
+track: "prompt-engineering"
+status: live
+summary: "Avoiding provider-specific tricks so a prompt doesn't quietly break when you change models or versions."
+duration: "5 min read"
+---
+
+A prompt tuned hard against one model's quirks is a prompt that breaks the day you swap providers, upgrade a version, or add a cheaper model to your routing layer. Portability is a design choice you make while writing the prompt, not a fix you apply after the swap fails.
+
+## Where portability actually breaks
+
+Most breakage isn't in the instructions themselves — it's in the scaffolding around them. Magic phrases that happen to trigger a specific model's training ("take a deep breath," ALL-CAPS emphasis, threats or bribes) work by exploiting one model's particular tuning, and a different model just treats them as noise or, worse, follows them literally and gets weird. Formatting conventions are the second failure point: one family may respond best to XML-style tags, another to Markdown headers, and a prompt built entirely around one convention doesn't automatically transfer — see [XML tags vs. Markdown](/learn/prompt-engineering/xml-tags-vs-markdown) for how to hedge that bet. Output-format instructions calibrated to one model's default verbosity also drift — a prompt that says "be brief" against a chatty model produces different absolute output length than the same instruction against a terse one.
+
+The subtlest break is silent: the prompt still runs, still returns a response, and the response is just quietly worse — a missed edge case, a format that's technically valid but not what downstream code expects. Nothing errors, so nothing gets caught until a user notices.
+
+## Writing for the instruction, not the model
+
+The fix is to prefer instructions that describe the *outcome* rather than instructions that exploit a *mechanism*. State exactly what the output should contain, in what order, in what format — with a concrete example if the format is unusual — rather than leaning on a phrase you've observed nudges one model's behavior. This is the same discipline as [answer-first prompting](/learn/prompt-engineering/answer-first-prompting): a prompt that names the destination explicitly needs less model-specific steering to get there, because there's less ambiguity for any given model to resolve idiosyncratically.
+
+Concrete instructions also compress better. "Return exactly one paragraph, no headers, no bullet points, under 80 words" survives a model swap because every model can parse and follow a literal constraint. "Keep it snappy" survives only as well as the two models happen to agree on what snappy means.
+
+## Isolating the parts that do need to differ
+
+Full portability is a myth worth abandoning — thinking-effort controls, prefill support, and native structured-output modes are genuinely provider-specific, and a prompt that ignores those differences leaves real capability on the table. The practical target isn't a single prompt string that works everywhere; it's a shared *core* prompt — the task, constraints, and format — with a thin, explicitly-labeled adapter layer around it per provider. Keep that core in one place using [prompt templates](/learn/prompt-engineering/prompt-templates-and-variables) so a swap means changing the adapter, not rewriting the task description from scratch.
+
+## Catching drift before your users do
+
+None of this replaces testing. Whenever you change models or pin a new version, rerun your prompt against a fixed set of representative inputs and diff the outputs, not just the pass/fail — see [evaluating prompts before you ship them](/learn/prompt-engineering/prompt-evaluation-basics). A prompt that "still works" on the happy path can be quietly worse on the edge cases that made you write careful instructions in the first place.
+
+**Related:** [XML Tags vs. Markdown: Structuring Prompts for Reliability](/learn/prompt-engineering/xml-tags-vs-markdown), [Prompt Templates: Building Reusable, Parameterized Prompts](/learn/prompt-engineering/prompt-templates-and-variables), [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics)

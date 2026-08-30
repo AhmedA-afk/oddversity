@@ -1,0 +1,31 @@
+---
+title: "Choosing a Vector Database"
+track: "rag"
+status: live
+summary: "Compare vector database options on indexing, filtering, hosting, and scale, and pick one for your workload."
+duration: "6 min read"
+---
+
+Every vector database does the same core job: store embeddings and return the nearest ones fast. The differences that actually matter show up in filtering, hosting model, and how much operational weight you're willing to carry.
+
+## The real decision factors
+
+Skip the marketing comparisons and ask four questions instead.
+
+**Do you already have the data store?** If your data lives in Postgres, `pgvector` lets you add an index to an existing table and query embeddings alongside normal SQL — no new system to run. If you're on Elasticsearch or OpenSearch already, their vector fields do the same trick. Reaching for a dedicated vector database only pays off once search is a first-class part of the product, not a bolted-on feature.
+
+**How much metadata filtering do you need?** Most real RAG queries aren't pure similarity search — they're "find the closest chunks *where* `tenant_id = X` and `date > Y`." Purpose-built stores like Qdrant, Weaviate, and Milvus were designed around filtered vector search from the start, using techniques that keep the [ANN index](/learn/rag/similarity-search-and-ann-indexes) fast even under tight filters. Bolt-on vector columns in general-purpose databases can degrade badly when filters are selective, because the index and the filter aren't co-designed. See [Metadata Filtering in Retrieval](/learn/rag/metadata-filtering-in-retrieval) for why this matters more than raw recall numbers.
+
+**Managed or self-hosted?** Pinecone popularized the fully-managed, pay-for-what-you-query model — no infrastructure, but you're locked into their pricing and roadmap. Qdrant, Weaviate, Milvus, and Chroma all offer both a hosted cloud tier and an open-source self-hosted option, which matters if data residency or cost predictability is a constraint. Chroma and LanceDB lean toward "embedded, ships with your app" simplicity — great for prototypes and single-node apps, not built for massive concurrent write loads.
+
+**What scale are you actually at?** For a few hundred thousand vectors, almost any option performs fine and the choice is really about developer experience. Once you're past tens of millions of vectors with high query throughput, differences in index type, sharding, and memory footprint start to dominate — that's when it's worth benchmarking on your own data rather than trusting published numbers, since ANN performance is highly sensitive to vector dimensionality, dataset shape, and query patterns.
+
+## A reasonable default path
+
+Start with `pgvector` or Chroma if you already have Postgres or are still prototyping — zero extra infrastructure, good enough recall, and you can migrate later. Move to Qdrant or Weaviate when filtered search or scale becomes a real bottleneck. Reach for Pinecone when you want the operational burden gone entirely and are fine paying for that. None of this is a permanent commitment: because retrieval sits behind a fairly stable interface (embed, search, filter), swapping the backing store later is usually a contained migration, not a rewrite of your [RAG pipeline](/learn/rag/building-a-rag-pipeline-end-to-end).
+
+## What doesn't differentiate them much anymore
+
+Nearly every serious vector database now supports HNSW-style approximate search, hybrid dense+sparse retrieval, and basic multi-tenancy. Don't over-index on feature checklists — they converge fast. The lasting differences are operational: who manages upgrades, how filtering degrades at scale, and whether the pricing model fits how you actually query.
+
+**Related:** [Similarity Search and ANN Indexes](/learn/rag/similarity-search-and-ann-indexes), [Metadata Filtering in Retrieval](/learn/rag/metadata-filtering-in-retrieval), [Hybrid Search: Lexical and Vector Combined](/learn/rag/hybrid-search-lexical-and-vector)

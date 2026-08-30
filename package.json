@@ -1,19 +1,30 @@
 {
-  "name": "fieldguide",
+  "name": "oddversity",
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "Fieldguide — a free, hands-on learning platform for the agentic-AI era.",
+  "description": "Oddversity \u2014 a free, hands-on learning platform for the agentic-AI era.",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "fonts": "python3 scripts/fetch-fonts.py && python3 scripts/font-fallbacks.py",
+    "og": "python3 scripts/generate-og.py",
+    "icons": "python3 scripts/generate-icons.py",
+    "assets": "npm run fonts && npm run icons && npm run og",
+    "check:links": "node scripts/check-links.mjs",
+    "prelaunch": "npm run og && npm run build && npm run check:links"
   },
   "dependencies": {
-    "astro": "^5.6.1",
     "@astrojs/mdx": "^4.2.3",
-    "@astrojs/sitemap": "^3.3.0"
-  }
+    "@astrojs/sitemap": "^3.3.0",
+    "astro": "^5.6.1",
+    "katex": "^0.18.4",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0"
+  },
+  "homepage": "https://oddversity.com",
+  "license": "UNLICENSED"
 }

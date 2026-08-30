@@ -1,0 +1,31 @@
+---
+title: "Testing and Debugging Tool Calls"
+track: "tools-function-calling"
+status: live
+summary: "Log every tool call and result, replay failures offline, and unit test your handlers so bugs are findable instead of vibes."
+duration: "6 min read"
+---
+
+A tool-calling agent fails in three different places — the schema, the model's choice of arguments, or your handler code — and if you can't tell which one broke, you'll spend an hour guessing. The fix is to make every step observable and replayable before you ever try to reason about it live.
+
+## Log the whole exchange, not just the error
+
+When a tool call goes wrong, a stack trace from your handler tells you almost nothing on its own. What you actually need, logged together as one record, is: the user message that triggered the turn, the full tool schema the model saw, the exact arguments the model generated, what your handler returned (or threw), and the model's next message after seeing the result. Store this as structured JSON per call, not free-text logs — you want to grep and diff it later.
+
+The most common bug you'll find this way isn't your handler at all. It's the model passing arguments that are the wrong shape, or a value your schema's description didn't rule out — a date as `"next Tuesday"` instead of ISO 8601, a city name instead of an airport code. That's a schema or [tool description](/learn/tools-function-calling/writing-tool-descriptions-models-follow) problem, not a code problem, and the log is what tells you which one you're looking at.
+
+## Replay failures without calling the model again
+
+Once you have a logged transcript of a bad call, you don't need the model to reproduce the bug — you need your handler. Pull the exact arguments out of the log and feed them straight into your tool's execution function as a unit test. This turns "the agent broke in prod, somehow" into a deterministic test case that runs in milliseconds and either passes after your fix or doesn't.
+
+Keep a small library of these as a regression suite: the empty-string edge case, the malformed date, the argument that violates a constraint your schema didn't actually enforce. Every production failure you see once should become a fixture the next model or prompt version can't silently reintroduce.
+
+## Separate "did the model call it right" from "did the tool run right"
+
+These need different test setups. To test the model's *decision* — does it pick the right tool, with sane arguments, given an ambiguous request — run it against a fixed suite of prompts and grade the tool name and argument shape it produces, ideally with a mock tool that just records the call instead of doing real work. To test the *tool itself* — does it handle a missing file, a timeout, a rate-limited API — write ordinary unit tests against the handler function directly, with no model in the loop at all. Conflating the two means a flaky test can't tell you whether the model regressed or your code did.
+
+## Watch for silent failures, not just thrown errors
+
+The scariest bugs are the ones that don't crash: a tool call that returns valid-looking JSON with the wrong values, or a handler that returns an empty result the model happily narrates around instead of flagging. Assert on the *content* of tool outputs in your tests, not just the absence of exceptions, and see [handling tool errors and retries](/learn/tools-function-calling/handling-tool-errors-and-retries) for how to make failures loud enough for the model to notice and react to instead of paper over.
+
+**Related:** [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes), [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow)

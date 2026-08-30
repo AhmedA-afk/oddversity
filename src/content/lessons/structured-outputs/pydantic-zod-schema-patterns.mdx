@@ -1,0 +1,40 @@
+---
+title: "Pydantic and Zod: Deriving Schemas from Code"
+track: "structured-outputs"
+status: live
+summary: "Define your data shape once as a Pydantic or Zod model, then generate the JSON Schema the model sees from it."
+duration: "5 min read"
+---
+
+Hand-writing a JSON Schema next to the Python or TypeScript class that will hold the parsed result is a recipe for drift: you rename a field in one place and forget the other. Pydantic and Zod fix this by making the code the single source of truth — the schema you send the model is generated from it, not maintained beside it.
+
+## The pattern
+
+In Python, a Pydantic `BaseModel` already knows how to serialize itself to JSON Schema:
+
+```python
+from pydantic import BaseModel
+
+class Invoice(BaseModel):
+    vendor: str
+    total_cents: int
+    line_items: list[str]
+
+schema = Invoice.model_json_schema()
+```
+
+That `schema` dict is exactly the kind of contract described in [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs) — pass it to the API's structured-output parameter, get JSON back, and hand it straight to `Invoice.model_validate(response)`. If validation fails, you get a typed error pointing at the exact field, not a string you have to inspect by hand.
+
+Zod does the same job on the TypeScript side, just inverted: you build the schema first with `z.object(...)`, and the TypeScript type is inferred from it with `z.infer<typeof Invoice>` rather than generated from a class. Either direction — model-to-schema or schema-to-type — the point is the same: one definition, two consumers (your code and the model), instead of two definitions that can quietly disagree.
+
+## Why this matters more than it looks
+
+The failure mode this prevents is boring but common: you add a field to your database model, forget to add it to the hand-written prompt schema, and now the model has no idea the field exists — it just omits it, and nothing errors until something downstream breaks. Deriving the schema from code turns that into a compile-time or import-time problem instead of a silent runtime one.
+
+It also means your [enum constraints](/learn/structured-outputs/enums-and-constrained-fields) and [nested objects and arrays](/learn/structured-outputs/nested-and-array-schemas) are expressed once, in a language your team already reviews in pull requests, rather than in a second JSON file nobody remembers to update.
+
+## The gap to watch
+
+Neither library was originally built for this use case, so their JSON Schema output can include constructs your model provider's structured-output mode doesn't support — Pydantic can emit `oneOf` for `Union` types, and Zod's `.refine()` custom validators have no JSON Schema equivalent at all. Both ecosystems now ship options and community tooling to constrain the generated schema to a provider-safe subset, but treat "does this schema round-trip through my actual API" as something to check per model rather than assume. Most teams end up with a small internal helper that generates the schema, strips or flags unsupported keywords, and caches the result — because turning it into a manual step defeats the reason you adopted the pattern in the first place.
+
+**Related:** [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Nested Objects and Arrays in Output Schemas](/learn/structured-outputs/nested-and-array-schemas), [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability)

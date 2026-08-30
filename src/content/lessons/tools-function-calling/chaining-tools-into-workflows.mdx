@@ -1,0 +1,49 @@
+---
+title: "Chaining Tool Calls into a DAG Workflow"
+track: "tools-function-calling"
+status: live
+summary: "Fix the order tools run in so the model can't skip a step, call things twice, or wander off the rails."
+duration: "6 min read"
+---
+
+Not every multi-tool job should be improvised. If step B always needs the output of step A, and step D always needs both B and C, that's not a decision — it's a graph, and you should encode it as one instead of hoping the model rediscovers it every run.
+
+## Why fix the order at all
+
+Letting the model choose which tool to call next, based on [sequential, multi-step reasoning](/learn/tools-function-calling/sequential-multi-step-tool-use), is flexible but expensive: every step burns a round trip re-deriving a plan it already knows, and every step is a chance to skip a dependency, call something out of order, or loop. For a workflow like "fetch the ticket, look up the customer, check entitlement, draft a reply," the shape never changes — only the arguments do. Encoding that shape as a directed acyclic graph (DAG) turns four model decisions into one: the DAG decides *order*, the model decides *arguments* and *content*.
+
+A DAG workflow is just nodes (tool calls) and edges (data dependencies), executed by your orchestration code rather than by the model choosing "call tool X next." Independent branches — the entitlement check and the customer lookup, say — run as [parallel tool calls](/learn/tools-function-calling/parallel-tool-calls); dependent ones wait on their inputs.
+
+## Where the model still fits in
+
+The DAG doesn't replace the model — it constrains where the model's judgment is allowed to matter. A typical pattern:
+
+```
+fetch_ticket(id)
+      │
+      ├─► lookup_customer(ticket.customer_id)
+      │
+      └─► check_entitlement(ticket.customer_id, ticket.product)
+                    │
+      ┌─────────────┴─────────────┐
+      ▼                           ▼
+draft_reply(ticket, customer,   (if not entitled)
+            entitlement)        escalate(ticket)
+```
+
+Your orchestrator runs `fetch_ticket`, fans out the two lookups, then routes to `draft_reply` or `escalate` based on the entitlement result. The model is invoked only at the nodes that need judgment — drafting the reply, deciding tone, maybe picking which template fits — not at the plumbing in between. That's a huge context saving too: the model never sees the wiring, only the slice of state relevant to the call it's making.
+
+## Static DAG vs. dynamic branching
+
+Two things break this cleanly:
+
+- **Static DAGs** are worth hardcoding when the dependency graph never changes shape — same nodes, same edges, every run. Write it as actual control flow (a script, a state machine, a graph library like LangGraph) rather than a tool schema, because the model has nothing to decide about the structure.
+- **Conditional DAGs** need a decision node — usually a small model call or plain code — that picks the next edge from a fixed menu of branches (entitled vs. not, above threshold vs. below). This is still a DAG, not free-form planning: the model picks *which* pre-built branch to take, never invents a new one.
+
+If the graph's shape needs to change based on open-ended reasoning about the task — not just a branch off a fixed menu — that's a sign you actually want an agent loop, not a workflow; see [when a workflow beats an agent](/learn/agentic-ai/when-not-to-use-an-agent) for the other half of that call.
+
+## The failure mode to watch for
+
+The trap is over-fitting the DAG to today's edge cases until it's really an agent loop wearing a diagram. If you're adding a new conditional branch every other week, that complexity belongs in the model's reasoning, not in your graph definition — a DAG earns its cost by being *boring and stable*, not by being exhaustive.
+
+**Related:** [Sequential, Multi-Step Tool Use](/learn/tools-function-calling/sequential-multi-step-tool-use), [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent)

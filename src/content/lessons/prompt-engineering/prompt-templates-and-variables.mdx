@@ -1,0 +1,45 @@
+---
+title: "Prompt Templates: Building Reusable, Parameterized Prompts"
+track: "prompt-engineering"
+status: live
+summary: "Turning a working prompt into a reusable template with variables, ready for production traffic."
+duration: "4 min read"
+---
+
+A prompt that works once in the playground is a demo. A prompt that works for the next ten thousand inputs, written by people who aren't you, is a template. The difference is which parts are fixed instructions and which parts are variables — and being disciplined about never letting the two blur together.
+
+## From one-off to parameterized
+
+Say you wrote a prompt to summarize a support ticket. In the playground you pasted the actual ticket text into the middle of your instructions and it worked great. In production, that ticket text is untrusted, user-generated, and different every single call. So you pull it out into a variable:
+
+```
+You are summarizing a customer support ticket for an internal dashboard.
+Write 2-3 sentences covering the issue and current status.
+Do not include the customer's name or email.
+
+Ticket:
+"""
+{{ticket_text}}
+"""
+```
+
+Everything above the `ticket_text` slot is fixed — it's the same for every call, it's what you tested, and it's what you version-control. Everything inside the slot is data. Keeping that boundary sharp is most of the job. It's also your first line of defense against [prompt injection](/learn/evals-red-teaming/prompt-injection-basics) — instructions in the fixed part, content in the variable part, and clear [delimiters](/learn/prompt-engineering/delimiters-and-formatting) marking where one ends and the other begins.
+
+## What actually becomes a variable
+
+Not everything that changes should be a variable. A good template has a small, deliberate set of slots — typically the untrusted input, a small number of configuration knobs (output length, tone, target language), and maybe a handful of [few-shot](/learn/prompt-engineering/few-shot-prompting) examples pulled from a library. Resist the urge to parameterize the instructions themselves. If you find yourself needing `{{extra_instruction}}` injected into the middle of your prompt for different callers, that's usually a sign you actually have two different prompts wearing one template, and you should split them rather than let the fixed part become a variable too.
+
+A useful test: could someone who has never seen your prompt fill in the variables and get a sane result? If the variable names are `{{input}}` and `{{context}}` with no indication of format or size, no. Name them for what they hold — `{{ticket_text}}`, not `{{x}}` — and document the expected shape (plain text? JSON? under what length?) next to the template, not just in your head.
+
+## Treat the template like code
+
+Once a prompt has variables, it has a contract, and contracts need the same rigor as any other interface:
+
+- **Version it.** A template edit that changes model behavior is a deploy, not a tweak — track it like you'd track a schema migration.
+- **Validate inputs before they hit the slot.** An empty `{{ticket_text}}` or one that's 50,000 tokens long will break your prompt in different ways than a normal one; catch that at the call site.
+- **Test the template, not just an instance of it.** Run it against a small suite of representative and edge-case inputs whenever you change the fixed text — this is where [prompt evaluation](/learn/prompt-engineering/prompt-evaluation-basics) earns its keep.
+- **Keep templates out of application code** where possible, in their own files or a prompt-management store, so a wording fix doesn't require a full redeploy.
+
+The payoff is that "improve the prompt" stops being an archaeology exercise. You have one place that defines the instructions, a clear list of what varies, and a way to tell whether a change made things better or worse before it reaches real traffic.
+
+**Related:** [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Few-Shot Prompting: Teaching by Example](/learn/prompt-engineering/few-shot-prompting), [Evaluating Prompts Before You Ship Them](/learn/prompt-engineering/prompt-evaluation-basics)

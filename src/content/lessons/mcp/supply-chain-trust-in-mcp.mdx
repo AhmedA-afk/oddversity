@@ -1,0 +1,35 @@
+---
+title: "Supply-Chain Trust: Vetting Third-Party MCP Servers"
+track: "mcp"
+status: live
+summary: "What to check before pointing your agent at someone else's MCP server binary."
+duration: "6 min read"
+---
+
+Installing an MCP server is running someone else's code with your credentials and your filesystem access. The `npx` or `uvx` one-liner in a README is a supply-chain decision dressed up as a setup step — treat it like one.
+
+## What you're actually trusting
+
+An MCP server isn't a sandboxed plugin. Once it's wired into your client, it can read every tool call and result that flows through it, and depending on transport and permissions, it may touch your filesystem, your environment variables, or any API key you've handed it. A malicious or compromised server can exfiltrate data quietly: nothing in the protocol stops a tool from logging its arguments to a remote endpoint before returning a result.
+
+The trust boundary isn't just "did the author mean well." It's the whole chain: the maintainer, the package registry it's published through, every dependency that package pulls in, and whatever build step turns source into the binary or script you run. Compromise anywhere in that chain looks identical to you — a normal-looking tool response.
+
+## Before you install
+
+Check these, roughly in order of effort:
+
+- **Source vs. binary.** Prefer a server you can read. If it's open source, skim the tool implementations — not the whole codebase, just what each declared tool actually does when called. Look specifically for network calls, filesystem writes outside the stated scope, and `exec`/`eval`-style code execution.
+- **Publisher identity.** Is this published by the tool vendor itself (e.g., a database company shipping their own MCP server) or by an unrelated third party wrapping their API? Third-party wrappers aren't automatically bad, but they're an extra hop of trust with no accountability if it breaks or misbehaves.
+- **Permissions requested.** A server for "search my notes" that also asks for broad filesystem roots or shell access is asking for more than its job needs. Cross-check declared tools in [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas) against what scope it actually requests.
+- **Registry signals.** Official [MCP registries](/learn/mcp/mcp-registries-and-discovery) are starting to carry verification and provenance metadata, but a listing isn't a guarantee — registries index what's submitted, they don't audit tool logic line by line. Download counts and stars are weak signals at best; a popular package can still ship a malicious update.
+- **Update behavior.** A server pulled via `npx <package>@latest` re-fetches and can silently change on every run. Pin a version once you trust a release, the same discipline you'd want in production dependency management.
+
+## Run it isolated first
+
+The highest-leverage habit is running an unfamiliar server without your real credentials, in a place it can't do damage. Use [Inspecting and Testing MCP Servers](/learn/mcp/inspecting-and-testing-mcp-servers) to watch exactly what tools it exposes and what a call actually sends before connecting it to your main client. For anything you didn't write yourself, run it inside the kind of boundary described in [Sandboxing Untrusted MCP Servers](/learn/mcp/sandboxing-untrusted-servers) — a container or restricted process with no access to secrets it doesn't strictly need.
+
+## The ongoing risk, not just the install-time one
+
+Vetting once isn't enough. A server that's clean today can ship a compromised update tomorrow, or a legitimate one can be tricked into misbehaving by content it retrieves — see [Securing MCP Servers Against Prompt Injection](/learn/mcp/securing-mcp-servers-against-prompt-injection) for that angle. Treat third-party MCP servers the way you'd treat any dependency with runtime access to your systems: pin versions, review diffs on upgrade, and scope credentials to the minimum the server actually needs.
+
+**Related:** [Sandboxing Untrusted MCP Servers](/learn/mcp/sandboxing-untrusted-servers), [Inspecting and Testing MCP Servers](/learn/mcp/inspecting-and-testing-mcp-servers), [MCP Registries and Discovery](/learn/mcp/mcp-registries-and-discovery)

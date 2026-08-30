@@ -1,0 +1,48 @@
+---
+title: "Shed Load Gracefully Instead of Falling Over"
+track: "production"
+status: live
+summary: "When demand exceeds capacity, degrade to cached answers or smaller models instead of failing every request."
+duration: "5 min read"
+---
+
+Traditional web servers handle overload by rejecting requests once a queue fills up. AI features need a subtler response, because a rejected request and a degraded one cost you very different amounts of user trust — and because LLM capacity is expensive and slow to add on the fly.
+
+## Why LLM traffic overloads differently
+
+A normal API request takes milliseconds and one server can serve thousands of them. An LLM call can take seconds, holds a GPU or a rate-limit slot the whole time, and its cost scales with output length, not just request count. That means a traffic spike doesn't just slow you down — it can exhaust your provider's rate limit, blow your token budget for the day, or leave requests queued so long they time out anyway. Simply adding more servers doesn't fix this the way it does for a stateless web app, because the bottleneck is usually the model provider, not your infrastructure.
+
+## Degrade instead of reject
+
+Load shedding means deciding, ahead of time, what a request gets when full capacity isn't available — rather than a 503. Common fallback tiers, roughly cheapest and fastest first:
+
+- **Serve from cache.** If a semantically similar request was answered recently, return that answer instead of calling the model again. See [caching prompts and responses](/learn/production/prompt-and-semantic-caching).
+- **Route to a cheaper, faster model.** A smaller model gives a worse but still useful answer instead of no answer — see [routing by task complexity](/learn/production/model-routing-by-task-complexity).
+- **Return a canned or templated response** for the most common intents, skipping the model call entirely.
+- **Queue with a visible wait,** rather than a silent timeout, if the user's task tolerates delay.
+- **Shed by priority.** Serve paying tenants or latency-sensitive endpoints first; delay or drop batch and non-interactive traffic — this is what [per-tenant budgets](/learn/production/per-tenant-token-budgets-and-quotas) and [rate limiting](/learn/production/rate-limiting-llm-apps) exist to enforce.
+
+The order matters: check cache first, since it's nearly free, before deciding whether to fall back to a cheaper model or shed the request outright.
+
+## Building the fallback ladder
+
+Each tier should be triggered by a measurable signal — provider error rate, p99 latency, queue depth, or remaining token budget — not by guesswork. A typical implementation wraps the primary model call with:
+
+```
+try:
+    return call_primary_model(request, timeout=budget)
+except (RateLimitError, TimeoutError):
+    if cached := semantic_cache.get(request):
+        return cached
+    if fallback_model_healthy():
+        return call_fallback_model(request)
+    return degraded_response(request)  # template, queue, or clear error
+```
+
+The critical discipline is deciding this ladder *before* an incident, not while your dashboard is on fire. Write it down as part of your [on-call playbook](/learn/production/on-call-playbooks-for-ai), so whoever is paged doesn't have to invent a strategy under pressure.
+
+## What "falling over" looks like without this
+
+Without shedding, an overloaded AI feature typically fails in one of two ugly ways: every request times out and users see nothing, or retries pile onto an already-struggling provider and turn a slowdown into a full outage. Both are avoidable. A feature that visibly gets simpler under load — shorter answers, a smaller model, a cached response — reads to users as "still working," which is a much better outcome than "broken."
+
+**Related:** [Cache Prompts and Responses to Cut Cost](/learn/production/prompt-and-semantic-caching), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity), [Write an On-Call Playbook for AI Failures](/learn/production/on-call-playbooks-for-ai)

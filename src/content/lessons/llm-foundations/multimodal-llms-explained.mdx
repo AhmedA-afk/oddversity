@@ -1,0 +1,31 @@
+---
+title: "Multimodal LLMs, Explained"
+track: "llm-foundations"
+status: live
+summary: "Images, audio, and video become tokens too — one transformer, multiple input types sharing the same embedding space."
+duration: "5 min read"
+---
+
+A "multimodal" model isn't a text model with an image plugin bolted on. It's a single transformer where pixels, sound, and words all get converted into the same kind of object — a vector — before anything else happens.
+
+## Everything becomes a token
+
+Text tokenization is familiar: a byte-pair encoder chops "hello world" into a handful of subword pieces, and each piece maps to an embedding vector, as covered in [Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained). Images go through a parallel process. A vision encoder — usually a small transformer of its own, following the ViT (Vision Transformer) approach — slices an image into a grid of patches, say 16x16 pixels each, and turns every patch into a vector. A 512x512 image might become a few hundred "image tokens." Audio gets a similar treatment: a spectrogram or raw waveform is chunked into short time windows, each encoded into a vector.
+
+The trick is that all of these vectors land in the *same* embedding space as text tokens, discussed in [Embeddings: Turning Tokens Into Geometry](/learn/llm-foundations/what-are-embeddings). A patch of an image and the word "cat" can end up near each other geometrically if the model has learned that association. Once everything is a sequence of vectors, the transformer doesn't know or care which ones came from pixels and which came from letters — it just runs [attention](/learn/llm-foundations/attention-mechanism-explained) over the whole sequence.
+
+## Why this works: shared architecture, joint training
+
+This unification is what makes multimodal models different from older pipelines that bolted a separate image-captioning model onto a language model. In a modern multimodal LLM, the image encoder and the language decoder are trained together (or the image encoder is trained to align with a frozen language model's embedding space), so the model learns to reason across modalities rather than translate one into the other and lose information in the handoff.
+
+This is also why context windows quietly shrink when you paste in images. Those image patches count as tokens against the same [context window](/learn/llm-foundations/context-window-mechanics) as your text — a single high-resolution image can easily cost more tokens than a page of prose.
+
+## Output is a different story
+
+Understanding images and audio is one capability; generating them is another. Most "multimodal" chat models are multimodal on the *input* side (they read images/audio/video) but still only produce text tokens as output, using [next-token prediction](/learn/llm-foundations/next-token-prediction) over a text vocabulary. True any-to-any models that generate images or audio typically add a separate decoder — a diffusion model or an audio vocoder — downstream of the shared transformer, rather than predicting pixels one at a time the way they predict text.
+
+## What this unlocks in practice
+
+Because everything shares one embedding space, a multimodal model can be asked to compare a photo against a paragraph of text, describe a chart, transcribe and summarize a voice memo, or answer a question about a specific frame of video — all without a separate specialized model per modality. The tradeoff is cost and latency: encoding a video's worth of frames into tokens is expensive, which is why most multimodal products sample frames sparsely rather than feeding in every one.
+
+**Related:** [Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained), [Embeddings: Turning Tokens Into Geometry](/learn/llm-foundations/what-are-embeddings), [Context Window Mechanics](/learn/llm-foundations/context-window-mechanics)

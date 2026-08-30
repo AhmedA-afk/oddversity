@@ -1,0 +1,36 @@
+---
+title: "Rate-Limit and Add Backpressure to LLM Traffic"
+track: "production"
+status: live
+summary: "Cap requests per user, queue what overflows, and degrade gracefully so one burst of traffic can't blow your budget or your provider quota."
+duration: "5 min read"
+---
+
+An LLM API call is slow and expensive compared to a normal database query, which means the failure modes are different too: a traffic spike doesn't just slow your app down, it can burn through your monthly budget in an hour or trip your provider's account-wide rate limit and take every user down at once. Rate limiting and backpressure are how you put a ceiling on that.
+
+## Two different limits, two different jobs
+
+There are really two things to protect, and they need separate limits. The first is your upstream provider's rate limit — usually expressed as requests per minute and tokens per minute, shared across your whole account. Blow through it and you get `429` errors for every user, not just the one who caused the spike. The second is your own budget and fairness policy — you don't want one user or one script consuming the capacity everyone else needs. Track both: an account-level limiter that never lets your total outbound rate approach the provider's ceiling, and a per-user (or per-API-key) limiter that caps any single caller well below that.
+
+A token bucket is the usual mechanism for both: each user (or the account as a whole) has a bucket that refills at a steady rate and drains by request count or token count. It's forgiving of short bursts, unlike a hard "N requests per minute" window that resets abruptly and lets everyone burst at the boundary.
+
+```python
+if not bucket.take(tokens=estimated_tokens):
+    return queue_or_reject(request)
+```
+
+## Backpressure: what happens when the limit is hit
+
+Rejecting the request outright is the simplest response, but often the wrong one — a user who gets a hard error for sending one message too quickly just retries immediately, which makes the spike worse. Backpressure means pushing back on the caller instead of dropping them: a queue that holds the request briefly and processes it once capacity frees up, or a `429` response that carries a `Retry-After` header so a well-behaved client backs off instead of hammering you. This pairs directly with the [retry strategy](/learn/genai-app-dev/rate-limits-and-retry-strategies) on the calling side — a limiter without a documented retry contract just moves the failure from your server to the client's error logs.
+
+Queuing has a limit of its own: don't let a queue grow unbounded while users stare at a spinner. Cap the queue depth and the max wait, and once either is exceeded, reject with a clear message rather than let latency creep past what anyone will wait for.
+
+## Degrade instead of failing outright
+
+The most resilient systems don't just accept-or-reject at the limiter — they have a cheaper fallback to degrade to. That can mean routing overflow traffic to a smaller, faster model instead of queuing it behind the primary one, serving a cached or approximate answer for read-heavy features (see [prompt and semantic caching](/learn/production/prompt-and-semantic-caching)), or temporarily disabling a non-critical AI feature via a [kill switch](/learn/production/feature-flags-and-kill-switches) while keeping the core product usable. Decide which of your AI features are essential and which can be shed under load *before* the incident, not during it — that decision belongs in the same [on-call playbook](/learn/production/on-call-playbooks-for-ai) that covers the rest of your failure response.
+
+## What to watch
+
+Rate limiting only works if you can see it working. Track rejection and queue rates per user and per feature, and alert well before you're regularly hitting the ceiling — a limiter that's constantly saturated is a signal to raise a quota or add capacity, not just a safety net doing its job quietly forever.
+
+**Related:** [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches), [Set SLOs for Latency, Cost, and Quality](/learn/production/latency-and-cost-slos)

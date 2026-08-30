@@ -1,0 +1,48 @@
+---
+title: "Termination Conditions: Teaching an Agent When It's Done"
+track: "agentic-ai"
+status: live
+summary: "Design explicit stop signals so agents don't loop forever, burn budget, or quit before the job is actually finished."
+duration: "6 min read"
+---
+
+An agent loop only stops when something tells it to. Leave that implicit and you get two failure modes on opposite ends: the agent that declares victory after a half-fix, and the agent that keeps calling tools long after the task was done. Termination conditions are the part of the harness that decides, on every iteration, whether to loop again.
+
+## The three checks that actually matter
+
+Most agent loops combine three independent stop conditions, checked in this order:
+
+**Goal check.** Did the model's own output (or a tool result) satisfy the task? For a coding agent this might be "tests pass"; for a research agent, "the model emitted a final-answer block." This is the condition you *want* to fire — everything else is a safety net for when it doesn't.
+
+**Max-steps / max-tokens ceiling.** A hard numeric cap on iterations or cumulative tokens, independent of whether the goal looks met. This is what stops a stuck agent from running (and billing) forever. It should always exist, even if it's generous — 25 steps, 50 tool calls, whatever fits the task's realistic upper bound. See [cost-aware agent loops](/learn/agentic-ai/cost-aware-agent-loops) for how to size this against a token budget rather than guessing.
+
+**Confidence / no-progress check.** The subtler one. An agent can stay under the step cap while making no real progress — retrying the same failing command, re-reading the same file, restating the same plan. A no-progress detector compares consecutive states (same tool, same args, same error) and forces a stop or an escalation after N repeats, rather than waiting for the ceiling to bite.
+
+## Why "just ask the model" isn't enough
+
+The naive version — prompt the model to say "DONE" when finished — fails for a specific reason: the model is grading its own work using the same reasoning that produced the work. If it missed an edge case, it usually misses it again when asked "are you done?" This is the same blind spot covered in [reflection and self-critique](/learn/agentic-ai/reflection-and-self-critique): self-assessment catches slips, not systematic errors.
+
+The fix is to make the goal check external wherever possible — a test suite, a schema validator, a second model call with a narrower prompt, a human approval gate — rather than trusting the acting model's own "I'm done" token. Reserve the model's self-report for cases where no external check is available, and even then pair it with the step ceiling.
+
+## Stopping too early vs. too late
+
+These need different guards. Stopping *too early* usually means the goal check is too loose — "did the agent call the submit tool" instead of "did the submitted output pass validation." Tighten the check, not the prompt.
+
+Stopping *too late* — the classic runaway loop — is almost always a missing or too-generous step cap, or a goal check that can never technically fail (a self-graded "done" flag). Tighten the ceiling and externalize the check.
+
+A production loop typically looks like this in pseudocode:
+
+```
+while step < max_steps and tokens_used < token_budget:
+    result = agent.act()
+    if goal_check(result):        # external validator
+        return success
+    if no_progress(history):      # same action N times
+        return escalate
+    step += 1
+return timeout
+```
+
+Every branch here — success, escalate, timeout — is a distinct outcome your harness should log separately. Lumping them together as "agent finished" hides exactly the failures you'd want to catch. That distinction matters when you're [reading an agent's trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev) later.
+
+**Related:** [Cost-Aware Agents: Budgeting Tokens Across a Long-Running Loop](/learn/agentic-ai/cost-aware-agent-loops), [Reflection: Letting an Agent Grade Itself](/learn/agentic-ai/reflection-and-self-critique), [Reading an Agent's Trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev)

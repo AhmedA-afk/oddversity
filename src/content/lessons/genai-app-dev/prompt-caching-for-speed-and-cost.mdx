@@ -1,0 +1,41 @@
+---
+title: "Prompt Caching for Speed and Cost"
+track: "genai-app-dev"
+status: live
+summary: "Cache stable prompt prefixes so repeat calls get cheaper and faster without changing model behavior."
+duration: "5 min read"
+---
+
+If your app sends the same system prompt, tool definitions, or reference document on every call, you're paying full price to re-process it each time. Prompt caching lets the provider store that stable prefix and reuse it, so repeat requests skip the redundant work.
+
+## The idea in one picture
+
+Most LLM calls have two parts: a large, mostly-unchanging prefix (system instructions, tool schemas, a long document, few-shot examples) and a small, always-different suffix (the user's latest message). Without caching, every call re-processes the whole thing from scratch. With caching, the provider fingerprints the prefix, stores its processed state, and on the next call with an identical prefix just picks up where it left off — skipping straight to the new part.
+
+The savings compound because the prefix is the part that doesn't change. A support bot with a 3,000-token system prompt and a 50-token user question is paying most of its cost, on every single turn, for text it already sent minutes ago.
+
+## Why it's cheaper and faster
+
+Providers charge for cache reads at a steep discount off the normal input price, while cache writes (the first time a prefix is cached) usually cost a bit more than a normal call. So the pattern that wins is: high-repetition prefixes called often within the cache's lifetime, which for most providers is on the order of minutes unless you pay to extend it. A single call with a unique prompt gets no benefit — caching only pays off across repeated or closely-timed calls that share a prefix.
+
+The latency win comes from the same mechanism: skipping re-computation of a long prefix means the model starts generating sooner, which matters most for latency-sensitive features where you've already set a [latency budget](/learn/genai-app-dev/latency-budgets-for-llm-features).
+
+## What actually gets cached
+
+The prefix has to match exactly, token for token, up to a marked breakpoint — so structure your prompt so stable content comes first and variable content comes last. A common layout:
+
+```
+[system instructions]      <- cache this
+[tool definitions]         <- cache this
+[reference document]       <- cache this
+[conversation history]     <- changes each turn
+[user's new message]       <- always unique
+```
+
+Put a cache breakpoint after the stable block. If you reorder, reword, or even fix a typo in the cached section, it invalidates the cache and you pay full price on the next call. This is one more reason to keep your prompts in version-controlled [templates](/learn/prompt-engineering/prompt-templates-and-variables) rather than assembling them ad hoc.
+
+## Where it fits in a real app
+
+Caching isn't something you bolt on later — it shapes how you build the prompt in the first place. It pairs naturally with a [cost budget](/learn/genai-app-dev/cost-budgets-and-usage-tracking) you're tracking per feature, and at production scale it's the same lever documented under [prompt and semantic caching](/learn/production/prompt-and-semantic-caching) for cutting inference spend. It doesn't change what the model outputs — same prompt, same response — it only changes what you pay and how long you wait to get it.
+
+**Related:** [Setting Latency Budgets for LLM Features](/learn/genai-app-dev/latency-budgets-for-llm-features), [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking), [Cache Prompts and Responses to Cut Cost](/learn/production/prompt-and-semantic-caching)

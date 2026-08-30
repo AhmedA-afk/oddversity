@@ -1,0 +1,43 @@
+---
+title: "Structured Output Failure Modes and How to Spot Them"
+track: "structured-outputs"
+status: live
+summary: "Schema drift, hallucinated fields, truncation, type coercion — the ways structured output breaks and the symptom that gives each one away."
+duration: "5 min read"
+---
+
+Even with JSON mode or a strict schema, structured output still breaks in the same handful of ways, over and over. Knowing the symptom for each failure mode is what turns a confusing production bug into a five-minute fix.
+
+## Truncation: valid JSON that stops mid-object
+
+The model hits its output token limit before it finishes. You get a string that looks like JSON but isn't — it just cuts off, often mid-string or mid-array, like this:
+
+```json
+{"items": [{"name": "Widget", "price": 12.99}, {"name": "Gadget", "pr
+```
+
+The tell is a `JSONDecodeError` that points at the *last* character in the string, not somewhere in the middle. Fix it by raising `max_tokens`, shrinking the schema (fewer fields, shorter descriptions), or splitting the request into smaller batches. Don't reach for a JSON repair library as the first move — that treats the symptom, not the cause.
+
+## Type mismatches: right field, wrong shape
+
+The model returns a value that's semantically close but structurally wrong: a number as a quoted string (`"quantity": "5"`), a boolean as `"yes"`, a date as free text instead of ISO format, or a single object where the schema expects a one-item array. This happens most with fields the model has seen written in prose more often than in structured form — dates and quantities are the classic offenders.
+
+This is exactly what a validation layer exists to catch — see [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair). Coercing `"5"` to `5` is a safe auto-fix; coercing `"maybe"` to a boolean is not, and should fail loudly instead of guessing.
+
+## Schema drift: fields that wander
+
+Over a long generation, or across many calls, the model starts adding fields you didn't ask for, renaming a field to something more "natural" (`user_email` becomes `email`), or nesting a value one level deeper than the schema specifies. Drift is worse with looser prompting and gets dramatically better with real [JSON Schema constraints](/learn/structured-outputs/json-schema-for-outputs) or [constrained decoding](/learn/structured-outputs/constrained-decoding-under-the-hood), since the latter makes the invalid shape literally unreachable rather than just discouraged.
+
+Without constrained decoding, drift is a `set(response.keys()) - set(schema.keys())` check away from being caught — run it on a sample of production responses, not just your test fixtures.
+
+## Hallucinated fields and phantom confidence
+
+The subtler failure: every field is present, every type is correct, and the JSON validates cleanly — but a value is fabricated. A `"source_url"` field that resolves to nothing, a `"confidence": 0.94` the model invented because the schema asked for one, an `"id"` that doesn't exist in your database. Schema validation cannot catch this category at all, because structurally the output is perfect.
+
+The fix isn't a better schema — it's grounding the specific fields at risk. If a field must trace to a real value, look it up after generation and reject the response if it doesn't match, rather than trusting the model's own citation.
+
+## Silent enum violations
+
+You'd expect an out-of-set value on an [enum field](/learn/structured-outputs/enums-and-constrained-fields) to error immediately, but with prompted (non-constrained) JSON mode it often doesn't — the model just picks a plausible-looking synonym (`"in_progress"` instead of your defined `"pending"`) and the response still parses as valid JSON. Only a schema-aware validator, not a JSON parser, will catch it.
+
+**Related:** [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), [Enums: Locking a Field to a Fixed Set of Values](/learn/structured-outputs/enums-and-constrained-fields), [Constrained Decoding: How Guaranteed-Valid Output Actually Works](/learn/structured-outputs/constrained-decoding-under-the-hood)

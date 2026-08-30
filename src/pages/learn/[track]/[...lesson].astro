@@ -1,0 +1,308 @@
+---
+import Layout from '../../../components/Layout.astro';
+import { getCollection, render } from 'astro:content';
+import { getTrack } from '../../../data/curriculum.ts';
+import { groupTrack } from '../../../data/modules';
+import { ogImage } from '../../../data/og-images';
+
+export async function getStaticPaths() {
+  const lessons = await getCollection('lessons');
+  return lessons.map((entry) => {
+    const [track, ...rest] = entry.id.split('/');
+    return { params: { track, lesson: rest.join('/') }, props: { entry } };
+  });
+}
+
+const { entry } = Astro.props;
+const { track: trackId, lesson: slug } = Astro.params;
+const track = getTrack(trackId!);
+const { Content, headings } = await render(entry);
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const pageNodes = track ? track.nodes.filter((n) => n.slug) : [];
+const curIndex = pageNodes.findIndex((n) => n.slug === slug);
+const prev = pageNodes[curIndex - 1];
+const next = pageNodes[curIndex + 1];
+
+const modules = track ? groupTrack(track) : null;
+// Resolve against the same array the sidebar renders, so identity comparison
+// holds and the reader's own module is the one that opens.
+const currentModule = modules?.find((m) => m.nodes.some((n) => n.slug === slug)) ?? null;
+
+// "Related" = the rest of this lesson's own module, excluding what the pager
+// already offers, so the page always has somewhere honest and nearby to go.
+const relatedPool = currentModule ? currentModule.nodes.filter((n) => n.slug) : pageNodes;
+const neighbours = relatedPool
+  .filter((n) => n.slug !== slug && n.slug !== prev?.slug && n.slug !== next?.slug)
+  .map((n) => ({ node: n, distance: Math.abs(pageNodes.findIndex((x) => x.slug === n.slug) - curIndex) }))
+  .sort((a, b) => a.distance - b.distance)
+  .slice(0, 4)
+  .map((n) => n.node);
+
+const allLessons = await getCollection('lessons');
+const summaryFor = new Map(allLessons.map((l) => [l.id, l.data.summary ?? '']));
+---
+<Layout
+  title={entry.data.title}
+  description={entry.data.summary}
+  type="learning-resource"
+  image={track ? ogImage(`track-${track.id}`) : undefined}
+  imageAlt={track ? `${entry.data.title} — ${track.name} on Oddversity` : undefined}
+  modifiedTime={entry.data.updated}
+  breadcrumbs={[
+    { name: 'Home', url: '/' },
+    { name: 'Learn', url: '/learn' },
+    ...(track ? [{ name: track.name, url: `/learn/${track.id}` }] : []),
+    ...(currentModule ? [{ name: currentModule.name, url: `/learn/${trackId}#${currentModule.anchor}` }] : []),
+    { name: entry.data.title, url: `/learn/${trackId}/${slug}` },
+  ]}
+>
+  <div class="wrap">
+    <aside class="side" aria-label="Track contents">
+      {track && (
+        <div class="side-inner">
+          <a href={`/learn/${track.id}`} class="side-track">
+            {track.name}
+            <span class="side-count mono">{pageNodes.length} lessons</span>
+          </a>
+          <input
+            type="search"
+            class="side-filter"
+            data-side-filter
+            placeholder="Filter this track"
+            aria-label={`Filter lessons in ${track.name}`}
+          />
+          <div class="side-scroll">
+            {modules ? (
+              modules.map((mod) => (
+                <details class="side-mod" open={mod === currentModule} data-side-group>
+                  <summary>
+                    <span class="mod-name">{mod.name}</span>
+                    <span class="mod-count mono">{mod.nodes.length}</span>
+                  </summary>
+                  <ul class="side-list">
+                    {mod.nodes.map((nd) => (
+                      <li data-side-item>
+                        {nd.slug ? (
+                          <a
+                            href={`/learn/${track.id}/${nd.slug}`}
+                            class:list={['sl', { current: nd.slug === slug }]}
+                            data-lesson-link={`${track.id}/${nd.slug}`}
+                            aria-current={nd.slug === slug ? 'page' : undefined}
+                          >
+                            <svg class="check" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+                            <span>{nd.title}</span>
+                          </a>
+                        ) : (
+                          <span class="sl dim"><span>{nd.title}</span></span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))
+            ) : (
+              <ul class="side-list" data-side-group>
+                {track.nodes.map((nd) => (
+                  <li data-side-item>
+                    {nd.slug ? (
+                      <a
+                        href={`/learn/${track.id}/${nd.slug}`}
+                        class:list={['sl', { current: nd.slug === slug }]}
+                        data-lesson-link={`${track.id}/${nd.slug}`}
+                        aria-current={nd.slug === slug ? 'page' : undefined}
+                      >
+                        <svg class="check" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+                        <span>{nd.title}</span>
+                      </a>
+                    ) : (
+                      <span class="sl dim"><span>{nd.title}</span></span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <p class="side-empty" data-side-empty hidden>Nothing in this track matches.</p>
+        </div>
+      )}
+    </aside>
+
+    <article
+      class="doc"
+      data-lesson={`${trackId}/${slug}`}
+      data-track={trackId}
+      data-track-name={track?.name}
+      data-title={entry.data.title}
+    >
+      <nav class="crumb mono" aria-label="Breadcrumb">
+        <a href="/learn">Learn</a> <span>/</span> <a href={`/learn/${track?.id}`}>{track?.name}</a>
+        {currentModule && (<><span>/</span><a href={`/learn/${track?.id}#${currentModule.anchor}`}>{currentModule.name}</a></>)}
+      </nav>
+
+      {track && (
+        <details class="mobile-contents">
+          <summary>Track contents · {pageNodes.length} lessons</summary>
+          <ol>
+            {pageNodes.map((nd, i) => (
+              <li>
+                <a href={`/learn/${track.id}/${nd.slug}`} class:list={{ current: nd.slug === slug }}>
+                  <span class="mono">{String(i + 1).padStart(2, '0')}</span> {nd.title}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+
+      <h1>{entry.data.title}</h1>
+      <div class="meta mono">
+        {entry.data.duration && <span>{entry.data.duration}</span>}
+        {curIndex >= 0 && <><span aria-hidden="true">·</span><span>Lesson {curIndex + 1} of {pageNodes.length}</span></>}
+        {currentModule && <><span aria-hidden="true">·</span><span>{currentModule.name}</span></>}
+        {entry.data.updated && <><span aria-hidden="true">·</span><span>Updated {entry.data.updated}</span></>}
+      </div>
+      {entry.data.summary && <p class="lede">{entry.data.summary}</p>}
+
+      <div class="prose">
+        <Content />
+      </div>
+
+      <div class="lesson-actions">
+        <button type="button" class="complete" data-complete-toggle aria-pressed="false">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+          <span data-complete-label>Mark complete</span>
+        </button>
+        <span class="note">Saved in this browser only — no account, nothing sent anywhere.</span>
+      </div>
+
+      <nav class="pager" aria-label="Lesson navigation">
+        {prev?.slug ? (
+          <a href={`/learn/${track!.id}/${prev.slug}`} class="pg"><span class="mono">← Previous</span><span class="pt">{prev.title}</span></a>
+        ) : <span></span>}
+        {next?.slug ? (
+          <a href={`/learn/${track!.id}/${next.slug}`} class="pg alignr"><span class="mono">Next →</span><span class="pt">{next.title}</span></a>
+        ) : <span></span>}
+      </nav>
+
+      {neighbours.length > 0 && track && (
+        <section class="related">
+          <div class="eyebrow">More in {currentModule ? currentModule.name : track.name}</div>
+          <ul>
+            {neighbours.map((n) => (
+              <li>
+                <a href={`/learn/${track.id}/${n.slug}`}>{n.title}</a>
+                <span>{summaryFor.get(`${track.id}/${n.slug}`)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </article>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-inner">
+        {toc.length > 0 && (
+          <>
+            <div class="eyebrow">On this page</div>
+            <ul>
+              {toc.map((h) => (<li class:list={{ sub: h.depth === 3 }}><a href={`#${h.slug}`}>{h.text}</a></li>))}
+            </ul>
+          </>
+        )}
+        <button type="button" class="toc-search mono" data-search-open>Search all lessons ⌘K</button>
+      </div>
+    </aside>
+  </div>
+</Layout>
+
+<style>
+  .wrap { max-width: 1320px; margin-inline: auto; padding: 36px 32px 8px; display: grid; grid-template-columns: 248px minmax(0, 1fr) 200px; gap: 44px; align-items: start; }
+  .side-inner, .toc-inner { position: sticky; top: 84px; max-height: calc(100vh - 108px); display: flex; flex-direction: column; }
+
+  .side-track { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font: 600 13px/1.3 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); padding-bottom: 11px; border-bottom: 1px solid var(--rule); flex: none; }
+  .side-track:hover { color: var(--accent); text-decoration: none; }
+  .side-count { font-size: 10.5px; color: var(--muted); white-space: nowrap; font-weight: 400; }
+  .side-filter { flex: none; margin: 10px 0 8px; height: 30px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-2); color: var(--text); font: 400 12px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; width: 100%; }
+  .side-filter::placeholder { color: var(--muted); }
+  .side-scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; padding-right: 2px; scrollbar-width: thin; }
+  .side-list { list-style: none; padding: 0 0 6px; margin: 0; display: flex; flex-direction: column; gap: 1px; }
+  .side-mod { border-bottom: 1px solid var(--rule); }
+  .side-mod:last-child { border-bottom: 0; }
+  .side-mod > summary {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    cursor: pointer; list-style: none; padding: 9px 0 8px;
+    font: 500 11.5px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text);
+  }
+  .side-mod > summary::-webkit-details-marker { display: none; }
+  .side-mod > summary::before {
+    content: ""; flex: none; width: 0; height: 0; margin-right: 2px;
+    border-left: 4px solid var(--muted); border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent;
+    transform: translateY(-1px);
+  }
+  .side-mod[open] > summary::before { transform: rotate(90deg) translateX(-1px); }
+  .side-mod > summary:hover { color: var(--accent); }
+  .mod-name { flex: 1; }
+  .mod-count { flex: none; font-size: 10px; color: var(--muted); font-weight: 400; }
+  .sl { display: flex; align-items: flex-start; gap: 8px; padding: 6px 9px; margin: 0 -7px; border-radius: 6px; font: 400 12.5px/1.4 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--muted); overflow-wrap: anywhere; }
+  .sl:hover { color: var(--text); background: var(--paper); text-decoration: none; }
+  .sl.current { color: var(--accent); font-weight: 500; background: var(--accent-wash); }
+  .sl.dim { color: var(--muted); }
+  .sl .check { margin-top: 3px; }
+  .side-empty { font-size: 12px; color: var(--muted); padding-block: 10px; }
+
+  .doc { min-width: 0; max-width: 730px; }
+  .crumb { font-size: 11.5px; color: var(--muted); margin-bottom: 18px; }
+  .crumb a { color: var(--muted); }
+  .crumb a:hover { color: var(--accent); text-decoration: none; }
+  .crumb span { margin: 0 6px; }
+
+  .mobile-contents { display: none; margin-bottom: 22px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); padding: 12px 15px; }
+  .mobile-contents summary { cursor: pointer; font: 500 13px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  .mobile-contents ol { margin: 12px 0 2px; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+  .mobile-contents a { font-size: 13px; color: var(--muted); }
+  .mobile-contents a.current { color: var(--accent); font-weight: 500; }
+  .mobile-contents .mono { font-size: 10.5px; color: var(--muted); }
+
+  .doc h1 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -.02em; }
+  .meta { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 11.5px; color: var(--muted); }
+  .lede { margin-top: 16px; font-size: 17px; line-height: 1.6; color: var(--muted); }
+  .prose { margin-top: 30px; }
+
+  .lesson-actions { margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--rule); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .complete { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border: 1px solid var(--rule); border-radius: 8px; background: transparent; color: var(--muted); font: 500 12.5px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; cursor: pointer; }
+  .complete:hover { color: var(--text); background: var(--paper); }
+  .complete.is-done { color: var(--accent); border-color: var(--accent); background: var(--accent-wash); }
+  .lesson-actions .note { font-size: 11.5px; color: var(--muted); }
+
+  .pager { display: flex; justify-content: space-between; gap: 16px; margin-top: 34px; }
+  .pg { display: flex; flex-direction: column; gap: 4px; max-width: 48%; }
+  .pg:hover { text-decoration: none; }
+  .pg.alignr { text-align: right; margin-left: auto; }
+  .pg .mono { font-size: 11px; color: var(--muted); }
+  .pg .pt { font: 500 14px/1.25 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  .pg:hover .pt { color: var(--accent); }
+
+  .related { margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--rule); }
+  .related ul { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 12px; }
+  .related li { display: flex; flex-direction: column; gap: 3px; }
+  .related a { font: 500 14px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .related span { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+  .toc ul { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+  .toc li.sub { padding-left: 12px; }
+  .toc a { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+  .toc a:hover { color: var(--accent); text-decoration: none; }
+  .toc-search { margin-top: 20px; flex: none; text-align: left; background: none; border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; color: var(--muted); font-size: 11px; cursor: pointer; }
+  .toc-search:hover { color: var(--text); background: var(--paper); }
+
+  @media (max-width: 1180px) {
+    .wrap { grid-template-columns: 230px minmax(0, 1fr); gap: 36px; }
+    .toc { display: none; }
+  }
+  @media (max-width: 860px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 28px 20px 8px; }
+    .side { display: none; }
+    .mobile-contents { display: block; }
+  }
+</style>

@@ -1,0 +1,52 @@
+---
+title: "Setting the Autonomy Dial"
+track: "agentic-ai"
+status: live
+summary: "Autonomy isn't on or off — it's a dial you set per action, based on cost and reversibility."
+duration: "5 min read"
+---
+
+"Autonomous agent" sounds like a switch: either the model runs free, or a human clicks approve on every step. In practice it's neither. Autonomy is a dial, and you set it differently for different actions inside the same agent.
+
+## Why one setting doesn't work
+
+Take a coding agent. Reading a file, running a test, or searching the web are cheap and reversible — nothing bad happens if the agent does ten of these on its own. Deleting a branch, sending an email, or charging a card are expensive and hard to undo. If you set the whole agent to "ask before everything," it becomes unusable — you're approving grep calls all day. If you set it to "never ask," one bad plan step can do real damage before anyone notices.
+
+The fix isn't a global autonomy level. It's a per-action policy: classify what the agent can do by risk, and gate accordingly. This is the same shape as the allow/ask/deny model behind [permission and approval systems](/learn/harness-design/permission-and-approval-systems) — autonomy vs. control is the design decision that policy is built to enforce.
+
+## The two variables that actually matter
+
+Two questions decide where an action sits on the dial:
+
+- **Cost of being wrong.** What breaks if the agent's judgment here is bad?
+- **Reversibility.** Can you undo it, and how fast?
+
+Plot those two and most actions sort themselves. Low cost, reversible: run free (read a file, call a search API, draft a reply). High cost, irreversible: always gate (delete production data, send a payment, post publicly under someone's name). The interesting cases are the middle — a database write that's technically reversible but costly to unwind, or a low-stakes action repeated a thousand times where the aggregate risk is what matters, not any single call.
+
+This is also where [error handling and retries](/learn/agentic-ai/error-handling-and-retries) intersects with autonomy: an agent that silently retries a failed high-stakes call is making an autonomy decision by accident, not by design.
+
+## Setting the dial in practice
+
+Concretely, this looks like a policy table, not a prompt instruction:
+
+```
+read_file          -> allow
+run_tests          -> allow
+web_search          -> allow
+write_file          -> allow (sandboxed)
+git_commit          -> allow
+git_push            -> ask
+send_email          -> ask
+delete_resource     -> ask
+run_shell(rm -rf *) -> deny
+```
+
+Notice "ask" isn't "always human." It can mean a second, cheaper model checks the plan, or a rule fires (e.g., dollar amount over a threshold), or a human is looped in only above a certain blast radius. The dial has more than two positions.
+
+Get this wrong in the permissive direction and you get the failure modes covered in [diagnosing agent failure modes](/learn/agentic-ai/common-agent-failure-modes) — an agent confidently doing damage at speed. Get it wrong in the restrictive direction and the agent isn't worth using; you're back to [when a workflow beats an agent](/learn/agentic-ai/when-not-to-use-an-agent). The dial exists because both failure directions are real, and the right setting is a property of the action, not the agent.
+
+## What to take away
+
+Don't ask "how autonomous should this agent be." Ask "for this specific action, what's the cost if it's wrong, and can I undo it." Answer that per action, and the autonomy dial sets itself.
+
+**Related:** [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Diagnosing Agent Failure Modes](/learn/agentic-ai/common-agent-failure-modes), [When a Workflow Beats an Agent](/learn/agentic-ai/when-not-to-use-an-agent)

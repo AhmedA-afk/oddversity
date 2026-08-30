@@ -1,0 +1,37 @@
+---
+title: "Fact-Checking Pipelines Before Output Ships"
+track: "hallucinations"
+status: live
+summary: "An automated verification pass that checks claims against a trusted source before output reaches a user."
+duration: "5 min read"
+---
+
+Self-verification asks a model to check its own reasoning. A fact-checking pipeline goes further: it pulls every factual claim out of a draft and checks each one against something outside the model — a document, a database, a search result — before the output ever ships.
+
+## Why a separate pass
+
+A single generation call is optimizing for one thing: a plausible-sounding continuation. Nothing in that process cross-references claims against reality. Grounding with source documents helps at generation time, but the model can still misstate what a source said, merge two facts, or drop a citation under load. A fact-checking pipeline treats verification as a distinct step with its own job: not "write a good answer," but "decide whether each claim in this answer is true."
+
+That separation matters because verification and generation want different things from a model. Generation rewards fluency and completeness. Verification rewards suspicion — a checker that is *too* agreeable defeats the purpose.
+
+## The three-stage shape
+
+Most fact-checking pipelines follow the same pattern:
+
+1. **Extract claims.** Break the draft into discrete, checkable statements — one number, one date, one attributed quote at a time. "The company raised $40M in Series B, led by Acme Capital" is really two claims bundled together.
+2. **Retrieve evidence.** For each claim, run a targeted lookup — a search query, a database read, a call into the same source documents the draft was grounded in. This is where [RAG as hallucination mitigation](/learn/hallucinations/retrieval-augmented-mitigation) does its work a second time, now as a verifier rather than a writer.
+3. **Judge and act.** Compare the claim against the retrieved evidence and label it supported, contradicted, or unverifiable. Unverifiable claims are the important case — the honest move is to flag or remove them, echoing [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know), rather than let ambiguity pass as fact.
+
+## Where the loop stops
+
+A verification pass is only as good as what happens after it fires. Three common endings:
+
+- **Auto-repair**: feed the contradicted claim and its evidence back into the model with instructions to rewrite just that sentence. Cheap, but risks looping if the source itself is ambiguous.
+- **Flag for review**: attach a visible marker (or drop the claim) rather than silently guessing. This is the safer default for anything customer-facing.
+- **Block the response**: for high-stakes domains, a failed check can halt the output entirely rather than ship a partially-verified answer — the same instinct behind [guardrails for high-stakes output](/learn/hallucinations/guardrails-for-high-stakes-output).
+
+## The cost tradeoff
+
+Claim extraction, retrieval, and judgment are each their own model or search call, so a fact-checking pipeline can multiply latency and cost several times over the original generation. That's rarely worth it for casual chat, but it's exactly the right trade for financial summaries, medical content, or legal drafting — anywhere a wrong claim costs more than the extra API calls. Most teams scope the pipeline to specific claim types (numbers, dates, named entities) rather than checking every sentence, and pair it with [citations and attribution](/learn/hallucinations/citations-and-attribution) so a human reviewer can spot-check the sources directly instead of trusting the checker blindly.
+
+**Related:** [RAG as Hallucination Mitigation](/learn/hallucinations/retrieval-augmented-mitigation), [Citations: Making Every Claim Traceable to a Source](/learn/hallucinations/citations-and-attribution), [Guardrails for High-Stakes Output](/learn/hallucinations/guardrails-for-high-stakes-output)

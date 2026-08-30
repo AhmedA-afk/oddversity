@@ -1,0 +1,44 @@
+---
+title: "Context Poisoning: How One Bad Result Contaminates Everything After It"
+track: "context-engineering"
+status: live
+summary: "A single hallucinated fact or bad tool result gets echoed back into context and treated as ground truth for the rest of the run."
+duration: "5 min read"
+---
+
+Context rot is about too much information diluting the model's attention. Context poisoning is different: it's one piece of *wrong* information that the model treats as settled fact, then keeps building on. Once a hallucination or a bad tool result lands in the transcript, the model doesn't just ignore it — it cites it, reasons from it, and repeats it, and each repetition makes it look more true.
+
+## How it actually spreads
+
+Most agent loops work by appending: the model's previous output, and the results of any tools it called, get folded back into the context for the next turn. That's what makes the loop work at all — but it also means nothing in the transcript is marked "unverified." A wrong claim looks exactly as authoritative as a verified one.
+
+A typical sequence:
+
+1. The model calls a tool — a search, a database lookup, a calculation — and misreads or misremembers the result, or the tool itself returns something wrong.
+2. That wrong claim gets written into the transcript as if it were established fact.
+3. On the next turn, the model reads its own prior turn back as trusted context. It doesn't re-derive the claim, it just references it.
+4. Later steps build on top of that reference. A wrong file path becomes a wrong import becomes a wrong test assertion. A misremembered API field becomes a wrong schema becomes a wrong migration plan.
+
+By turn ten, the original error is buried under several turns of the model confidently reasoning *from* it, and nothing in the context flags it as the source of the problem. This is closely related to [multi-hop compounding hallucination](/learn/hallucinations/multi-hop-compounding-hallucination), but the mechanism here is specifically about context: the poisoned claim persists because the context itself is the model's only memory of what happened.
+
+## Poisoning vs. distraction
+
+These two failure modes get lumped together but are worth separating:
+
+- **Poisoning** — a *false* claim gets treated as true and shapes everything downstream.
+- **Distraction** — a *true but irrelevant* claim (an old plan, a completed subtask, a tangent) crowds out what the model should actually be focused on right now, without necessarily being wrong.
+
+Poisoning corrupts correctness; distraction wastes attention. A long agent session usually accumulates both — see [context ordering](/learn/context-engineering/context-ordering-and-recency-effects) for how position makes distraction worse, since stale-but-recent content often outweighs correct-but-buried content.
+
+## Reducing the blast radius
+
+You can't fully prevent a model from being wrong once. What you can control is whether that wrongness sticks around and compounds:
+
+- **Verify before it enters context, not after.** Check tool outputs and intermediate claims against ground truth before they get appended to the transcript, rather than trying to catch the error several turns later.
+- **Make claims falsifiable in place.** Encourage citing sources or showing the exact tool output a claim came from, so a wrong claim is easier to spot and isolate — see [citations and attribution](/learn/hallucinations/citations-and-attribution).
+- **Checkpoint and prune.** In long-running agents, periodically summarize what's actually confirmed and drop the raw, unverified reasoning that produced it — see [compaction](/learn/context-engineering/summarization-for-compaction). A poisoned claim that survives compaction because it "sounded settled" is a common failure to watch for.
+- **Let the model backtrack.** Give agents an explicit way to say "that earlier step was wrong" and revise, rather than a context format that only ever appends and never corrects.
+
+The core lesson: context isn't a neutral record of what happened, it's an active input the model trusts by default. Treat every entry as still-provisional until it's actually been checked, because the model won't do that discrimination for you.
+
+**Related:** [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Multi-Hop Compounding: How One Wrong Step Snowballs](/learn/hallucinations/multi-hop-compounding-hallucination), [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction)

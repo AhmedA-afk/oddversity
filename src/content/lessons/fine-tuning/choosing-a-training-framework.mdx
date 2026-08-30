@@ -1,0 +1,34 @@
+---
+title: "Choose a Fine-Tuning Framework: Axolotl, Unsloth, TRL, torchtune"
+track: "fine-tuning"
+status: live
+summary: "Match Axolotl, Unsloth, TRL, or torchtune to your GPU count and workflow instead of hand-rolling a training loop."
+duration: "6 min read"
+---
+
+You almost never need to write a training loop by hand anymore. The real decision is which framework's defaults match your hardware and your workflow, because the four popular options optimize for genuinely different constraints.
+
+## The four options and what they actually optimize for
+
+**Unsloth** rewrites the hot paths of attention and the LoRA forward/backward pass as custom Triton kernels, which cuts memory use and wall-clock time significantly on a single GPU. It's the default choice when you're fine-tuning a 7B–13B model with QLoRA on one consumer or single-datacenter GPU and want the fastest possible iteration loop. Its multi-GPU story exists but is newer and less battle-tested than the others.
+
+**Axolotl** is config-driven: you describe the run — model, dataset, LoRA rank, DeepSpeed or FSDP settings — in a YAML file, and it wires up the training loop for you on top of Hugging Face `transformers`, `peft`, and `accelerate`. It supports the widest range of techniques (full fine-tuning, LoRA, QLoRA, DPO, sample packing, multi-node) without you touching Python, which makes it the pragmatic pick for teams that want reproducible, diffable run configs and don't want to own training-loop code.
+
+**TRL** (Transformer Reinforcement Learning, from Hugging Face) is a library, not a config system — you import `SFTTrainer`, `DPOTrainer`, `PPOTrainer`, etc., and compose them in Python alongside your own data pipeline. It's the natural choice when you're already deep in the `transformers`/`peft` ecosystem, need SFT and preference tuning (DPO, ORPO, KTO) in the same codebase, or want to customize the loss or logging beyond what a YAML config exposes.
+
+**torchtune** is PyTorch's own library: no config-magic, no `accelerate` indirection — just hackable "recipes" (plain Python training scripts) built on native PyTorch distributed primitives (FSDP2, tensor parallel). Pick it when you want to read and modify the actual training loop, need tight control over multi-node scaling, or are wary of dependency layers stacking on top of each other.
+
+## A quick decision path
+
+- One GPU, want speed above all: **Unsloth**.
+- Multiple GPUs or nodes, want to describe the run in a file rather than code: **Axolotl**.
+- Need DPO/PPO/KTO alongside SFT, already living in the Hugging Face stack: **TRL**.
+- Want to read every line of the loop and control distributed strategy directly: **torchtune**.
+
+These aren't exclusive — Axolotl uses TRL's trainers under the hood for preference tuning, and Unsloth models can be exported into an Axolotl or TRL pipeline for later stages. Start with the framework that matches today's constraint (GPU count, need for RLHF-style methods, appetite for config vs. code) rather than picking one and forcing your setup to fit it.
+
+## What doesn't change across frameworks
+
+Whichever you choose, the framework only runs the loop — it doesn't decide your [LoRA rank and target modules](/learn/fine-tuning/lora-rank-and-target-module-selection), your [learning rate schedule](/learn/fine-tuning/learning-rate-schedules-and-warmup), or whether you need [FSDP or DeepSpeed](/learn/fine-tuning/distributed-training-with-fsdp-and-deepspeed) at all. Get those decisions right first; the framework is plumbing, not strategy.
+
+**Related:** [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Train Across GPUs with FSDP and DeepSpeed ZeRO](/learn/fine-tuning/distributed-training-with-fsdp-and-deepspeed), [Fit Bigger Batches with Gradient Checkpointing and Flash Attention](/learn/fine-tuning/memory-optimization-gradient-checkpointing-flash-attention)

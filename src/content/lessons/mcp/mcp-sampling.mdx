@@ -1,0 +1,40 @@
+---
+title: "MCP Sampling: Letting a Server Borrow the Client's LLM"
+track: "mcp"
+status: live
+summary: "A server asks the connected client to run a completion on its behalf, instead of holding its own model or API key."
+duration: "5 min read"
+---
+
+Most MCP servers are dumb pipes: the client's LLM calls a tool, the tool runs code, the result goes back. Sampling flips that. It lets the *server* ask the client to run an LLM completion for it, mid-task, and hand the result back to the server.
+
+## Why a server would want this
+
+Imagine an MCP server that summarizes long documents before returning them, or that triages a batch of support tickets and only surfaces the three that need a human. Without sampling, that server needs its own API key, its own provider account, and its own bill. With sampling, it sends a `sampling/createMessage` request back over the same connection, and the client's already-configured model does the work. One API key for the whole session, held by the client, not scattered across every server it talks to.
+
+This matters more as you connect several servers at once — see /learn/mcp/multi-server-orchestration. Without sampling, each server that wants intelligence needs its own model access. With it, they all borrow the one the user already trusts and pays for.
+
+## How the request actually flows
+
+Sampling runs opposite the usual direction. Normally: client to server. Sampling: server to client, mid-tool-call.
+
+```
+1. Client calls a tool on the server
+2. Server, while handling it, sends sampling/createMessage
+   back to the client — with messages, a system prompt,
+   and model preferences (hints, not a hard model name)
+3. Client shows the user what's being asked (usually),
+   gets approval, and runs the completion
+4. Client sends the completion text back to the server
+5. Server finishes the original tool call using that result
+```
+
+The server never sees the client's API key and never picks the exact model — it can express preferences (favor speed, favor a specific vendor's family) but the client makes the final call. That's deliberate: the client controls cost and which model actually runs.
+
+## The trust boundary is the whole point
+
+Because a server can now trigger LLM calls, a compliant client is expected to put a human in the loop — showing the prompt the server wants sent, and often the completion, before it's used. This is the same instinct that runs through /learn/mcp/mcp-elicitation, where a server pauses to ask the user something directly. Sampling and elicitation are siblings: both let a server reach back into the client session instead of returning inert data, and both hand a human (or at least the client) a checkpoint to say no.
+
+Client support for sampling is optional, and as of 2026 it's still the least commonly implemented capability among MCP clients — many stick to tools and resources only. A server that depends on sampling should degrade gracefully, or state the requirement clearly, when the connected client doesn't advertise the capability.
+
+**Related:** [MCP Elicitation: Servers Asking the User Mid-Session](/learn/mcp/mcp-elicitation), [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts), [Orchestrating Multiple MCP Servers in One Client Session](/learn/mcp/multi-server-orchestration)

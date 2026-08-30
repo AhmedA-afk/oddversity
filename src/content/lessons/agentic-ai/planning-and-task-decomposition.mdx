@@ -1,0 +1,35 @@
+---
+title: "Planning Before Acting"
+track: "agentic-ai"
+status: live
+summary: "Plan-and-execute architectures that break a goal into ordered subtasks before any tool call happens."
+duration: "5 min read"
+---
+
+Ask an agent to "migrate our API docs to the new format" and hand it tools one step at a time, and it'll often thrash: read a file, guess at a fix, read another file, forget why. Planning fixes this by making the agent write down the steps before it touches a single tool.
+
+## Plan-and-execute, not think-then-act
+
+[ReAct](/learn/agentic-ai/react-pattern) interleaves one thought with one action, over and over. That works well for short tasks, but on anything with real structure — a migration, a multi-file refactor, a research report — the agent re-derives the plan implicitly on every step, which burns tokens and drifts.
+
+Plan-and-execute splits the job into two phases. First, the agent produces an explicit ordered list of subtasks, given only the goal and what tools exist:
+
+```
+1. List all files under docs/api/
+2. For each file, extract the current schema block
+3. Convert each schema block to the new format
+4. Write converted files back
+5. Run the doc linter and report failures
+```
+
+Then a second loop — sometimes a fresh model call, sometimes the same one — executes each subtask, calling tools as needed, and only re-plans if a step fails in a way the plan didn't anticipate. This is close to [decomposition in prompting](/learn/prompt-engineering/task-decomposition), but here the split happens at run time, driven by the model itself, not baked into your code ahead of time.
+
+## Why the split earns its keep
+
+Separating planning from execution buys you three things. The plan is auditable — a human (or a cheaper model) can read five lines and approve them before any tool runs, which matters when tools have side effects. The plan is a checkpoint — if the agent crashes on step 3, you resume from step 3 instead of re-reasoning the whole task. And each execution step gets a narrower prompt: "do step 3" needs far less context than "figure out the next right move given everything that's happened so far," which keeps the [agent loop](/learn/agentic-ai/the-agent-loop) from degrading as the session grows.
+
+## When it backfires
+
+Planning upfront assumes you can see the shape of the problem before you start. For open-ended exploration — "find out why this metric dropped" — an early plan is often wrong by step 2, and rigidly executing it wastes more effort than ReAct's step-by-step guessing would have. The fix isn't to abandon planning but to keep it cheap to revise: treat the plan as a draft the agent can rewrite when a step surfaces something the original plan didn't account for, rather than a contract it's locked into.
+
+**Related:** [ReAct: Interleaving Reasoning and Acting](/learn/agentic-ai/react-pattern), [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [Decomposition: Splitting One Big Prompt into a Pipeline](/learn/prompt-engineering/task-decomposition)

@@ -1,0 +1,39 @@
+---
+title: "Hooks: Letting Users Extend the Harness Without Forking It"
+track: "harness-design"
+status: live
+summary: "Design pre/post-tool-call hook points so users customize the harness's behavior without forking its source."
+duration: "5 min read"
+---
+
+Every harness eventually meets a user who wants behavior it doesn't ship: block a tool call under some condition, log every file edit to a separate audit trail, auto-format code after a write, or play a sound when a long task finishes. You could add a config flag for each request, but that list never ends. Hooks solve this differently: instead of anticipating every use case, you expose the moments in the control loop where outside code can run, and let users write that code themselves.
+
+## What a hook actually is
+
+A hook is a small piece of user-supplied logic (a shell command, a script, a webhook) that the harness invokes at a named lifecycle point, then reads a result from. Common points worth exposing:
+
+- **Before a tool call** — inspect or veto the call before it runs
+- **After a tool call** — see the result, transform it, or trigger a side effect
+- **On user prompt submit** — inject context or reject the input
+- **On session stop** — run cleanup, send a notification
+
+The harness passes the hook structured input (tool name, arguments, current working directory) as JSON over stdin, and the hook returns a structured decision — typically an exit code plus optional JSON on stdout, since that's language-agnostic and doesn't require the hook to link against the harness's SDK.
+
+## The contract that keeps it safe
+
+The dangerous version of hooks is "run arbitrary code with no rules." The useful version has a narrow, predictable contract:
+
+1. **Hooks can only narrow, never widen, permission.** A pre-tool-call hook can turn an allowed call into a denied one; it cannot turn a denied call into an allowed one. That asymmetry means hooks compose safely with the harness's own [deny-floor](/learn/harness-design/deny-floors-and-policy-layers) — a misbehaving hook can make the agent more restrictive but never less.
+2. **Hooks run with a timeout and a hard exit code convention.** Exit 0 means proceed, a nonzero exit (commonly a specific code like 2) means block, and the hook's stderr becomes the reason shown to the model or user. No exit code should be ambiguous.
+3. **Hooks see the same data the [tool registry](/learn/harness-design/tool-routing-and-registries) dispatches to the tool** — nothing more. A hook for the Bash tool sees the command string, not the whole conversation.
+4. **Hook failures fail loud, not silent.** If a hook crashes or times out, the harness should treat that as a blocking error rather than silently skipping the check — otherwise a broken hook quietly becomes no hook.
+
+## Where hooks live in config, and why that matters
+
+Hooks are typically declared in the same layered config system as everything else in the harness — global, project, and local settings, as covered in [config layering](/learn/harness-design/config-layering). This is what makes them "extension without forking": a team commits a `pre-tool-call` hook that blocks commits to `main` into their project settings, and every contributor's agent picks it up automatically, with no patch to the harness's own source. A hook is just data (a command string and a matcher pattern) sitting next to permission rules, not a plugin binary the harness has to load and trust at a deeper level.
+
+## Hooks vs. guardrails-as-code
+
+It's worth distinguishing hooks from the harness's own built-in checks. [Guardrails as code](/learn/harness-design/guardrails-as-code) are safety logic the harness authors ship and maintain — they're part of the product. Hooks are the mechanism by which *users* add their own equivalent logic without needing write access to the harness's codebase. A well-designed harness uses guardrails-as-code for what must always be true for every user, and hooks for what one team or one project needs that's genuinely specific to them. Conflating the two either forces users to fork the harness for small customizations, or forces the harness to ship dozens of narrow flags trying to guess what people want.
+
+**Related:** [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Config Layering: Global, Project, and Local Settings](/learn/harness-design/config-layering), [Guardrails as Code, Not Prose](/learn/harness-design/guardrails-as-code)

@@ -1,0 +1,35 @@
+---
+title: "Debugging Common MCP Failures"
+track: "mcp"
+status: live
+summary: "Diagnose the most frequent MCP failures - silent tool errors, schema mismatches, and transport drops - and fix each."
+duration: "6 min read"
+---
+
+Most MCP problems don't look like problems. The client connects, the model calls a tool, and something quietly goes wrong - a truncated result, a tool the model never sees, a connection that dies mid-session. Here's how to recognize the three most common failure classes and where to look first.
+
+## Silent tool errors
+
+A tool call can "succeed" at the protocol level while failing at the task level. The server catches an exception, wraps it in a normal result object, and returns it - so the client sees a completed call, not an error. The model then reasons over a string like `Error: file not found` as if it were real data, sometimes hallucinating a workaround instead of surfacing the failure.
+
+The fix is at the server: use MCP's `isError` flag on tool results instead of swallowing exceptions into plain text. That flag is what tells the client (and by extension the model) this call actually failed, rather than "succeeded" with an unhelpful payload. When you're building a server, test this path explicitly - call the tool with bad input and confirm the error surfaces as an error, not as content. See [MCP Tools, Resources, and Prompts](/learn/mcp/mcp-tools-resources-and-prompts) for how tool results are structured.
+
+## Schema mismatches
+
+Every MCP tool advertises a JSON Schema describing its inputs. If that schema drifts from what the handler actually expects - a renamed field, a type that changed from string to number, a newly required parameter - the model keeps calling the tool the old way, because the schema is the only contract it has. The result is silent validation failures or, worse, a call that "works" but passes garbage into a field the handler ignores.
+
+This shows up most after a server update that isn't versioned. The client cached the old schema, or the server changed behavior without changing its declared shape. Two habits prevent most of this: regenerate the schema from the same code path the handler runs (don't hand-maintain both), and bump the server's declared version whenever a tool's input or output shape changes, so clients can detect the drift instead of guessing. This connects directly to [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas) and [Versioning MCP Servers Without Breaking Clients](/learn/mcp/versioning-mcp-servers-without-breaking-clients).
+
+## Transport drops
+
+stdio and HTTP fail differently, and knowing which one you're on changes where you look.
+
+A **stdio** server is a child process the client spawns and talks to over stdin/stdout. It drops when the process crashes, when it writes something non-JSON-RPC to stdout (a stray `print()` statement is enough to corrupt the stream), or when the client kills it for taking too long to respond. Check the process's stderr - most stdio servers log there precisely because stdout is reserved for protocol messages.
+
+A **remote HTTP** server drops for more ordinary reasons: an expired auth token, a load balancer idle-timeout closing a long-lived connection, or a network blip during a streamed response. These usually recover with a reconnect and retry, which is why production HTTP servers need backoff logic the client can rely on - a stdio process restart is not the same fix as a token refresh. Compare both transports in [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http), and if the failure smells like an auth expiry specifically, start with [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals).
+
+## Where to start
+
+When something's wrong and you don't yet know which of these three it is, don't guess from the model's behavior - inspect the raw protocol traffic. A tool that returns `isError: true` looks completely different from a schema validation failure or a closed connection once you can see the actual JSON-RPC messages instead of the model's summary of them.
+
+**Related:** [MCP Tool Discovery and Schemas](/learn/mcp/mcp-tool-discovery-and-schemas), [Inspecting and Testing MCP Servers](/learn/mcp/inspecting-and-testing-mcp-servers), [Running MCP Servers in Production](/learn/mcp/running-mcp-servers-in-production)

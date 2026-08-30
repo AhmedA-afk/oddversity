@@ -1,0 +1,33 @@
+---
+title: "Just-in-Time Context: Letting the Agent Fetch Instead of Preload"
+track: "context-engineering"
+status: live
+summary: "Give an agent a file system or search tool so it pulls in what it needs on demand, instead of stuffing the window upfront."
+duration: "5 min read"
+---
+
+Ask a coding agent to fix a bug and it doesn't need your whole repo in context — it needs the one file the stack trace points to, then maybe two more once it reads the imports. Just-in-time (JIT) context loading is the pattern of giving an agent tools to fetch information as it discovers it needs it, rather than deciding upfront what to preload.
+
+## The two strategies
+
+Preloading means you (or a retrieval step) decide before the agent's first turn what belongs in context: relevant docs, schema, recent messages. It's predictable and fast — one context window, one model call, no round trips. But it requires you to guess relevance in advance, and guessing wrong either starves the model of something it needed or wastes tokens on things it didn't.
+
+JIT loading flips this: the agent gets tools like `read_file`, `grep`, `list_directory`, or `search_docs`, and a short pointer to where things live — not the things themselves. The model decides, turn by turn, what to pull in. This is how Claude Code works: it doesn't start with your codebase in context, it starts with a prompt and a shell, and explores.
+
+## Why this works better for open-ended tasks
+
+The core tradeoff is discussed in depth in [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing), but JIT loading earns its own lesson because it's specifically about *agentic* fetching — the agent driving its own retrieval loop, not a RAG pipeline retrieving for it.
+
+Three things make JIT the better default once a task has any real branching:
+
+- **You don't need a relevance model.** Nobody has to build a retriever that predicts what a coding agent will need three tool calls from now, because the agent asks for it when it gets there.
+- **Context stays small and fresh.** Only what's actually load-bearing for the current step sits in the window, which sidesteps a lot of what [Context Rot](/learn/context-engineering/context-rot) describes — degraded attention from tokens that never mattered.
+- **It composes with exploration.** An agent that reads a file, finds an import, and reads that import too is doing multi-hop reasoning over live state, something a one-shot retrieval step can't do.
+
+The cost is real: every fetch is a tool call, which is a model round trip. A task that needs five files preloaded finishes in one turn; the same task done JIT takes five extra turns of latency. JIT also depends on the agent asking good questions — a weak model with a vague file-listing tool will wander.
+
+## Where each pattern fits
+
+Preload when the working set is small, known, and stable — a system prompt with the current user's profile, or a support ticket with its thread history attached. Reach for JIT when the working set is large, unpredictable, or too big to fit at all — a codebase, a document corpus, a live API. Most production agents use both: a small preloaded core (who is the user, what's the task) plus tools for everything else the agent might need to go find. [Progressive Tool Disclosure](/learn/context-engineering/progressive-tool-disclosure) covers the related problem of not overwhelming the agent with every tool it *could* call, which matters more as your fetch toolset grows.
+
+**Related:** [Retrieval vs Stuffing](/learn/context-engineering/retrieval-vs-context-stuffing), [Context Rot](/learn/context-engineering/context-rot), [Progressive Tool Disclosure](/learn/context-engineering/progressive-tool-disclosure)

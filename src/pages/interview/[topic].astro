@@ -1,0 +1,103 @@
+---
+import Layout from '../../components/Layout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const topics = await getCollection('questions');
+  return topics.map((entry) => ({ params: { topic: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const toc = headings.filter((heading) => heading.depth === 2);
+
+// FAQPage structured data, built from the page's own H2 questions and the
+// first paragraph beneath each. Derived, never hand-maintained, so the schema
+// cannot drift away from what a reader actually sees.
+const sections = ('\n' + (entry.body ?? '')).split(/\n## /).slice(1);
+const faq = sections
+  .map((section) => {
+    const [heading, ...rest] = section.split('\n');
+    const answer = rest
+      .join('\n')
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .find((p) => p && !p.startsWith('#'));
+    return {
+      q: heading.replace(/^\d+\.\s*/, '').trim(),
+      a: (answer ?? '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').trim(),
+    };
+  })
+  .filter((item) => item.q && item.a);
+
+const all = (await getCollection('questions')).sort((a, b) => a.data.order - b.data.order);
+const index = all.findIndex((t) => t.id === entry.id);
+const prev = all[index - 1];
+const next = all[index + 1];
+---
+<Layout
+  title={entry.data.title}
+  description={entry.data.description}
+  type="learning-resource"
+  breadcrumbs={[
+    { name: 'Home', url: '/' },
+    { name: 'Interview', url: '/interview' },
+    { name: entry.data.topic, url: `/interview/${entry.id}` },
+  ]}
+  faq={faq}
+>
+  <div class="question-layout container">
+    <article class="question-doc">
+      <nav class="crumb mono" aria-label="Breadcrumb"><a href="/interview">Interview</a><span>/</span>{entry.data.topic}</nav>
+      <span class="eyebrow">{entry.data.topic}</span>
+      <h1>{entry.data.title}</h1>
+      <p class="lede">{entry.data.description}</p>
+      <p class="count mono">{faq.length} questions · answers link into the curriculum</p>
+      <div class="prose"><Content /></div>
+
+      <nav class="qpager" aria-label="Topic navigation">
+        {prev ? <a href={`/interview/${prev.id}`} class="pg"><span class="mono">← Previous</span><span class="pt">{prev.data.topic}</span></a> : <span></span>}
+        {next ? <a href={`/interview/${next.id}`} class="pg alignr"><span class="mono">Next →</span><span class="pt">{next.data.topic}</span></a> : <span></span>}
+      </nav>
+
+      <div class="after">
+        <p>Reading the answer is the easy half. Try the <a href="/practice">quiz for this material</a>, or work a <a href="/scenarios">scenario</a> where the decision is yours.</p>
+      </div>
+    </article>
+    <aside class="toc" aria-label="Questions in this topic">
+      <div class="toc-inner">
+        <div class="eyebrow">In this topic</div>
+        <ul>{toc.map((heading) => <li><a href={`#${heading.slug}`}>{heading.text}</a></li>)}</ul>
+        <a href="/interview" class="back mono">← All topics</a>
+      </div>
+    </aside>
+  </div>
+</Layout>
+
+<style is:global>
+  .question-layout { display: grid; grid-template-columns: minmax(0, 720px) 220px; gap: 72px; padding-top: 48px; align-items: start; }
+  .question-doc { min-width: 0; }
+  .crumb { font-size: 11.5px; color: var(--muted); margin-bottom: 26px; }
+  .crumb a { color: var(--muted); }
+  .crumb span { margin: 0 8px; }
+  .question-doc h1 { font-size: clamp(30px, 4.4vw, 42px); margin-top: 12px; letter-spacing: -.02em; }
+  .lede { margin-top: 15px; color: var(--muted); font-size: 17px; line-height: 1.6; }
+  .question-doc .count { margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+  .question-doc .prose { margin-top: 38px; }
+  .question-doc .prose h2 { font-size: 22px; margin-top: 2.25em; scroll-margin-top: 88px; }
+  .qpager { display: flex; justify-content: space-between; gap: 16px; margin-top: 52px; padding-top: 22px; border-top: 1px solid var(--rule); }
+  .qpager .pg { display: flex; flex-direction: column; gap: 4px; max-width: 48%; }
+  .qpager .pg:hover { text-decoration: none; }
+  .qpager .pg.alignr { text-align: right; margin-left: auto; }
+  .qpager .pg .mono { font-size: 11px; color: var(--muted); }
+  .qpager .pg .pt { font: 500 14px/1.25 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  .qpager .pg:hover .pt { color: var(--accent); }
+  .question-doc .after { margin-top: 30px; padding: 16px 18px; border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--paper); }
+  .question-doc .after p { font-size: 14px; line-height: 1.6; color: var(--muted); }
+  .question-layout .toc-inner { position: sticky; top: 88px; }
+  .question-layout .toc ul { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 9px; }
+  .question-layout .toc a { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+  .question-layout .toc a:hover { color: var(--accent); text-decoration: none; }
+  .question-layout .back { display: block; margin-top: 20px; font-size: 11.5px; color: var(--accent); }
+  @media (max-width: 1000px) { .question-layout { grid-template-columns: 1fr; gap: 0; } .question-layout .toc { display: none; } }
+</style>

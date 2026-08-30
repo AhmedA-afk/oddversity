@@ -1,0 +1,97 @@
+---
+import Layout from '../components/Layout.astro';
+
+const updated = '2026-08-30';
+---
+<Layout
+  title="Terms of use"
+  description="How Oddversity content may be used, what it does not warrant, and the honest limits of technical material that ages."
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Terms', url: '/terms' }]}
+>
+  <article class="wrap">
+    <header>
+      <span class="eyebrow">Terms of use</span>
+      <h1>The reasonable expectations, both ways.</h1>
+      <p class="lede">
+        Short, because the site is simple: it publishes technical writing and asks
+        nothing of you in return.
+      </p>
+      <p class="updated mono">Last updated {updated}</p>
+    </header>
+
+    <div class="prose">
+      <h2>Using the content</h2>
+      <p>
+        Read it, learn from it, and use what you learn in your own work, commercial
+        or otherwise, without attribution or permission. That is what it is for.
+      </p>
+      <p>
+        <strong>Code samples</strong> are provided so you can use them. Copy them
+        into your projects freely. They are illustrative rather than production
+        artefacts — read them before you run them, and adapt the error handling and
+        limits to your own context.
+      </p>
+      <p>
+        <strong>Prose and diagrams</strong> remain the author's. Quote a paragraph
+        with a link, by all means. Republishing pages wholesale, or feeding the
+        catalogue into a derivative site, is not permitted — the citation graph is
+        the only thing a free site has.
+      </p>
+
+      <h2>Accuracy, and its limits</h2>
+      <p>
+        This is technical material about a field that changes quickly. It is written
+        carefully, cites primary sources where a claim is time-sensitive, and states
+        its uncertainty where the evidence is thin. It will still contain errors, and
+        some pages will be out of date before they are corrected.
+      </p>
+      <p>
+        Verify anything you are about to depend on — particularly security guidance,
+        cost figures and provider-specific behaviour, all of which move. Nothing here
+        is professional, legal or security advice for your specific system.
+      </p>
+      <p>
+        If you find an error, reporting it is genuinely the most useful thing you can
+        do here. Name the page and the specific claim.
+      </p>
+
+      <h2>No warranty</h2>
+      <p>
+        The site and its content are provided as they are, without warranty of any
+        kind. Nothing is guaranteed to be available, correct, current or fit for any
+        particular purpose, and no liability is accepted for outcomes arising from
+        acting on it.
+      </p>
+
+      <h2>Availability</h2>
+      <p>
+        The site is free and best-effort. There is no uptime commitment, no support
+        obligation and no guarantee that any URL will exist forever — though URLs are
+        treated as a contract worth keeping, and pages are redirected rather than
+        deleted wherever that is possible.
+      </p>
+
+      <h2>Third-party names</h2>
+      <p>
+        Product, company and protocol names are used descriptively, to teach how the
+        things they name actually behave. Their trademarks belong to their owners.
+        Oddversity is independent and unaffiliated: where vendors differ, that
+        difference is the content, and no coverage here is endorsed or sponsored.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        These terms may change; the date at the top will change with them.
+      </p>
+    </div>
+  </article>
+</Layout>
+
+<style>
+  .wrap { max-width: 720px; margin-inline: auto; padding-block: 56px 8px; padding-inline: 32px; }
+  h1 { font-size: clamp(30px, 4.6vw, 42px); letter-spacing: -.022em; margin-top: 12px; }
+  .lede { margin-top: 18px; font-size: 17px; line-height: 1.65; color: var(--muted); }
+  .updated { margin-top: 14px; font-size: 11.5px; color: var(--muted); }
+  .prose { margin-top: 36px; }
+  @media (max-width: 640px) { .wrap { padding-block: 36px 8px; padding-inline: 20px; } }
+</style>

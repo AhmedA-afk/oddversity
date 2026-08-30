@@ -1,0 +1,41 @@
+---
+title: "Diagnosing Agent Failure Modes"
+track: "agentic-ai"
+status: live
+summary: "A field guide to the ways agents actually break — loops, tool misuse, context drift — so you recognize them the moment they start."
+duration: "5 min read"
+---
+
+Agents don't usually fail with a stack trace. They fail by quietly doing the wrong thing for ten steps in a row while sounding perfectly confident. Knowing the handful of shapes that failure takes turns a confusing trace into a quick diagnosis.
+
+## Looping without progress
+
+The clearest failure: the agent repeats the same action, or cycles through two or three actions, without the state actually changing. A coding agent runs a test, gets the same failure, edits the wrong line, runs the test again, gets the same failure — forever. This happens when the model's read of "what changed" doesn't match reality, often because the tool result didn't actually tell it anything new.
+
+The fix isn't a smarter model — it's a harness that detects the pattern. Track the last few actions and their results; if an action repeats with no change in outcome, stop the loop and hand control back rather than let it burn budget. See [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries) for how retry logic should differ from blind repetition.
+
+## Tool misuse
+
+This shows up as three distinct sub-failures, and they call for different fixes:
+
+- **Wrong tool for the job** — calling a broad search tool when a precise lookup existed, or vice versa. Usually a sign the [tool descriptions](/learn/tools-function-calling/writing-tool-descriptions-models-follow) don't clearly distinguish when each one applies.
+- **Malformed arguments** — the model calls a real tool with a made-up parameter or a value outside the schema. This is where [structured output failure modes](/learn/structured-outputs/structured-output-failure-modes) and tool calling overlap: the fix is a tighter schema and validation before execution, not a better prompt.
+- **Hallucinated tools** — the model invokes something that was never registered, usually because it pattern-matched to a tool it "remembers" from training or from an earlier turn that's no longer in scope. Check that only the intended tools are exposed at each step.
+
+## Context drift
+
+As a session runs long, the agent's grip on the original goal loosens. It starts optimizing for the last few turns instead of the actual task — fixing a symptom mentioned two steps ago instead of the root cause from step one, or forgetting a constraint that was stated at the start and never repeated. This is [context rot](/learn/context-engineering/context-rot) showing up behaviorally: more accumulated tokens, not more accumulated understanding.
+
+You'll see it as an agent "forgetting" instructions it was clearly given, contradicting an earlier decision, or drifting toward a plausible-sounding but off-task action. It's rarely fixed by repeating the instruction louder. It's fixed by managing what stays in context — periodically re-stating the goal, [summarizing completed work](/learn/context-engineering/summarization-for-compaction) instead of leaving the raw trace in place, and keeping irrelevant tool output from crowding out the parts that matter.
+
+## Premature or false completion
+
+An agent declares the task done when it isn't — it ran a step that looked like success (a file was written, a tool returned 200) without checking the actual outcome (the file has the right content, the change actually fixed the bug). This is a stopping-condition problem: if "done" is decided by the model's own narration rather than a real check, it will occasionally be wrong in the model's favor.
+
+The reliable fix is an external check the agent can't talk its way past — a test suite, a schema validator, a diff review — not just asking it to double-check itself. [Reflection](/learn/agentic-ai/reflection-and-self-critique) helps catch some of these, but it's not a substitute for ground truth.
+
+## Reading these in a live trace
+
+All four failures leave different fingerprints in the trace: loops show repeated action-result pairs, tool misuse shows in the arguments themselves, drift shows as a growing gap between the stated goal and the current action, and false completion shows as a "done" claim with no verifying step behind it. [Reading an Agent's Trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev) walks through spotting these while the agent is still running, before they cost you a full session's budget.
+
+**Related:** [Recovering When Tools Fail](/learn/agentic-ai/error-handling-and-retries), [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Reading an Agent's Trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev)

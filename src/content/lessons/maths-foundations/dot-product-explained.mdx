@@ -1,0 +1,52 @@
+---
+title: "The Dot Product, Explained"
+track: "maths-foundations"
+status: live
+summary: "Multiply matching components of two vectors and sum them — that single number is the operation behind attention and search."
+duration: "4 min read"
+---
+
+Every time a model scores how relevant one thing is to another — a query against a key, a search embedding against a document — it's almost certainly computing a dot product. It's one of the simplest operations in linear algebra, and it quietly runs the whole system.
+
+## The mechanics
+
+Take two vectors of the same length. Multiply each pair of matching components, then add up the results.
+
+```
+a = [1, 2, 3]
+b = [4, 5, 6]
+
+a · b = (1×4) + (2×5) + (3×6) = 4 + 10 + 18 = 32
+```
+
+That's it — one number out of two vectors in. No matrix, no loop over the whole dataset, just pairwise multiply-and-sum. In code it's the same idea:
+
+```python
+def dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+```
+
+## Why it measures "alike"
+
+The dot product isn't arbitrary — it has a geometric meaning. For vectors `a` and `b`:
+
+```
+a · b = |a| |b| cos(θ)
+```
+
+where `θ` is the angle between them and `|a|`, `|b|` are their lengths. When two vectors point in similar directions, `cos(θ)` is close to 1 and the dot product is large and positive. When they're perpendicular, it's zero. When they point in opposite directions, it's negative.
+
+So a large dot product means "these two vectors agree" — they emphasize the same dimensions in the same way. That's exactly what you want when comparing a search query's embedding to a candidate document's embedding, or a token's "what am I looking for" vector to another token's "what do I offer" vector.
+
+One catch: the dot product is sensitive to vector length, not just direction. A long vector pointed roughly the same way as a short one can still produce a bigger dot product than a short vector pointed exactly the same way. When you want a pure direction-only comparison, unaffected by magnitude, you normalize it into [cosine similarity](/learn/maths-foundations/cosine-similarity) instead.
+
+## Where it actually shows up
+
+Two places you'll run into this constantly:
+
+- **Attention.** Inside a transformer, each token's query vector is dot-producted against every other token's key vector. The results become the raw relevance scores that get turned into attention weights — see the [attention mechanism](/learn/llm-foundations/attention-mechanism-explained) for the full picture.
+- **Embedding search.** Vector databases rank candidates by how well their embeddings align with a query embedding, and dot product (or its normalized cousin, cosine similarity) is the default scoring function — see [embeddings and semantic similarity](/learn/rag/embeddings-and-semantic-similarity).
+
+Once you can see "dot product" hiding inside both of those, a lot of what LLMs do stops looking like magic and starts looking like arithmetic at scale.
+
+**Related:** [Vectors: The Basic Unit of Data](/learn/maths-foundations/what-is-a-vector), [Cosine Similarity: Measuring How Alike Two Things Are](/learn/maths-foundations/cosine-similarity), [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained)

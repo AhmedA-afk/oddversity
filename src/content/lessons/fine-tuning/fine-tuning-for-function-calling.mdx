@@ -1,0 +1,44 @@
+---
+title: "Fine-Tune a Model for Reliable Function Calling"
+track: "fine-tuning"
+status: live
+summary: "Train on real tool-call traces so a model picks the right tool and emits valid arguments more consistently than prompting alone."
+duration: "7 min read"
+---
+
+Prompting can get a general-purpose model to call tools most of the time. When "most of the time" isn't good enough — wrong tool picked, arguments that don't match your schema, tools called when no tool was needed — fine-tuning on your own tool-call traces closes that gap in a way no amount of prompt tweaking can.
+
+## Why prompting plateaus
+
+A prompted model is guessing at your schema from a description in context. It has never seen your actual tools fire, never seen what a correct multi-step trace looks like end to end, and has no signal about which of your near-duplicate tools (`search_orders` vs `get_order_by_id`) applies to a given phrasing. Errors cluster in predictable ways: hallucinated parameters, wrong types (a string where you wanted an enum), calling a tool when the right move was to answer directly, or stopping after one call in a task that needed three. See [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes) for the taxonomy — fine-tuning is the fix for the failures that persist after your tool descriptions and schemas are already solid, not a substitute for [writing tool descriptions models actually follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow).
+
+## What the training data actually looks like
+
+The dataset is sequences of turns, not single input/output pairs: user message, assistant message containing a tool call, a tool-result message, then the assistant's follow-up (another call, or a final answer). Most fine-tuning APIs and frameworks accept this directly as chat-formatted examples with a `tool_calls` field on the assistant turn:
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "Refund order 4471, it arrived damaged."},
+    {"role": "assistant", "tool_calls": [
+      {"name": "get_order", "arguments": {"order_id": "4471"}}
+    ]},
+    {"role": "tool", "name": "get_order", "content": "{\"status\": \"delivered\", \"total\": 42.00}"},
+    {"role": "assistant", "tool_calls": [
+      {"name": "issue_refund", "arguments": {"order_id": "4471", "amount": 42.00, "reason": "damaged"}}
+    ]}
+  ]
+}
+```
+
+Three things matter more than volume here. First, **cover the negative case** — examples where the correct move is *not* calling any tool, or asking a clarifying question instead of guessing an argument. A dataset that's 100% "here's a tool call" teaches the model to always call something. Second, **keep argument values realistic and diverse** — real IDs, real date formats, edge cases like missing optional fields — because the model is learning the distribution of correct arguments, not just the shape of the JSON. Third, **match your production tool schemas exactly**, including field names and casing; train/serve skew here is a common silent failure. If you don't have enough real traces, [generating synthetic training data with a larger model](/learn/fine-tuning/synthetic-data-generation) that role-plays both the user and the tool responses is a reasonable way to bootstrap volume, as long as you spot-check for schema drift.
+
+## Choosing how to train it
+
+This is usually a case for supervised fine-tuning, not preference tuning — you're teaching *correct format and selection*, a task with a clear right answer per example, rather than a preference between two plausible outputs (see [SFT vs Preference Tuning](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning)). LoRA or QLoRA is almost always sufficient: you're nudging tool-selection behavior on top of a model that already understands language and JSON, not teaching new knowledge, so a full parameter sweep is rarely worth the cost (see [Full Fine-Tuning vs PEFT](/learn/fine-tuning/full-fine-tuning-vs-peft)). A few hundred to a few thousand high-quality, diverse traces will typically move accuracy more than tens of thousands of near-duplicates from the same three intents.
+
+## Evaluating what you actually improved
+
+Don't grade on "did it produce valid JSON" alone — that's necessary but not sufficient. A proper eval checks, per example: right tool selected, arguments that match ground truth (exact match on IDs/enums, semantic match on free text), and correct behavior on the negative cases you included. Run this against a held-out set the model never trained on, and compare against the base prompted model on the same set before you ship — see [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model) and the tool-use-specific benchmarking methodology in [Benchmarking Tool Use](/learn/tools-function-calling/benchmarking-tool-use). If accuracy improved on your eval set but the model got noticeably worse at ordinary conversation, that's [catastrophic forgetting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting) — usually fixed by lowering the learning rate or mixing in some general instruction data alongside the tool traces.
+
+**Related:** [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes), [SFT vs Preference Tuning (DPO/RLHF)](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning), [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model)

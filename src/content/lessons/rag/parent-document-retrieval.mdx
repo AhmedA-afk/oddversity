@@ -1,0 +1,49 @@
+---
+title: "Parent-Document Retrieval: Small Chunks, Big Context"
+track: "rag"
+status: live
+summary: "Search on small precise chunks, then hand the model the larger section they came from."
+duration: "5 min read"
+---
+
+Chunking for RAG has a built-in tension: small chunks embed well and match queries precisely, but they strip away the surrounding context the model needs to actually answer. Parent-document retrieval resolves this by decoupling what you search from what you serve.
+
+## The core idea
+
+Instead of embedding one version of a document, you index two. Split each source document into small "child" chunks — a paragraph or two — and embed those for search. But each child stores a pointer back to its "parent": a larger section, or the whole document, that it was sliced from. When a query matches a child chunk, you don't send that chunk to the model. You look up its parent and send that instead.
+
+This fixes a specific failure mode. A 200-token chunk about "rate limiting retry behavior" might match a query almost perfectly on similarity, but if the actual answer needs the surrounding paragraph explaining which endpoints it applies to, a bare 200-token match gives the model half a fact. Retrieve small, read big.
+
+## How it's implemented
+
+The pattern needs two things: a chunking step that keeps parent-child relationships, and a store that can resolve one from the other.
+
+Concretely:
+
+```python
+# 1. Split into parents (e.g. 2000 tokens)
+parents = parent_splitter.split(document)
+
+# 2. Split each parent into children (e.g. 200 tokens)
+#    tag each child with its parent's id
+for parent in parents:
+    children = child_splitter.split(parent.text)
+    for child in children:
+        child.metadata["parent_id"] = parent.id
+        vector_store.add(child)  # only children get embedded
+
+# 3. At query time
+matches = vector_store.similarity_search(query, k=5)
+parent_ids = {m.metadata["parent_id"] for m in matches}
+context = [doc_store.get(pid) for pid in parent_ids]  # fetch full parents
+```
+
+The vector index only ever holds child embeddings — that's what stays small and precise. A separate document store (a key-value store, or even just files on disk) holds the parents, keyed by ID, and never gets touched by the embedding model. Deduplicate parent IDs before fetching, since several matched children often share one parent.
+
+## Where it breaks down
+
+Parent-document retrieval trades chunk precision for token cost — every match now pulls in a much larger block of text, so five matches can mean five full sections in the context window. It also doesn't help when the *parent* itself is too broad to be useful, or when the real answer requires synthesizing across parents that never matched at all. In those cases you're closer to needing multi-hop retrieval than a bigger context window per hit.
+
+It also isn't a substitute for good [chunking strategy](/learn/rag/chunking-strategies-for-documents) — you still have to choose sensible parent and child boundaries. And it composes well with [reranking](/learn/rag/reranking-retrieved-results): rerank the child matches before you resolve parents, so the parents you fetch are the ones that actually deserve the token budget.
+
+**Related:** [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents), [Reranking Retrieved Results](/learn/rag/reranking-retrieved-results), [Contextual Retrieval: Prepending Context Before Embedding](/learn/rag/contextual-retrieval)

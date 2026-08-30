@@ -1,0 +1,33 @@
+---
+title: "Session and State Management for Multi-Turn Features"
+track: "genai-app-dev"
+status: live
+summary: "Decide what conversation state lives server-side, client-side, or in a database between turns."
+duration: "6 min read"
+---
+
+Every multi-turn AI feature has to answer one boring question before it can answer any interesting ones: where does the conversation actually live between requests? Get this wrong and you either burn money re-sending history you didn't need, or you lose context the user assumed you'd kept.
+
+## The three places state can live
+
+**Client-side** — the browser holds the message array in memory or local storage and re-sends the whole thing (or the delta) with each request. Cheapest to build, works for single-tab, single-device use, and disappears the moment the tab closes or the user switches devices. Fine for a scratch chatbot, wrong for anything a user expects to resume later.
+
+**Server-side, in-memory** — a session object keyed by a session ID, held in process memory or a cache like Redis. Fast, but it ties a conversation to one server instance unless the cache is shared, and it vanishes on deploys or restarts unless you treat it as genuinely ephemeral (a 30-minute idle timeout, say, not a permanent record).
+
+**Database-backed** — messages persisted as rows (Postgres, SQLite, a document store), loaded by conversation ID on each turn. This is the only option that survives restarts, works across devices, and lets you show conversation history in a UI. It's also the only one that plays well with prompt caching, because a stable, append-only message log is exactly what a cache wants to see turn over turn — see [Prompt Caching for Speed and Cost](/learn/genai-app-dev/prompt-caching-for-speed-and-cost).
+
+Most production apps end up layering all three: database as the source of truth, an in-memory or Redis cache for the hot conversation to avoid a DB round-trip on every token, and client-side state purely for optimistic UI updates before the server confirms them.
+
+## State vs. memory — they're not the same thing
+
+"State" is what makes turn three coherent given turns one and two — the raw message history for the current conversation. "Memory" is what a system remembers across separate conversations: a user's name, a preference stated last week, a fact worth carrying forward indefinitely. Conflating them is a common bug: teams store everything as one growing blob and then can't answer "should this fact survive when the user starts a new chat?" without an awkward migration. Decide the boundary up front — session state is scoped to a conversation ID and typically trimmed or expired; memory is scoped to a user ID and persisted deliberately. For the deeper version of that split, see [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state).
+
+## What actually goes in the row
+
+Don't store the full model context window per turn — that's how you turn a chat table into a token-cost time bomb. Store the source of truth (role, content, timestamps, tool calls and results, model/version used) and reconstruct the API payload at request time, applying whatever trimming or summarization policy you've chosen — see [Trimming Conversation History for Context Limits](/learn/genai-app-dev/trimming-conversation-history). This also means a policy change (a new context limit, a better summarization strategy) doesn't require a data migration, just a different read-time transform.
+
+## A minimal shape that scales
+
+A conversations table (id, user_id, created_at, title) plus a messages table (id, conversation_id, role, content, tool_calls, created_at) covers almost every case. Add a `metadata` JSON column on messages for anything model-specific — cache breakpoints, latency, token counts — so you're not migrating the schema every time a provider adds a field. Load the last N messages (or the summarized prefix plus recent tail) on each request, not the entire history, and you've got a design that's cheap to run and easy to reason about at 10 users or 10 million.
+
+**Related:** [Trimming Conversation History for Context Limits](/learn/genai-app-dev/trimming-conversation-history), [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state), [Designing Chat UX That Doesn't Feel Broken](/learn/genai-app-dev/designing-chat-ux)

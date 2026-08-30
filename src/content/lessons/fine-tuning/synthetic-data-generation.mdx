@@ -1,0 +1,36 @@
+---
+title: "Generate Synthetic Training Data with a Larger Model"
+track: "fine-tuning"
+status: live
+summary: "Use a stronger model to bootstrap or expand a training set, and avoid the quality collapse that comes from training on your own outputs."
+duration: "6 min read"
+---
+
+You want to fine-tune a small model for a narrow task, but you have 200 real examples and need 2,000. The standard move: point a larger, more capable model at the task and have it generate the rest.
+
+## Why this works
+
+A model like a frontier chat model already "knows" how to do most tasks reasonably well — it's just too slow or expensive to run in production for your use case. Synthetic data generation uses that larger model as a teacher: you prompt it to produce input-output pairs in the shape you need, then fine-tune a smaller, cheaper model on that output. This is the same idea behind [knowledge distillation](/learn/fine-tuning/knowledge-distillation), applied at the data layer instead of the training-loss layer.
+
+It's especially useful for three situations: you have too few real examples to fine-tune on, your real examples are lopsided (all easy cases, no edge cases), or you need labels — turning raw unlabeled text into input/output pairs a smaller model can learn from.
+
+## A concrete recipe
+
+Say you're fine-tuning a small model to extract structured line items from receipts. You have 300 real receipts but need thousands of examples covering weird formats, handwritten totals, and foreign currencies.
+
+1. Write a generation prompt for the larger model: "Write a realistic receipt for a [restaurant/hardware store/pharmacy], with 3-8 line items, in [format variation]. Then output the correct structured extraction."
+2. Vary the prompt systematically — swap in a list of merchant types, currencies, and layout quirks — rather than calling the same prompt in a loop. Random resampling of one prompt tends to converge on the same handful of patterns.
+3. Seed each generation with a real example when you have one, so the synthetic data stays anchored to your actual distribution rather than the larger model's default assumptions about what a receipt looks like.
+4. Filter before you train: run a cheap validator (does the output match your [JSON schema](/learn/structured-outputs/json-schema-for-outputs)? does the total add up?) and drop anything that fails, rather than trusting the generator's output wholesale.
+
+## The collapse risk
+
+The failure mode to know about is *model collapse*: if you generate data with a model, train on it, then generate more data with the newly trained model, and repeat, quality degrades each cycle. Rare patterns get smoothed away, errors compound, and the distribution narrows toward whatever the model finds "safe" to generate. This is well documented in research on training successive model generations purely on prior generations' outputs.
+
+The fix isn't complicated: always keep a real, human-verified core in the mix (even 10-20% grounds the distribution), never train a model purely on its own prior outputs, and re-inject fresh real examples periodically rather than only synthetic ones. Treat synthetic data as an amplifier for real data, not a replacement for it.
+
+## Where it fits in the pipeline
+
+Synthetic generation is one input to [building a fine-tuning dataset that works](/learn/fine-tuning/building-a-fine-tuning-dataset) — it doesn't replace the curation and deduplication work, it just gives you more raw material to curate. And before generating anything, it's worth confirming fine-tuning is even the right call: see [Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag)
+
+**Related:** [Build a Fine-Tuning Dataset That Works](/learn/fine-tuning/building-a-fine-tuning-dataset), [Distill a Large Model into a Small One](/learn/fine-tuning/knowledge-distillation), [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag)

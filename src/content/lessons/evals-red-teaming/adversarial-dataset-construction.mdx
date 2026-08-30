@@ -1,0 +1,41 @@
+---
+title: "Crescendo, Many-Shot, and TAP: Building an Adversarial Prompt Set"
+track: "evals-red-teaming"
+status: live
+summary: "Use named jailbreak-generation techniques as generators to build a red-team dataset, instead of hand-writing attacks one at a time."
+duration: "6 min read"
+---
+
+Hand-writing jailbreak prompts doesn't scale, and it doesn't cover the failure modes you haven't imagined yet. The fix is to treat jailbreak research as a set of generators: each technique below is a recipe for producing many adversarial prompts automatically, which you then run through the model and log as a dataset.
+
+## Crescendo: escalate across turns
+
+Crescendo starts a conversation on an innocuous, adjacent topic and nudges it forward one small step at a time, each turn referencing the model's own prior answer as justification for going further. No single message looks like an attack — the harm is in the trajectory, not any one turn. This matters because single-turn red-teaming (one prompt, one response) systematically misses it: a model that correctly refuses a direct request can still be walked into the same output over five or six turns of "building on what we just discussed."
+
+To turn this into a dataset generator, template it: pick a target behavior, generate a plausible innocuous starting point, then generate N turns that each incrementally raise the ask while citing the prior turn. Score not just the final response but whether *any* turn in the trajectory crossed the line — see [Evaluating Agent Trajectories, Not Just Final Answers](/learn/evals-red-teaming/evaluating-agent-trajectories) for how to grade a sequence rather than a single output.
+
+## Many-shot: bury the ask in fake history
+
+Many-shot jailbreaking exploits long context windows directly. It fills the prompt with dozens or hundreds of fabricated Q&A turns showing an assistant readily complying with a graduated series of borderline requests, then appends the real target request at the end. The model has no way to distinguish "this is my actual conversation history" from "this is a wall of adversarial priming" — it pattern-matches on the in-context examples and continues the trend.
+
+As a generator this is mechanical: write a template for one fake turn, vary the topic and compliance framing, and concatenate as many as your context budget allows. The interesting variable to sweep in your dataset isn't the content, it's the *count* — you want data points at 5, 20, 50, 200 shots to find where a given model's defenses start to erode, since this is fundamentally a scaling effect tied to context length.
+
+## TAP: search instead of hand-tuning
+
+Tree of Attacks with Pruning (TAP) automates the trial-and-error a human red-teamer does by hand. An attacker model proposes a candidate jailbreak prompt, a judge model scores how close the target's response came to the harmful goal, and low-scoring branches get pruned while promising ones get refined and retried — a tree search over prompt variations rather than a single guess.
+
+```text
+goal -> attacker proposes prompt variant
+     -> target model responds
+     -> judge scores response against goal
+     -> keep top-k branches, discard the rest
+     -> refine surviving branches, repeat
+```
+
+This is worth running as its own pipeline before your red-team exercise, not during it: let TAP search offline against a target model, keep every prompt that scored above your threshold, and fold the survivors into your permanent adversarial set. That set is now reusable — the next time you touch the system prompt or swap models, you replay it instead of re-deriving it.
+
+## Turning generators into a dataset
+
+None of these techniques is useful as a one-off demo. The point is to run each generator at scale, log every (prompt, response, score) triple, and dedupe against prompts you already have so the set keeps growing instead of repeating itself. Tag each entry with which generator produced it and which policy category it targets, so a failure can be traced back to "Crescendo against category X" rather than just "the model said something bad." That traceable, versioned set is what feeds a structured [red-team exercise](/learn/evals-red-teaming/adversarial-red-teaming-process) and an [automated adversarial testing](/learn/evals-red-teaming/automated-adversarial-testing) pipeline you can rerun on every model or prompt change.
+
+**Related:** [Common Jailbreak Techniques and Their Defenses](/learn/evals-red-teaming/jailbreak-techniques-and-defenses), [Running a Structured Red-Team Exercise](/learn/evals-red-teaming/adversarial-red-teaming-process), [Automating Adversarial Probes](/learn/evals-red-teaming/automated-adversarial-testing)

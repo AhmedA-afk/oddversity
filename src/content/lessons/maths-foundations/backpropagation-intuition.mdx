@@ -1,0 +1,36 @@
+---
+title: "Backpropagation: How Networks Assign Blame"
+track: "maths-foundations"
+status: live
+summary: "How a network traces a wrong answer backward through every layer to find out which weights caused it."
+duration: "6 min read"
+---
+
+A network makes a prediction, compares it to the right answer, and gets a single error number. Backpropagation is how that one number turns into thousands of tiny "nudge this weight up, nudge that one down" instructions — one for every weight in the network.
+
+## The problem it solves
+
+Forward pass: input goes in, flows through layers, a prediction comes out, and you compute a loss — how wrong that prediction was. But the loss doesn't tell you which weight to blame. A weight three layers deep contributed to the output only indirectly, filtered through every layer after it. You need to know, for each weight, "if I increase this by a tiny amount, does the loss go up or down, and by how much?" That sensitivity is the weight's gradient, and computing all of them naively — perturbing one weight at a time and rerunning the whole network — would be brutally slow for a model with billions of weights.
+
+## The chain rule, applied layer by layer
+
+Backpropagation gets every gradient in roughly the same time as one forward pass, by reusing work. It walks backward from the loss, one layer at a time, applying the [chain rule](/learn/maths-foundations/gradients-and-slopes) from calculus: the effect of a weight on the loss is the effect of that weight on its layer's output, multiplied by the effect of that output on everything downstream.
+
+Concretely, each layer receives a gradient describing "how much did the loss change per unit change in my output" and does two things with it:
+
+```text
+layer.backward(gradient_from_above):
+    grad_wrt_my_weights = gradient_from_above * (my output's sensitivity to my weights)
+    grad_wrt_my_input   = gradient_from_above * (my output's sensitivity to my input)
+    return grad_wrt_my_input   # passed to the layer before me
+```
+
+The first line is what you actually wanted — the gradient for this layer's weights, which a training step will use to nudge them. The second line is what makes the whole thing efficient: it hands the next layer back exactly the information it needs, already combined with everything downstream. No layer ever needs to know about layers more than one step away.
+
+## Why "assigning blame" is the right mental picture
+
+Each layer only ever asks a local question — "given how much the layer after me says it wants to change, how should my inputs and weights change?" — and passes that answer backward. Repeat that from the output to the input, and every weight ends up with a precise share of responsibility for the final error, even weights nowhere near the output. This is also why the technique needs the network's operations to be differentiable: every "how much did output shift when input shifted" step depends on being able to compute a slope.
+
+Once every weight has a gradient, [gradient descent](/learn/maths-foundations/gradient-descent-intuition) is what actually uses it — subtracting a small multiple of the gradient from each weight, and repeating over millions of examples.
+
+**Related:** [Gradients: Slopes in Many Dimensions](/learn/maths-foundations/gradients-and-slopes), [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition), [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network)

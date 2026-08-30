@@ -1,0 +1,37 @@
+---
+title: "Merge Full Models with SLERP, TIES, and DARE"
+track: "fine-tuning"
+status: live
+summary: "Combine multiple fine-tuned checkpoints into one model without adapters, and know when merging beats an ensemble."
+duration: "6 min read"
+---
+
+You've fine-tuned three checkpoints from the same base model — one great at code, one at math, one at following instructions cleanly. Instead of picking one or running an expensive ensemble, you can merge their weights directly into a single model that inherits a bit of each. No training required, and inference costs stay exactly what they were for one model.
+
+## Why this works at all
+
+Model merging only makes sense when every checkpoint shares the same architecture and the same starting weights — think of them as different fine-tunes that branched off one base model. Because they started identical, their weight tensors live in roughly the same region of parameter space, so averaging or interpolating between them tends to land somewhere that still works, rather than in a scrambled mess. Merge checkpoints from unrelated base models and you'll usually get garbage.
+
+## SLERP: interpolating two models
+
+Spherical Linear Interpolation treats each model's weights as a point on a high-dimensional sphere and walks along the arc between two points rather than a straight line. A plain average (linear interpolation) tends to shrink the effective magnitude of the weights when two vectors point in different directions, which quietly degrades output quality. SLERP preserves that magnitude by interpolating along the angle instead:
+
+```
+slerp(w1, w2, t) = sin((1-t)*θ)/sin(θ) * w1 + sin(t*θ)/sin(θ) * w2
+```
+
+where θ is the angle between the two weight vectors and `t` (0 to 1) sets how much of each model you keep. SLERP is built for exactly two models — it's the tool for "80% my code model, 20% my chat model," not for merging five checkpoints at once.
+
+## TIES: merging without models cancelling each other out
+
+Merge three or more fine-tunes with naive averaging and you'll often see performance drop below any single input model. The cause is parameter interference: different fine-tunes push the same weight in opposite directions, or one model's large update to a parameter that barely changed in the others gets diluted into noise. TIES-Merging (TRIM, Elect Sign, Merge) fixes this in three steps — trim each model's task vector (its delta from the base model) down to the top-magnitude changes, elect a consensus sign for each parameter by majority vote across models, then average only the models that agree with that sign. It's the standard choice once you're combining more than two checkpoints.
+
+## DARE: sparsifying before you merge
+
+DARE (Drop And REscale) isn't a merge method on its own — it's a preprocessing step you apply to each model's task vector before feeding it into SLERP, TIES, or a plain average. It randomly zeroes out a large fraction of each delta (often 90%+) and rescales the survivors to compensate, on the finding that fine-tuning deltas are highly redundant and most of the signal survives the pruning. Combined with TIES (a very common pairing called DARE-TIES in tools like [mergekit](https://github.com/arcee-ai/mergekit)), it further reduces interference between models before the sign-election step runs.
+
+## When to merge instead of ensemble or route
+
+An ensemble (running several models and combining outputs) usually beats a merge on raw quality, but it costs N times the inference compute and latency. Merging costs nothing extra at serving time since you end up with one set of weights — the tradeoff is that you're blending capabilities inside the weights rather than combining outputs, so highly specialized skills can blur together. Merging shines when you have several LoRA-scale fine-tunes of the same base model and want one deployable artifact; for combining adapters specifically rather than full checkpoints, see [merging and versioning adapters](/learn/fine-tuning/merging-and-versioning-adapters). Always evaluate the merged model on each source task before shipping — see [evaluating a fine-tuned model](/learn/fine-tuning/evaluating-a-fine-tuned-model) — since merges can silently lose a capability that was fine on the input checkpoints.
+
+**Related:** [Full Fine-Tuning vs Parameter-Efficient Fine-Tuning](/learn/fine-tuning/full-fine-tuning-vs-peft), [Merge and Version LoRA Adapters](/learn/fine-tuning/merging-and-versioning-adapters), [Evaluate a Fine-Tuned Model Before Shipping](/learn/fine-tuning/evaluating-a-fine-tuned-model)

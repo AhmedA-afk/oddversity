@@ -1,0 +1,42 @@
+---
+title: "Incremental Indexing and Keeping an Index Fresh"
+track: "rag"
+status: live
+summary: "Update, delete, and re-embed only what changed, instead of rebuilding your entire vector index from scratch."
+duration: "6 min read"
+---
+
+A RAG index isn't a one-time build — the underlying documents keep changing, and a full re-embed of everything every time a file is edited doesn't scale past a handful of documents. Incremental indexing is the discipline of touching only what actually changed.
+
+## Why full rebuilds break down
+
+Re-embedding your entire corpus on every update seems simple, but it costs you twice: embedding API calls scale with total document volume, not with what changed, and most vector databases either block reads during a full reindex or force you to run two indexes side by side and swap them. At a few hundred documents this is a mild annoyance. At tens of thousands, a single edited paragraph can trigger an hours-long, expensive rebuild — and your index is stale the entire time it runs.
+
+## Tracking what changed
+
+The core mechanism is a content fingerprint per source document (or per chunk): a hash of the text, or a `last-modified` timestamp from the source system. On each sync run, you compare the current fingerprint against the one stored alongside the existing vectors:
+
+- **Unchanged** — skip it, no re-embedding needed.
+- **New** — [chunk](/learn/rag/chunking-strategies-for-documents), embed, and insert.
+- **Modified** — delete the old chunks for that document and insert freshly embedded ones. Don't try to diff and patch individual chunks; a small text edit can shift chunk boundaries downstream, so treat "modified" as delete-and-reinsert at the document level.
+- **Deleted at the source** — delete the corresponding vectors. This step gets skipped more often than the others, and it's how indexes accumulate zombie chunks that point at documents nobody can open anymore.
+
+This requires your vector store to support deletion by a stable ID (usually the source document ID, or a composite of document ID plus chunk index) — confirm this before you pick one, since not every store makes deletion cheap. See [Choosing a Vector Database](/learn/rag/choosing-a-vector-database).
+
+## Sync strategies: poll, webhook, or CDC
+
+How you detect changes depends on the source:
+
+- **Polling** — periodically list documents and compare fingerprints. Simple, works with almost any source, but freshness is bounded by your polling interval and the list call itself can get expensive at scale.
+- **Webhooks / push events** — the source system (a CMS, a wiki, a file store) notifies you on change. Near-real-time freshness, but you need a durable queue in front of it so a burst of edits or a dropped event doesn't silently lose an update.
+- **Change data capture (CDC)** — for a database-backed source, tail the write-ahead log or change stream instead of querying the table. Lowest overhead, most implementation work.
+
+Most production pipelines combine a periodic poll (as a correctness backstop) with event-driven updates (for latency) — the poll catches anything the event pipeline missed.
+
+## Staleness as a first-class metric
+
+Freshness isn't binary; it's a lag you should measure and expose. Track "time since last successful sync" per source and per document, and consider surfacing an [as-of date in the answer](/learn/rag/grounding-answers-with-citations) when a query touches fast-moving content — pricing, inventory, policy pages. If a downstream chunk was created via [contextual retrieval](/learn/rag/contextual-retrieval), remember that its prepended context also goes stale when the source document changes, not just the chunk text itself, so it needs to be regenerated on the same trigger.
+
+Finally, budget for reindex failures: a partial sync that dies halfway through should leave the index in its last-known-good state, not a mix of old and new chunks with no record of which is which. Idempotent upserts (keyed by a stable chunk ID) make retries safe without duplicating vectors.
+
+**Related:** [Choosing a Vector Database](/learn/rag/choosing-a-vector-database), [Contextual Retrieval: Prepending Context Before Embedding](/learn/rag/contextual-retrieval), [Caching Retrieval and Generation in a RAG Pipeline](/learn/rag/rag-caching-and-cost)

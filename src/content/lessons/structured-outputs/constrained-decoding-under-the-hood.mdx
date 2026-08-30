@@ -1,0 +1,39 @@
+---
+title: "Constrained Decoding: How Guaranteed-Valid Output Actually Works"
+track: "structured-outputs"
+status: live
+summary: "How grammar-constrained decoding masks invalid tokens at each generation step to guarantee schema-valid output."
+duration: "6 min read"
+---
+
+JSON mode and "please return valid JSON" prompting both rely on the model choosing to comply. Constrained decoding doesn't ask — it removes the option to fail by editing the probability distribution at every single token.
+
+## The core trick: masking logits
+
+A model generates one token at a time. At each step it computes a probability (a logit) for every token in its vocabulary, then samples from that distribution. Normal generation lets any token win. Constrained decoding intervenes right before sampling: it looks at what's already been generated, computes which next tokens would keep the output on a valid path toward your schema, and sets the probability of every other token to zero.
+
+Say your schema requires a field called `"status"` to be one of `"open"`, `"closed"`, or `"pending"`. Once the model has written:
+
+```
+{"status": "
+```
+
+the constraint engine knows only three continuations are legal. It masks out every token that isn't the start of `open`, `closed`, or `pending`. The model can still choose freely among the tokens that remain — that's where its judgment lives — but it is structurally unable to write `"unknown"` or leave the string unterminated. This is why the guarantee holds even under high [temperature](/learn/maths-foundations/temperature-in-sampling): masking happens to the logits before sampling touches them.
+
+## Turning a schema into a grammar
+
+The masking needs a rulebook to consult at each step, and that rulebook is a formal grammar — typically expressed as a context-free grammar or a regular-language automaton compiled from your [JSON Schema](/learn/structured-outputs/json-schema-for-outputs). Tools like Outlines, Guidance, llama.cpp's grammar sampler, and the constrained-decoding modes built into major inference engines all do a version of the same compile step: schema in, finite-state machine out.
+
+That automaton tracks a "current state" — are we inside a string, expecting a comma, waiting for the value of a specific key — and at each state it defines the exact set of tokens allowed next. Nested objects and arrays just mean deeper states in the machine; a [nested schema](/learn/structured-outputs/nested-and-array-schemas) compiles to a machine with more branches, not a fundamentally different mechanism. Enums compile almost directly: each enum value becomes one accepted path through the automaton, which is why [enum fields](/learn/structured-outputs/enums-and-constrained-fields) are the cheapest thing to constrain and the least likely to ever produce a bad value.
+
+## Why this differs from prompting or JSON mode
+
+Plain JSON mode (available in most model APIs) constrains only enough to guarantee syntactically valid JSON — balanced braces, quoted keys, no trailing commas. It says nothing about which keys exist or what a value should look like. Full grammar-constrained decoding goes further: it can guarantee your exact schema, correct key names, correct types, and enum membership, because the grammar it compiles from is your schema, not just "JSON in general."
+
+The tradeoff is where it can run. Because it needs raw access to the model's logits at every step, constrained decoding only works with a model you can host and control the decoding loop for, or a provider that exposes this mode directly through structured-output parameters. A model reached purely through prompting — no logit access — can't get this guarantee at all, which is one of the things worth weighing when [choosing a model](/learn/ai-foundations/choosing-a-model) for extraction-heavy work.
+
+## What it doesn't fix
+
+Constrained decoding guarantees *shape*, not *truth*. It cannot stop a model from confidently filling a required field with a plausible but wrong value — that's a [hallucination](/learn/hallucinations/what-is-a-hallucination) problem, not a formatting problem, and it needs its own defenses. Grammar constraints and [validation with auto-repair](/learn/structured-outputs/validation-and-auto-repair) solve different halves of the reliability problem; production systems typically want both.
+
+**Related:** [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Enums: Locking a Field to a Fixed Set of Values](/learn/structured-outputs/enums-and-constrained-fields), [Structured Output Failure Modes and How to Spot Them](/learn/structured-outputs/structured-output-failure-modes)

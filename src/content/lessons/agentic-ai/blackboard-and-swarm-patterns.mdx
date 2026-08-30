@@ -1,0 +1,31 @@
+---
+title: "Blackboard and Swarm: Decentralized Multi-Agent Coordination"
+track: "agentic-ai"
+status: live
+summary: "How agents coordinate through a shared workspace or local rules instead of a central controller, and when that trade is worth making."
+duration: "6 min read"
+---
+
+Every multi-agent pattern you've seen so far has a boss. An orchestrator hands out subtasks, waits for results, and decides what happens next. Blackboard and swarm patterns drop the boss entirely — agents coordinate through shared state or local interaction instead of a controller telling them what to do.
+
+## The blackboard: a shared workspace, not a chain of command
+
+A blackboard system gives every agent read/write access to one shared data structure — the "blackboard" — instead of message-passing through a hub. An agent watches the blackboard, and when it sees a state it knows how to act on, it writes its contribution back. There's no fixed order: whichever agent's trigger condition matches next goes next.
+
+Picture a document-analysis pipeline built this way instead of as a linear chain. An extraction agent posts raw entities to the blackboard. A validation agent notices unverified entities and checks them against a source. A summarization agent notices validated entities accumulating and drafts a section. None of them call each other directly — each just polls (or subscribes to) the blackboard and reacts to what's there.
+
+This buys you two things a fixed pipeline can't: agents can run in any order the data allows (if entities validate before extraction finishes, summarization can start early), and adding a new specialist agent means teaching it what to watch for on the blackboard, not rewiring a controller's dispatch logic. The cost is that debugging gets harder — there's no single trace of "who called whom," just a log of writes, and you can get race conditions where two agents act on the same stale read.
+
+## Swarm: no shared state, just local rules
+
+Swarm patterns go further: there's no shared blackboard either. Each agent follows local rules based only on what it can directly observe — nearby agents' outputs, its own subtask, a small slice of state — and useful global behavior emerges from many agents following those rules independently. This is the same idea behind ant-colony optimization and boid flocking, ported to LLM agents: no agent has the full picture, but the aggregate behavior solves the problem.
+
+In practice, LLM swarms show up as large pools of narrow, cheap agents working the same problem in parallel with light peer-checking — one agent flags another's output as suspicious without either one seeing the whole task — rather than the more common orchestrator fan-out you'd meet in [multi-agent patterns](/learn/agentic-ai/multi-agent-patterns). It's a much less mature pattern in production LLM systems than blackboard or orchestration; treat "swarm" claims from a framework with some skepticism until you've seen the coordination rules, not just the marketing term.
+
+## When decentralization is worth it
+
+Both patterns solve the same problem orchestration has: a single controller is a bottleneck and a single point of failure, and it forces artificial ordering on work that's naturally parallel or exploratory. But they trade a debuggable, predictable trace for flexibility — you give up "here's exactly what happened and why" in exchange for agents that don't wait on each other.
+
+That trade only pays off past a certain scale or unpredictability. If you can name your agents and their handoffs in advance, an [orchestrator](/learn/agentic-ai/multi-agent-patterns) is easier to build, test, and fix. Reach for blackboard or swarm coordination when the set of relevant agents or the order they should act in genuinely can't be known ahead of time — and budget real effort for observability, because "what happened" is the first thing you lose.
+
+**Related:** [Multi-Agent Patterns: Orchestrator, Pipeline, Debate](/learn/agentic-ai/multi-agent-patterns), [Choosing an Orchestration Framework](/learn/agentic-ai/agent-orchestration-frameworks), [Agent-to-Agent Protocols](/learn/agentic-ai/agent-to-agent-protocols)

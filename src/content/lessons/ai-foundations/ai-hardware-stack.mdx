@@ -1,0 +1,27 @@
+---
+title: "The AI Hardware Stack: GPUs, TPUs, and Why They Matter"
+track: "ai-foundations"
+status: live
+summary: "Why GPUs and TPUs, not CPUs, run modern AI, and what parallelism and memory bandwidth actually buy a training run."
+duration: "5 min read"
+---
+
+A CPU is built to do one thing quickly and correctly, one step after another. Neural networks need the opposite: millions of small, identical multiplications happening at the same time. That mismatch is why almost nothing in modern AI trains or runs on a CPU alone.
+
+## Why matrix multiplication needs a different chip
+
+Every layer of a neural network boils down to matrix multiplication — take a vector of numbers, multiply it against a grid of weights, add the results. A CPU has a handful of powerful cores, each optimized for branching logic and sequential instructions. A GPU has thousands of small, simple cores that can't do much individually but can all multiply-and-add at once. Since the multiplications inside a matrix multiply don't depend on each other, you can hand each one to a different core and get the whole operation back almost as fast as a single multiplication would take. That's the entire reason GPUs took over deep learning around 2012: they turned an operation that would take a CPU forever into one that finishes in parallel.
+
+Modern GPUs go further with dedicated tensor cores — circuits built specifically to do the multiply-accumulate pattern that dominates neural network math, at lower numerical precision (like fp16 or int8) than general-purpose arithmetic needs. A TPU (Tensor Processing Unit), Google's custom chip, pushes this specialization all the way: it's not a general parallel processor with tensor cores bolted on, it's built from the ground up around a systolic array — a grid of arithmetic units that pass partial results directly to their neighbors, so data flows through the chip instead of shuttling back and forth to memory for every step.
+
+## The bottleneck is rarely the math — it's moving data
+
+Raw compute (measured in FLOPs, floating-point operations per second) gets the headlines, but training and inference are usually bound by something else: memory bandwidth, the rate at which data can move between memory and the compute cores. A modern accelerator can often perform far more arithmetic per second than it can feed with data. Every parameter, activation, and gradient has to travel from high-bandwidth memory (HBM) to the compute units and back, and if the chip finishes its multiplications faster than memory can supply the next batch, the extra compute just sits idle.
+
+This is why chip generations are sold on memory bandwidth and capacity as much as on peak FLOPs, and why large models are split across many chips connected by fast interconnects (like NVLink or Google's inter-chip links) — the goal isn't just more compute, it's keeping data flowing to the compute that already exists.
+
+## What this means for training vs. inference
+
+Training needs to hold weights, activations, and gradients for a whole batch in memory simultaneously, which is why it's usually done on clusters of high-memory GPUs or TPU pods working together. Inference — [running](/learn/ai-foundations/training-vs-inference) a model that's already trained — needs far less memory per request, which is why it can run on cheaper hardware, smaller chips, or even a laptop for small models, and why the [scaling laws](/learn/ai-foundations/scaling-laws) that predict how much bigger models improve also predict how much more hardware they'll need to serve.
+
+**Related:** [Training vs. Inference](/learn/ai-foundations/training-vs-inference), [Scaling Laws: Why Bigger Models Keep Getting Better](/learn/ai-foundations/scaling-laws), [What a Neural Network Actually Is](/learn/ai-foundations/what-is-a-neural-network)

@@ -1,0 +1,27 @@
+---
+title: "Role Prompting: What Personas Actually Change"
+track: "prompt-engineering"
+status: live
+summary: "What telling a model to 'act as an X' really changes in its output, and where it's cosmetic."
+duration: "5 min read"
+---
+
+Telling a model "you are a senior security engineer" doesn't give it new knowledge or capabilities. What it does is shift the register, vocabulary, and priorities of the output toward what that role would plausibly say — because the model learned strong statistical associations between roles and the kind of text people in those roles write.
+
+## What a persona actually shifts
+
+A role prompt biases three things: tone (formal vs. casual, terse vs. explanatory), vocabulary (domain jargon vs. plain language), and emphasis (a "security engineer" persona surfaces risks and edge cases unprompted; a "product manager" persona surfaces tradeoffs and user impact). Ask the same factual question as "a pirate" and "a professor" and the facts should stay identical while the framing changes completely — that's the tell for a cosmetic effect.
+
+Where it gets closer to functional: a role can act as a compressed instruction. "You are a code reviewer who only comments on bugs, not style" packs a whole behavioral spec into one line the model has seen thousands of times in training, so it reliably narrows scope. That's really an implicit instruction riding on a role label, not the role itself doing work.
+
+## What it does not change
+
+Role prompting doesn't add domain expertise the base model lacks, doesn't improve factual accuracy, and doesn't reliably increase reasoning depth. Studies and practitioner reports on this have been inconsistent — some tasks show small gains from a role like "expert mathematician," others show none, and a few show the persona narrowing the model into a less useful register (an "expert" persona can make a model more terse and less willing to show uncertainty, which is a loss if you wanted it to hedge). Don't reach for a persona to fix a reasoning or accuracy problem — that's a job for [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting) or better [context](/learn/context-engineering/context-engineering-vs-prompting), not for costume.
+
+## When to use it deliberately
+
+Use role prompting for two things it's genuinely good at: setting output style fast (a "technical writer" persona is a shortcut to "concise, no fluff, structured headings"), and setting a lens for judgment calls, like "review this as a skeptical editor" for questions that don't have one right answer. Put the role in the [system prompt](/learn/prompt-engineering/system-vs-user-prompts), not buried in the user turn — it reads as a standing instruction rather than a one-off request, and it won't get overridden the moment the conversation moves on.
+
+If you actually need domain accuracy, don't stop at the persona. Pair it with concrete constraints or examples — a role plus [few-shot examples](/learn/prompt-engineering/few-shot-prompting) of the exact output you want will outperform the role alone almost every time.
+
+**Related:** [System Prompts vs User Prompts](/learn/prompt-engineering/system-vs-user-prompts), [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting), [Few-Shot Prompting: Teaching by Example](/learn/prompt-engineering/few-shot-prompting)

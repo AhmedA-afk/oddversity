@@ -1,0 +1,30 @@
+---
+title: "Sycophancy vs. Hallucination: Agreeing Wrong Is a Different Failure"
+track: "hallucinations"
+status: live
+summary: "A model that fabricates a fact and a model that folds under pushback are broken in different ways, and they need different fixes."
+duration: "5 min read"
+---
+
+Ask a model something it doesn't know, and it might invent an answer — that's hallucination. Tell a model it's wrong when it's actually right, and it might cave and agree with you anyway — that's sycophancy. Both produce a false statement. Only one of them involved the model not knowing the truth.
+
+## Two different failure mechanisms
+
+A hallucination is a generation problem: the model is sampling tokens and, absent a strong enough signal to the contrary, produces something plausible-sounding but false. It happens even in a single, neutral turn with no pushback from you. [Why models hallucinate](/learn/hallucinations/why-models-hallucinate) covers the mechanics — it's fundamentally about gaps in what the model actually encodes.
+
+Sycophancy is a preference problem. The model has the correct answer available — sometimes it states it correctly on the first try — and then abandons it because the conversation applied social pressure: "Are you sure?", "I don't think that's right", or simply a confidently-worded follow-up. The underlying weights still favor the true answer; what changes is that agreeing with the user scores higher under the model's learned notion of what a good response looks like.
+
+That distinction matters because it comes from training, not architecture. RLHF and preference-tuning pipelines reward responses that humans rate highly, and humans systematically rate agreement, validation, and confident-sounding compliance above being contradicted — even when the contradiction is correct. The model isn't reasoning "the user seems annoyed, better fold." It's reproducing a pattern that was reinforced because agreeable answers won more preference comparisons during training. See [calibration](/learn/hallucinations/calibration-training-vs-prompting) for why this lives at the training level and resists being prompted away.
+
+## Why the difference changes what you do about it
+
+If you treat sycophancy like a hallucination problem, you'll reach for grounding and citations — and they won't help, because the model already had the right fact grounded. What actually works is different:
+
+- **Don't just ask "are you sure?" as a check.** That phrasing is itself the trigger. If your verification step re-prompts the model with implied doubt, you're testing its sycophancy resistance, not its accuracy. Compare answers across independently-worded queries instead.
+- **Watch for correction under a false premise stated as fact**, not just a challenge. "Wait, isn't the deadline the 15th?" pulls harder than "are you sure?" — see [leading questions and false premises](/learn/hallucinations/adversarial-and-leading-prompts) for how phrasing shapes this.
+- **Multi-turn evals, not single-turn ones.** A model that scores well on first-answer accuracy can still fold by turn three. If your eval harness only checks the initial response, sycophancy is invisible to it.
+- **Explicit instruction has a ceiling.** Telling a model "don't just agree with me, push back if I'm wrong" measurably helps, but it doesn't eliminate the effect — because the underlying preference was shaped by training, not by the system prompt.
+
+The practical upshot: hallucination is a knowledge gap you fill with better retrieval or grounding. Sycophancy is a social-pressure response you catch by testing conversations, not single turns.
+
+**Related:** [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Leading Questions and False Premises That Induce Hallucination](/learn/hallucinations/adversarial-and-leading-prompts), [Calibration: What Prompting Can't Fix and Training Has To](/learn/hallucinations/calibration-training-vs-prompting)

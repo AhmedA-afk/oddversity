@@ -1,0 +1,39 @@
+---
+title: "Streamable HTTP: Sessions, Resumption, and Reconnects"
+track: "mcp"
+status: live
+summary: "How MCP's HTTP transport keeps one logical session alive across a dropped connection and replays what was missed."
+duration: "6 min read"
+---
+
+Streamable HTTP replaced the old HTTP+SSE transport in MCP because a browser tab or a flaky mobile connection drops all the time, and losing a tool result mid-stream shouldn't mean losing the whole session. The transport is built around one idea: the session and the connection are two different things.
+
+## One endpoint, two directions
+
+A Streamable HTTP server exposes a single URL that accepts both POST and GET. The client POSTs a JSON-RPC message (a tool call, a notification) and the server can respond in one of two ways: a plain JSON response for a quick request, or an `text/event-stream` response that streams the answer as one or more Server-Sent Events, useful when a tool call produces incremental output like partial LLM tokens or progress notifications before the final result.
+
+The GET request opens a standing SSE stream the server can use to push messages the client didn't just ask for — a resource-changed notification, for instance. Either channel can close at any time without ending the logical session underneath it.
+
+## The session lives in a header, not a socket
+
+On `initialize`, the server can return an `Mcp-Session-Id` header. If it does, the client must send that same header on every subsequent request. That ID is what makes the session durable: the TCP connection, the SSE stream, even the browser tab can all die and come back, and as long as the client presents the same session ID, the server treats it as a continuation of the same conversation — same negotiated capabilities, same server-side state.
+
+Ending a session explicitly is a `DELETE` request with that header. A server that doesn't want to track session state at all is free to omit `Mcp-Session-Id` entirely and run stateless — see [Stateful vs. Stateless MCP Server Design](/learn/mcp/stateful-vs-stateless-servers) for when that tradeoff makes sense.
+
+## Resuming a stream after a drop
+
+Sessions solve "who are you." Resumability solves "what did I miss." Every event a server sends over SSE can carry an `id` field. If the client's connection drops mid-stream, it reconnects with a GET request carrying a `Last-Event-ID` header set to the last event it actually received.
+
+A server that implements resumability keeps a short-lived buffer (an event store) of recent messages per stream. On reconnect, it replays everything after that ID before resuming live delivery — so a tool call that was three progress notifications into a five-notification stream doesn't have to restart from zero, and the client doesn't have to guess whether a message actually arrived. This is opt-in on the server side: nothing in the spec requires a server to buffer anything, so a client should treat replay as a nice-to-have and design tool calls to be safe to retry regardless.
+
+```
+GET /mcp HTTP/1.1
+Mcp-Session-Id: 9f2c1e...
+Last-Event-ID: 42
+```
+
+## Why this matters in practice
+
+Without session IDs and `Last-Event-ID`, every dropped connection would force a full re-`initialize` — renegotiating capabilities, losing any server-side context — which is fine for a stateless proxy but expensive for a server holding an open database transaction or a long agentic tool run. Streamable HTTP lets a client survive a laptop sleep, a network switch, or a proxy timeout and pick the conversation back up exactly where it left off, which is also what makes it viable to put a load balancer or [gateway](/learn/mcp/mcp-gateway-pattern) in front of an MCP server without the client noticing.
+
+**Related:** [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http), [Stateful vs. Stateless MCP Server Design](/learn/mcp/stateful-vs-stateless-servers), [Running MCP Servers in Production](/learn/mcp/running-mcp-servers-in-production)

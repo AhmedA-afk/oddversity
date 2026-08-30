@@ -1,0 +1,54 @@
+---
+title: "LLM evaluation interview questions"
+topic: "Evals and red teaming"
+description: "Eight questions about measuring quality, building test sets, and finding failures before users do."
+order: 6
+---
+
+## 1. What is an LLM evaluation?
+
+An evaluation is a repeatable way to compare a system's behavior against a defined task and success criterion. It can use exact labels, deterministic checks, human judgment, or a model judge with calibration and audit.
+
+The evaluation target is the system configuration: prompt, model, retrieval, tools, and post-processing. Changing any of those can change the result. See [why evals matter](/learn/evals-red-teaming/why-evals-matter).
+
+## 2. What belongs in a golden dataset?
+
+A golden dataset contains representative inputs, expected outputs or judging criteria, relevant metadata, and known edge cases. Include ordinary successes, ambiguous requests, long inputs, empty inputs, malformed inputs, and security-sensitive cases.
+
+Keep an untouched test split for release decisions. If every failure is added to the test set after tuning, the score becomes optimistic.
+
+## 3. What is the difference between a metric and a rubric?
+
+A metric reduces behavior to a number, such as exact match, retrieval recall, latency, or cost. A rubric defines what a good answer must include or avoid and can support human or model-assisted scoring.
+
+Use metrics for stable properties and rubrics for nuanced quality. Report distributions and examples alongside averages so severe failures do not disappear inside one score.
+
+## 4. Are LLM judges reliable?
+
+They can be useful for scalable comparison when the rubric is explicit and the judge has been checked against human labels. They can also favor verbosity, share blind spots with the system under test, and behave inconsistently across phrasing.
+
+Calibrate on a labeled sample, blind the judge where possible, use pairwise or rubric-based checks thoughtfully, and keep humans in the loop for high-impact decisions.
+
+## 5. What is red teaming for an AI application?
+
+Red teaming is deliberate adversarial testing to find ways a system violates its intended behavior or security properties. It can target prompt injection, data leakage, unsafe actions, jailbreaks, tool misuse, bias, and denial-of-service paths.
+
+Make findings reproducible and connect them to a mitigation and regression test. [Prompt injection basics](/learn/evals-red-teaming/prompt-injection-basics) is a useful starting point.
+
+## 6. How do you evaluate a RAG system?
+
+Evaluate retrieval and generation separately, then evaluate the full answer. Check whether the right evidence was retrieved, whether the answer is supported, whether citations point to the right passages, and whether the system abstains when evidence is missing.
+
+Use queries written from real user needs, not only synthetic questions that match the index wording. See [evaluating RAG quality](/learn/rag/evaluating-rag-quality).
+
+## 7. What is an eval-driven development loop?
+
+Write a small test set before changing the system, run a baseline, make one focused change, inspect wins and regressions, and promote the change only when it improves the agreed criteria without violating guardrails. Keep the run artifacts and configuration.
+
+Start small enough to run often, then add cases from real failures. A useful eval is part of the development workflow, not a report written after launch.
+
+## 8. Which failures should block release?
+
+Block on failures tied to safety, privacy, authorization, irreversible actions, or contractual requirements. For quality failures, set thresholds based on the task's cost of error and monitor the tail, not just the mean.
+
+Document who owns the threshold and what happens when production drifts. Evals are decision tools; they should change release behavior.

@@ -1,0 +1,31 @@
+---
+title: "AI Benchmarks and What They Miss"
+track: "ai-foundations"
+status: live
+summary: "Benchmark scores measure a fixed test set, not real-world competence — here's the gap between the leaderboard and your actual use case."
+duration: "5 min read"
+---
+
+When a lab announces a new model, the first thing you see is a table of benchmark scores: MMLU, GPQA, HumanEval, SWE-bench, and a dozen others, each a percentage next to a rival model's percentage. It's tempting to read that table as a ranking of intelligence. It isn't. It's a ranking of performance on a specific, fixed set of questions — and the distance between that and "how good is this model at my problem" is bigger than the leaderboard lets on.
+
+## What a benchmark actually measures
+
+A benchmark is a dataset of questions with known correct answers, plus a scoring rule. MMLU tests multiple-choice knowledge across dozens of academic subjects. HumanEval checks whether generated code passes unit tests. GPQA uses graduate-level science questions written to resist simple lookup. Each one is a narrow, well-defined task, scored automatically or by a fixed rubric.
+
+That narrowness is the point — it's what makes benchmarks reproducible and comparable across models. It's also the limit. A model can be excellent at answering isolated multiple-choice science questions and still struggle to hold context across a long conversation, follow an ambiguous instruction, or admit uncertainty instead of guessing. None of that shows up in a single accuracy number.
+
+## Contamination and saturation
+
+Two problems compound as benchmarks age. First, contamination: if a benchmark's questions (or close variants) were present in a model's training data, the score reflects memorization, not capability. Popular benchmarks that have circulated online for years are especially exposed to this, and it's part of why labs keep building new, harder benchmarks and why some scores are quietly overstated.
+
+Second, saturation: once most top models score 90%+ on a benchmark, it stops discriminating between them. A model scoring 95% and one scoring 97% on a saturated benchmark are not meaningfully different in the real world — the benchmark has run out of room to tell them apart. This is why the field keeps retiring old benchmarks (once used to gauge [how LLMs work](/learn/ai-foundations/how-llms-work) at a coarse level) in favor of harder ones, and why a model's benchmark score today should be read against how saturated that particular test is, not as an absolute measure.
+
+## Benchmarks don't cover your task
+
+Even an uncontaminated, unsaturated benchmark tests what its authors chose to test. Coding benchmarks tend to favor short, self-contained problems with clear test cases — not the messy, multi-file, underspecified refactor you actually need done. Knowledge benchmarks reward recall of settled facts, not synthesis of your specific documents (that's closer to what [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) evaluates). A model can top every public leaderboard and still be the wrong choice for your workload if your workload doesn't resemble the benchmark's distribution.
+
+## What to do instead
+
+Treat public benchmarks as a coarse first filter, not a verdict. Use them to narrow a shortlist of models worth trying, then build a small evaluation set from examples that look like your actual task — real prompts, real edge cases, real failure modes you care about. That's the only score that tells you whether a model works for you, and it's the foundation of doing real [evals](/learn/evals-red-teaming/why-evals-matter) instead of vibes-based iteration. When you're picking between models for a project, pair the leaderboard with your own test set, not instead of it — see [Choosing a Model](/learn/ai-foundations/choosing-a-model) for how that plays out in practice.
+
+**Related:** [Choosing a Model](/learn/ai-foundations/choosing-a-model), [A Mental Model for What LLMs Can and Can't Do](/learn/ai-foundations/what-llms-can-and-cannot-do), [Why Vibes-Based Iteration Breaks Down](/learn/evals-red-teaming/why-evals-matter)

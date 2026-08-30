@@ -1,0 +1,38 @@
+---
+title: "Sandboxing Tool Execution"
+track: "tools-function-calling"
+status: live
+summary: "Isolate what a tool call can touch — filesystem, network, process — so a bad call can't become a bad day."
+duration: "5 min read"
+---
+
+A model can only request that a shell command run — something has to actually run it. Sandboxing is the boundary you put around that "actually run it" step, so a hallucinated path, a bad argument, or an outright prompt injection can't reach anything you care about.
+
+## Why validation isn't enough
+
+You might argue: I already check the arguments before running the tool. That catches typos, not intent. A model told to "clean up temp files" can produce `rm -rf` with a path that resolves outside the temp directory after a symlink or a `..` you didn't anticipate. Argument checking asks "is this call well-formed?" Sandboxing asks "even if it isn't, what's the worst that happens?" You want both, but only one of them survives your own blind spots — see [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely) for the validation layer this complements.
+
+## The three things to isolate
+
+**Filesystem.** Give the process its own root, not yours. A container, a chroot, or an ephemeral working directory that gets wiped after the call — not "trust the path argument." If a tool needs to read your repo, mount only that repo, read-only, rather than handing it the whole machine.
+
+**Network.** Default to no network. If a tool needs to hit an API, allowlist that one host and nothing else. Without this, a tool that's supposed to format a file can be redirected into exfiltrating your environment variables to an attacker's server — a classic outcome of [prompt injection](/learn/evals-red-teaming/prompt-injection-basics) reaching a capable tool.
+
+**Process and resources.** Cap CPU, memory, and wall-clock time per call, and run as a non-root, unprivileged user inside the sandbox. An agent stuck in a loop calling a tool a thousand times should hit a resource ceiling, not your cloud bill.
+
+## Picking a mechanism
+
+The right tool scales with how much you trust the code path:
+
+- **OS-level sandboxing** (`seccomp`, AppArmor, or a locked-down subprocess with an explicit env and cwd) — cheapest, good for tools you wrote yourself and mostly trust.
+- **Containers** (Docker, or hardened runtimes like gVisor) — the common default. Fresh container per call or per session, discarded after.
+- **MicroVMs** (Firecracker, Cloud Hypervisor) — kernel-level isolation for untrusted or arbitrary code execution, e.g. a "run this Python" tool exposed to end users. This is what services like E2B and Modal build sandboxes on top of.
+- **WASM sandboxes** — for tools that only need compute, no filesystem or network, with near-zero cold-start cost.
+
+Match the blast radius to the trust level: a tool that reads one config file doesn't need a microVM, but a tool that executes arbitrary user-submitted code should never run bare on your host.
+
+## Sandboxing is a harness concern, not a prompt concern
+
+None of this belongs in the system prompt. "Please don't delete files outside /tmp" is an instruction the model can be talked out of by injected content in a tool result; a filesystem boundary the process literally cannot cross cannot. This is the same logic behind [Deny-Floors](/learn/harness-design/deny-floors-and-policy-layers): rules enforced in code, not prose, are the ones that hold when the model is wrong, tricked, or just improvising.
+
+**Related:** [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely), [Sandboxing Tool Execution in a Harness](/learn/harness-design/subprocess-isolation-and-sandboxing), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers)

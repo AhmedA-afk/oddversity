@@ -1,0 +1,43 @@
+---
+title: "Delegating Work to Subagents"
+track: "harness-design"
+status: live
+summary: "How a harness spawns subagents for subtasks and merges their results back into the parent loop without blowing the context budget."
+duration: "6 min read"
+---
+
+A single agent loop can only hold so much in its head before the context window gets crowded and the model starts losing the thread. Subagent delegation solves this by handing a bounded piece of work — "find every place this function is called," "review this diff for bugs" — to a fresh agent instance that runs its own loop, then reports back a short result instead of its entire working history.
+
+## Why delegate instead of doing it inline
+
+The parent agent's context is the scarcest resource in the harness. If it does a broad codebase search itself, every file it reads and every dead end it explores stays in its transcript for the rest of the session, competing with the actual task for attention — the failure mode covered in [context rot](/learn/context-engineering/context-rot). A subagent absorbs that exploration cost in its own disposable context and returns only the distilled answer. The parent's [control loop](/learn/harness-design/the-control-loop) sees one tool call and one result, not a hundred.
+
+Delegation also isolates risk. A subagent can be given a narrower tool set or a stricter [permission profile](/learn/harness-design/permission-and-approval-systems) than the parent, so a research task that only needs to read files can't accidentally run a shell command with write access.
+
+## What actually gets spawned
+
+"Subagent" usually means one of two things depending on the harness:
+
+- **In-process subagent** — the harness runs a second instance of the same agent loop, often in the same process or thread, with its own system prompt, tool list, and context window. It shares no memory with the parent except what's explicitly passed in and out.
+- **Subprocess agent** — the harness shells out to a separate CLI invocation of itself (or another agent) as a child process, communicating over stdin/stdout or a socket. This is closer to [subprocess isolation and sandboxing](/learn/harness-design/subprocess-isolation-and-sandboxing) and is common for headless or CI-triggered agents.
+
+Either way, the contract is the same: the parent sends a task description (and sometimes a narrow set of files or tools), and gets back a result payload — not the subagent's full trace.
+
+## Merging results back into the parent loop
+
+The hard part isn't spawning the subagent, it's folding its answer back in cleanly. A well-designed harness treats the subagent's return value like any other tool result:
+
+```
+tool_call: dispatch_subagent(
+  task="Summarize how auth tokens are refreshed in this repo",
+  tools=["read_file", "grep"]
+)
+tool_result: "Tokens refresh via a background interval in
+  auth/refresh.ts; expiry is checked against a 60s buffer..."
+```
+
+That result — a few sentences, not the subagent's dozen file reads — is what lands in the parent's context. This is the same instinct behind [task decomposition](/learn/prompt-engineering/task-decomposition): break a large problem into pieces small enough that each piece's *answer* is cheap, even if reaching that answer wasn't.
+
+Two failure modes to design against: subagents that return their entire scratch trace instead of a summary (defeating the purpose), and parents that spawn subagents for trivial lookups that would've been cheaper done inline. Delegation earns its overhead only when the subtask is genuinely exploratory or risky enough to isolate — see [multi-agent patterns](/learn/agentic-ai/multi-agent-patterns) for when an orchestrator-worker split is worth the complexity versus a single loop with good tools.
+
+**Related:** [Building the Control Loop](/learn/harness-design/the-control-loop), [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Multi-Agent Patterns: Orchestrator, Pipeline, Debate](/learn/agentic-ai/multi-agent-patterns)

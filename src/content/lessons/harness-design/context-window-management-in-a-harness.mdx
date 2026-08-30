@@ -1,0 +1,29 @@
+---
+title: "Managing Context Inside a Long Session"
+track: "harness-design"
+status: live
+summary: "How a harness trims, summarizes, or pages history so a long-running agent session never exceeds the model's context window."
+duration: "5 min read"
+---
+
+A coding agent that runs for two hours accumulates thousands of tool calls, file reads, and outputs. None of that shrinks on its own, and the context window does not grow to meet it. The harness has to actively manage what stays in view.
+
+## The problem is bigger than "the window is full"
+
+Running out of tokens is the obvious failure, but it is not the only one. Stuffing every past tool result back into the prompt on every turn also slows the model down, raises cost linearly with session length, and dilutes the signal the model needs from all the noise it doesn't — a pattern covered in [Context Rot](/learn/context-engineering/context-rot). A harness that only reacts once the window is nearly full is already too late; the degradation starts well before the hard limit.
+
+## Three levers a harness pulls
+
+**Trim.** Drop or truncate low-value content first: a passed test's full stdout, a file read that's no longer relevant, a tool error that was already retried successfully. This is cheap and lossless for anything the agent won't need again — see [Trimming Conversation History for Context Limits](/learn/genai-app-dev/trimming-conversation-history).
+
+**Summarize (compact).** When trimming isn't enough, the harness asks the model itself to compress the older portion of the transcript into a dense summary — decisions made, files touched, open threads — and replaces dozens of turns with a few hundred tokens. Claude Code calls this compaction; it's the same idea as [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction). The tradeoff is real: summarization is lossy, and a detail the agent needed three tool calls later can vanish if the summary was too aggressive.
+
+**Page or offload.** Instead of compressing history, some harnesses move it out of the prompt entirely — writing intermediate results to a scratch file or a state store and letting the agent re-read them on demand rather than carrying them in every turn. This pairs naturally with [Checkpointing Long-Running Agent State](/learn/harness-design/state-and-checkpointing): what's checkpointed to disk doesn't need to stay resident in context.
+
+## Where the harness draws the line
+
+None of this happens uniformly — a harness typically reserves a fixed budget for system prompt and tool definitions, a shrinking budget for conversation history, and headroom for the model's next response. When history threatens to eat into that headroom, the harness triggers a trim or compaction pass rather than waiting for a hard failure. That budgeting discipline is the same problem context engineering solves at the prompt level, described in [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies) — a harness just has to apply it continuously, turn after turn, without an engineer watching.
+
+The practical result: a well-managed session can run far longer than the raw window would suggest, because the harness is constantly deciding what the model actually needs to see next, not just what happened.
+
+**Related:** [Compaction: Summarizing History to Reclaim Context Space](/learn/context-engineering/summarization-for-compaction), [Checkpointing Long-Running Agent State](/learn/harness-design/state-and-checkpointing), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies)

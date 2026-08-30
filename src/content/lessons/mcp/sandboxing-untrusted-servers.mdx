@@ -1,0 +1,37 @@
+---
+title: "Sandboxing Untrusted MCP Servers"
+track: "mcp"
+status: live
+summary: "Run a third-party MCP server in a container or restricted process instead of trusting it with your whole machine."
+duration: "5 min read"
+---
+
+An MCP server you didn't write is just a program you agreed to run with your credentials, your filesystem access, and whatever network reach your shell already has. Sandboxing is the discipline of shrinking that blast radius before you ever type "connect."
+
+## Why this is different from vetting
+
+[Supply-chain trust](/learn/mcp/supply-chain-trust-in-mcp) is about deciding *whether* to run a server — checking its publisher, its source, its permissions manifest. Sandboxing is what you do *after* you've decided to run it anyway, because vetting never guarantees safety. A package can be clean at review time and turn hostile in the next update; a tool description can carry a [prompt injection](/learn/mcp/securing-mcp-servers-against-prompt-injection) that gets the model to misuse legitimate access. Sandboxing assumes the server might misbehave and limits what misbehaving can cost you, regardless of intent.
+
+## What you're actually containing
+
+A stdio MCP server is a local child process. Left alone, it inherits your user's filesystem permissions, can spawn its own subprocesses, and can make outbound network calls exactly like any other program you launch from your terminal. The three things worth constraining, in rough order of how often they get abused:
+
+- **Filesystem access** — scope it to a specific directory rather than your whole home folder. [MCP roots](/learn/mcp/mcp-roots) let a well-behaved server *ask* for the boundary, but a container or chroot *enforces* it even if the server ignores the hint entirely.
+- **Network egress** — a filesystem or database server rarely needs outbound internet access at all. Default-deny it, then allowlist only the hosts the server legitimately needs (its own API, if any).
+- **Process and resource limits** — cap CPU, memory, and the ability to fork indefinitely, so a buggy or malicious server can't turn into a runaway process or a fork bomb.
+
+## Practical isolation levels
+
+You don't need a research paper's worth of isolation for every server — match the mechanism to the risk:
+
+- **Containers (Docker/Podman)** are the default choice: cheap to set up, give you filesystem and network isolation via standard flags, and most MCP host configs already support launching a server as `docker run` instead of a bare command.
+- **User namespaces / restricted users** — run the server as an unprivileged, dedicated OS user with no access outside a designated working directory. Lighter than a container, good enough for a trusted-but-imperfect server.
+- **VM-level sandboxes (gVisor, Firecracker)** — for servers you actively distrust (found in a public registry, no known maintainer) or that need real compute, a stronger kernel boundary than a container's shared-kernel namespace is worth the extra setup cost.
+
+The tradeoffs here — and when each is overkill versus necessary — are the same ones a harness author faces when isolating any tool subprocess; see [Docker, gVisor, and Firecracker](/learn/harness-design/sandboxing-technology-choices) for the deeper comparison.
+
+## A concrete default
+
+For a stdio server you didn't write yourself: run it in a container with `--network none` unless it demonstrably needs egress, mount only the one directory it should touch as read-only unless it needs to write, and set a memory limit. That single recipe stops the overwhelming majority of realistic MCP-server incidents — accidental file deletion, silent data exfiltration, resource exhaustion — without you having to reason about the server's code at all.
+
+**Related:** [Supply-Chain Trust: Vetting Third-Party MCP Servers](/learn/mcp/supply-chain-trust-in-mcp), [Securing MCP Servers Against Prompt Injection](/learn/mcp/securing-mcp-servers-against-prompt-injection), [Docker, gVisor, and Firecracker: Choosing a Sandbox Boundary](/learn/harness-design/sandboxing-technology-choices)

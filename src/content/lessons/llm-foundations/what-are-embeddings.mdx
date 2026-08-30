@@ -1,0 +1,31 @@
+---
+title: "Embeddings: Turning Tokens Into Geometry"
+track: "llm-foundations"
+status: live
+summary: "Every token maps to a learned vector — the layer that turns discrete text into geometry a network can compute on."
+duration: "5 min read"
+---
+
+A neural network can't do math on the word "cat." So before anything else happens inside a transformer, every token gets swapped for a list of numbers — a vector — and that swap is where meaning starts to become computable.
+
+## From ID to vector
+
+After [tokenization](/learn/llm-foundations/tokenization-explained), each token is just an integer ID: a lookup index into a vocabulary of maybe 100,000 entries. The embedding layer is a giant table, one row per vocabulary entry, where each row is a vector of a few thousand numbers. Looking up a token means grabbing its row. That's it — the "embedding" is literally a table lookup, and the table's values are parameters the model learns during [pretraining](/learn/llm-foundations/pretraining-explained), the same way it learns everything else: by adjusting numbers to reduce prediction error.
+
+What makes those rows useful isn't any single number in them. It's their position relative to each other.
+
+## Meaning as distance and direction
+
+Training pushes tokens that show up in similar contexts toward similar vectors. "Dog" and "puppy" end up near each other in this space; "dog" and "spreadsheet" end up far apart. This isn't hand-coded — no one tells the model dogs and puppies are related. It falls out of the training objective, because a model that predicts text well has to notice that these words are interchangeable in a lot of sentences.
+
+The useful part is that the *directions* in this space carry meaning too, not just distances. The classic (if slightly idealized) example: the vector from "man" to "woman" points roughly the same way as the vector from "king" to "queen." Relationships between concepts become arithmetic between vectors. You can measure how close two tokens are with [cosine similarity](/learn/maths-foundations/cosine-similarity), and that similarity score is doing real work downstream — it's the same mechanism that lets [semantic search](/learn/rag/embeddings-and-semantic-similarity) find a document that never contains your exact search words.
+
+## Why a vector and not one number
+
+A single number could rank tokens on one axis — say, formality. But words differ across dozens of axes at once: topic, sentiment, tense, part of speech, register. A high-dimensional vector gives the model room to encode all of these independently. One coordinate might end up loosely tracking "is this a plural," another "is this related to finance," without anyone designing it that way. This is also why [high-dimensional spaces](/learn/maths-foundations/high-dimensional-spaces) behave in ways that feel unintuitive — geometry with thousands of dimensions doesn't work like geometry with three.
+
+## Where they go next
+
+A raw token embedding only knows about that token in isolation — it has no idea where it sits in a sentence or what surrounds it. That's supplied separately by [positional encoding](/learn/llm-foundations/positional-encoding-explained), and it's [attention](/learn/llm-foundations/attention-mechanism-explained) that then lets each token's vector absorb context from every other token around it, layer by layer. The embedding is the starting geometry; everything else in the transformer is reshaping it.
+
+**Related:** [Tokenization: How Text Becomes Tokens](/learn/llm-foundations/tokenization-explained), [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [Cosine Similarity: Measuring How Alike Two Things Are](/learn/maths-foundations/cosine-similarity)

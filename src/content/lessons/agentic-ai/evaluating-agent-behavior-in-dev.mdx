@@ -1,0 +1,44 @@
+---
+title: "Reading an Agent's Trace"
+track: "agentic-ai"
+status: live
+summary: "Inspecting step-by-step traces and logs to debug agent behavior before you ever write a formal eval."
+duration: "5 min read"
+---
+
+When an agent does something wrong, the fix is almost never a guess. It's in the trace: the ordered record of every thought, tool call, and result the agent produced on its way to the (bad) answer. Reading that trace closely, before you write a single formal eval, is the fastest way to find out what actually broke.
+
+## What a trace looks like
+
+A trace is just the agent's [loop](/learn/agentic-ai/the-agent-loop) written down. For each step you should be able to see:
+
+- The model's reasoning or plan at that point
+- The exact tool call it made — name and arguments
+- The raw result that came back from the tool
+- Whatever the model did with that result next
+
+Most agent frameworks and harnesses log this automatically, but if yours doesn't, print it yourself. A trace with a step missing is a trace you can't trust — you'll fill the gap with a guess, and the guess is usually wrong.
+
+## Reading top-down vs. reading backward
+
+The instinct is to start at the final answer and ask "why is this wrong?" That works for shallow bugs. For anything deeper, read backward from the failure: find the last step that was still correct, then look at the very next step. That's almost always where things went sideways — a [tool](/learn/agentic-ai/tool-use-basics) returned something unexpected, the model misread a result, or a plan step got skipped.
+
+Common things to check at that junction:
+
+- Did the tool call have the right arguments, or did the model pass something malformed?
+- Did the tool result actually contain what the model assumed it contained?
+- Did the model's next thought correctly summarize the result, or did it quietly hallucinate a detail?
+
+This is also where you'll recognize the recurring shapes of failure — the same handful of patterns show up over and over once you've read enough traces. It's worth knowing them by name before you start; see [Diagnosing Agent Failure Modes](/learn/agentic-ai/common-agent-failure-modes).
+
+## Why this comes before formal evals
+
+Writing an eval suite is an investment: you need test cases, a grading method, and infrastructure to run it repeatedly. That investment pays off once you know what you're measuring. Early in development, you usually don't — you're still discovering how the agent fails at all. Reading five or ten traces by hand tells you which failure modes are actually common versus theoretical, which is exactly the input a good eval needs.
+
+Trace-reading doesn't replace evals; it's the reconnaissance that makes them worth writing. Skip it and you risk building an eval suite that measures the wrong thing carefully.
+
+## A minimal habit
+
+You don't need special tooling to start. Log each step as a small JSON object — timestamp, step type, input, output — append to a file, and grep or skim it after a run. The only real requirement is that nothing gets silently dropped, especially tool errors, which are exactly what you're hunting for when an agent fails partway through a task.
+
+**Related:** [Diagnosing Agent Failure Modes](/learn/agentic-ai/common-agent-failure-modes), [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [Why Vibes-Based Iteration Breaks Down](/learn/evals-red-teaming/why-evals-matter)

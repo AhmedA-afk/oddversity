@@ -1,0 +1,39 @@
+---
+title: "Residual Connections and Layer Norm"
+track: "llm-foundations"
+status: live
+summary: "Why skip connections and normalization are what let transformers stack dozens of layers deep without training collapsing."
+duration: "5 min read"
+---
+
+Attention and the feed-forward block get the credit, but the plumbing around them is what actually lets a transformer stack 40, 80, or 100+ layers deep. Strip out residual connections and layer norm and the same architecture stops training past a handful of layers — the gradients either vanish or explode long before they reach the bottom.
+
+## The residual connection: add, don't replace
+
+Each sublayer in a transformer — attention, then the feed-forward block — doesn't just transform its input and pass the result along. It computes a small *update* and adds that update back to the original input:
+
+```
+output = x + Sublayer(x)
+```
+
+That `x +` is the whole idea. Instead of forcing every layer to output a complete, correct representation, each layer only has to learn a delta — a correction on top of what already arrived. If a layer has nothing useful to contribute, it can learn to output near-zero and the input passes through essentially unchanged.
+
+This matters most for gradients during backpropagation. In a plain stack of transformations, a gradient flowing backward gets multiplied by each layer's Jacobian in turn, and across dozens of layers that product tends toward zero (vanishing) or blows up (exploding). The `+x` term gives gradients a direct, unimpeded path back to every earlier layer — often called a "gradient highway." Backprop through an addition just copies the gradient to both branches, so even if a sublayer's own gradient is tiny, the signal still reaches the layers below undamaged. This is the same fix ResNets introduced for image models in 2015, and it's the reason transformers can go as deep as they do — see [Backpropagation: How Networks Assign Blame](/learn/maths-foundations/backpropagation-intuition) for the underlying mechanics.
+
+## Layer norm: keeping the numbers in range
+
+Residuals solve the gradient problem, but they create a new one: if you keep adding updates on top of a running sum, activation magnitudes can drift and grow with every layer. Layer normalization keeps that from happening by rescaling the activations at each position back to a stable distribution — zero mean, unit variance across the feature dimension — then applying a learned scale and shift.
+
+Unlike batch normalization, layer norm normalizes across the features of a single token's vector, not across a batch of examples. That's what makes it work for language: it doesn't care how many tokens are in the sequence or how many sequences are in the batch, so it applies cleanly to variable-length text and to generation one token at a time.
+
+## Where norm actually sits: pre-norm vs. post-norm
+
+The original "Attention Is All You Need" transformer applied norm *after* the residual add (post-norm): `LayerNorm(x + Sublayer(x))`. It works, but it's notoriously touchy to train at depth — deep post-norm stacks need careful learning-rate warmup or they diverge early in training.
+
+Virtually every modern LLM instead uses pre-norm: normalize the input *before* it enters the sublayer, and add the raw, unnormalized residual afterward — `x + Sublayer(LayerNorm(x))`. This keeps the residual path completely clean of any normalization, so the gradient highway from the earlier section stays truly unobstructed all the way from the output back to the embedding layer. Pre-norm is a big part of why 100+ layer models train stably at all. Many recent models (LLaMA, Mistral, and others) go a step further and use RMSNorm, a simplified variant that drops the mean-centering step and just rescales by the root-mean-square of the activations — cheaper to compute, and in practice just as effective.
+
+## Why it's easy to overlook
+
+None of this shows up in diagrams of "what attention does" or "what the feed-forward layer does" — it's the architecture *around* those blocks. But if you've ever wondered why transformers scale to enormous depth when a plain deep network of the same size would fail to train, residuals and norm are the answer, not attention itself. See [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture) for how these pieces assemble into a full layer, and [The Feed-Forward Block](/learn/llm-foundations/the-feed-forward-block) for the sublayer that residuals most often wrap.
+
+**Related:** [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), [The Feed-Forward Block: The Transformer's Other Half](/learn/llm-foundations/the-feed-forward-block), [Backpropagation: How Networks Assign Blame](/learn/maths-foundations/backpropagation-intuition)

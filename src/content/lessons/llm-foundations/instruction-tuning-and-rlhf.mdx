@@ -1,0 +1,39 @@
+---
+title: "Instruction Tuning and RLHF"
+track: "llm-foundations"
+status: live
+summary: "How a raw next-token predictor gets reshaped into an assistant that follows instructions and prefers helpful, safe answers."
+duration: "6 min read"
+---
+
+Ask a raw pretrained model "What's the capital of France?" and it might complete your sentence with more questions, not an answer — it learned to predict plausible text, not to be helpful. Instruction tuning and RLHF are the two training stages that turn that raw predictor into something that behaves like an assistant.
+
+## Instruction tuning: teaching the format
+
+[Pretraining](/learn/llm-foundations/pretraining-explained) optimizes one objective: predict the next token over a huge slice of the internet. That produces a model with broad knowledge but no sense that it's in a conversation. Instruction tuning fixes this with supervised fine-tuning (SFT): a smaller, curated dataset of (instruction, ideal response) pairs — "Summarize this," "Write a function that," "Explain like I'm five" — each paired with a human-written or human-approved answer.
+
+Training on these pairs with the same [next-token prediction](/learn/llm-foundations/next-token-prediction) objective teaches the model a new habit: when text looks like an instruction, respond like an assistant, not like a document continuing itself. This is the difference between a base model and an instruct model — see [Model Families](/learn/llm-foundations/model-families-and-variants) for how providers name and ship these variants.
+
+SFT gets you a model that follows format and stays on topic. It doesn't, by itself, teach the model which of several plausible answers humans actually prefer — that's a harder, more subjective signal than "match this one example."
+
+## RLHF: teaching preference
+
+Reinforcement Learning from Human Feedback adds a second stage built around comparison rather than imitation. The recipe, in outline:
+
+1. **Collect preferences.** Generate several responses to the same prompt from the SFT model, and have human raters rank them — not write a perfect answer, just say which one is better.
+2. **Train a reward model.** Use those rankings to train a separate model that scores any response for how much a human would likely prefer it.
+3. **Optimize against the reward model.** Fine-tune the assistant with reinforcement learning (commonly PPO) so it generates responses the reward model scores highly, while a penalty term keeps it from drifting too far from the SFT model — otherwise it learns to game the reward model instead of genuinely improving.
+
+This is where a model's personality gets shaped: it becomes more helpful, more likely to decline harmful requests, and less likely to state guesses with false confidence — all preferences that are far easier for a human to rank between two options than to specify as a rule in advance.
+
+## Why not just prompt for this?
+
+You can't prompt your way to what RLHF trains in. A system prompt can ask a base model to "be helpful and safe," but the model has no internalized preference for those qualities — it's just continuing text that now includes that instruction. RLHF changes the model's actual output distribution across essentially all prompts, not just ones where you remembered to ask.
+
+In practice, many teams now use a cheaper alternative to full RLHF — Direct Preference Optimization (DPO) — which trains directly on preference pairs without a separate reward model or RL loop, aiming for a similar result with less machinery.
+
+## What this doesn't fix
+
+Instruction tuning and RLHF shape behavior; they don't add knowledge or guarantee correctness. A tuned model can still be confidently wrong — that's a [sampling](/learn/llm-foundations/sampling-temperature-top-p) and [emergent-abilities](/learn/llm-foundations/emergent-abilities-in-llms) story, not something these stages solve. And every "helpful, harmless" instinct the model has came from the specific raters and reward model used to train it — it's a learned preference, not an objective standard.
+
+**Related:** [Pretraining: Learning From the Whole Internet](/learn/llm-foundations/pretraining-explained), [Model Families: Base, Instruct, Chat, Reasoning](/learn/llm-foundations/model-families-and-variants), [SFT vs Preference Tuning (DPO/RLHF)](/learn/fine-tuning/supervised-fine-tuning-vs-preference-tuning)

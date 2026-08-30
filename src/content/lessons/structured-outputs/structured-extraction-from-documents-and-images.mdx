@@ -1,0 +1,39 @@
+---
+title: "Structured Extraction from PDFs, Forms, and Screenshots"
+track: "structured-outputs"
+status: live
+summary: "Pulling schema-shaped data out of scanned invoices, forms, and screenshots — where the hard part is the image, not the JSON."
+duration: "6 min read"
+---
+
+Most structured-output advice assumes the model is reading clean text. Point a multimodal model at a scanned invoice, a photographed receipt, or a screenshot of a settings panel, and the schema is the easy part — the hard part is getting the model to actually see what's there.
+
+## Send the image, not OCR text
+
+The naive pipeline runs OCR first, then feeds the extracted text to the model along with a schema. This throws away the one thing that made the document easy to read in the first place: layout. A table's columns, a form's label-next-to-box pairing, and a total circled in the corner all carry meaning that flattens into noise once OCR turns them into a single text stream.
+
+Current multimodal models read the image directly and do their own layout reasoning — pass the page image (or a screenshot) straight into the same call that also carries your JSON schema. OCR pre-processing still earns its place for pure text-density documents (a scanned contract with no tables) or as a fallback signal to cross-check against, but it shouldn't be your only path in.
+
+## Design the schema around what documents actually do
+
+Documents don't fill every field reliably, so your schema has to expect gaps rather than treat them as errors:
+
+- Make every extracted field nullable — see [Optional and Nullable Fields](/learn/structured-outputs/optional-and-nullable-fields) — because a smudged total or a cropped signature line means "not visible," not "zero."
+- Add a `source_location` or `confidence` field per value when the downstream use is high-stakes (payments, medical forms). The model can point to roughly where on the page it read a number from, which gives you something to show a human reviewer instead of a bare number to trust blindly.
+- For repeating structures — line items on an invoice, rows in a scanned table — use an array of a nested object rather than flattening into indexed top-level fields. See [Nested Objects and Arrays in Output Schemas](/learn/structured-outputs/nested-and-array-schemas).
+
+## Multi-page documents need a different loop
+
+A single schema instance rarely maps to a single page. A 40-page PDF might contain one invoice, or ten. Two working patterns:
+
+**Page-then-merge**: run extraction per page or per chunk, each returning a partial or list of instances, then merge and dedupe programmatically. This keeps each call's context small and its accuracy high, at the cost of a stitching step you have to write.
+
+**Whole-document context**: send every page in one call and let the model return one array of complete records. This works well within a model's page-image limits and avoids stitching bugs, but accuracy degrades as page count climbs — the model can lose track of which page a field came from.
+
+Neither is universally right; pick based on document length and how much you can validate mechanically. For genuinely long documents, see [Long-Document Structured Extraction](/learn/structured-outputs/long-document-structured-extraction).
+
+## Screenshots are a different beast than scans
+
+A UI screenshot has crisp, born-digital text but a much denser visual hierarchy — nested panels, icons standing in for labels, state encoded in color alone (a greyed-out button, a red badge). Schemas for screenshot extraction tend to need explicit enum fields for visual state (`enabled | disabled | selected`) rather than trying to infer it from prose, and benefit from asking the model to first describe the region in a sentence before extracting — see [Thinking Then Structuring](/learn/structured-outputs/thinking-then-structuring) — since jumping straight to JSON on a busy screenshot is where models most often misattribute a value to the wrong field.
+
+**Related:** [Optional and Nullable Fields](/learn/structured-outputs/optional-and-nullable-fields), [Nested Objects and Arrays in Output Schemas](/learn/structured-outputs/nested-and-array-schemas), [Long-Document Structured Extraction](/learn/structured-outputs/long-document-structured-extraction)

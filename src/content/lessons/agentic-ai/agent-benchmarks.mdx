@@ -1,0 +1,33 @@
+---
+title: "Benchmarking Agents: SWE-bench, WebArena, and GAIA"
+track: "agentic-ai"
+status: live
+summary: "What SWE-bench, WebArena, and GAIA actually measure, and why a high score doesn't mean the agent is reliable."
+duration: "6 min read"
+---
+
+A benchmark score tells you an agent cleared a fixed obstacle course, not that it will handle your obstacle course. Before you trust a leaderboard number, it helps to know what each major agent benchmark actually tests.
+
+## SWE-bench: real GitHub issues, real repos
+
+SWE-bench takes real, closed pull requests from open-source Python repositories and asks the agent to reproduce the fix: given the issue description and the pre-PR codebase, generate a patch that makes the repo's held-out test suite pass. It rewards an agent that can read a large existing codebase, localize the relevant files, and produce a diff that applies cleanly — the same skills you'd want from a coding agent like the one described in [Inside a Coding Agent](/learn/agentic-ai/coding-agent-architecture).
+
+The catch: SWE-bench is drawn almost entirely from a handful of popular Python libraries (Django, scikit-learn, and similar). A model can get very good at *this specific style* of bug fix — a style well-represented in its training data — without that generalizing to an unfamiliar language, a smaller framework, or a genuinely novel bug. The "Verified" subset (human-filtered for solvable, well-specified issues) is more trustworthy than the full set, but even that only tells you about patch-level correctness, not whether the agent's process along the way was efficient, safe, or sane.
+
+## WebArena: agents driving a browser
+
+WebArena drops an agent into a sandboxed set of realistic websites — an e-commerce store, a forum, a map app, a code-hosting mirror — and gives it a task stated in natural language, like "find the cheapest laptop with at least 16GB of RAM and add it to the cart." Success is checked programmatically against the resulting page state or side effects, not by comparing to a reference trajectory. This makes it a good proxy for [computer-use agents](/learn/agentic-ai/computer-use-agents): agents that have to parse a real DOM, disambiguate ambiguous instructions, and recover from misclicks.
+
+Scores here are notoriously sensitive to exactly how the agent perceives the page — raw HTML, accessibility tree, or screenshot — and to how forgiving the grader is about near-miss states. Two agents with the same headline score can fail in very different ways: one might get lost in menus, the other might click confidently on the wrong element every time.
+
+## GAIA: multi-step reasoning with real tools
+
+GAIA (General AI Assistants) poses questions that are trivial for a human with a web browser and a few minutes, but require an agent to actually chain steps: search the web, open a document, cross-reference a fact, do a small calculation. Questions are leveled by how many independent steps they require. It's less about coding or GUI control and more a stress test of [planning and task decomposition](/learn/agentic-ai/planning-and-task-decomposition) plus tool use — can the agent figure out *what* to look up next based on what it just found?
+
+## Why the score isn't the whole story
+
+All three benchmarks share the same blind spot: they measure whether the agent reached a correct end state, not how it got there. An agent can pass a SWE-bench task by overfitting to the visible test file instead of fixing the underlying bug. It can "solve" a WebArena task by a lucky sequence of clicks. It can nail a GAIA question and still be the kind of agent that quietly fabricates a source on a slightly different question. None of these benchmarks capture cost, latency, safety under adversarial input, or behavior on the long tail of messy real-world requests that don't look like curated test cases.
+
+Treat a leaderboard number as a floor, not a guarantee — a starting filter for which agent to try, not a substitute for [reading its actual trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev) on tasks that look like yours.
+
+**Related:** [Inside a Coding Agent: How Claude Code and SWE-Agent Work](/learn/agentic-ai/coding-agent-architecture), [Reading an Agent's Trace](/learn/agentic-ai/evaluating-agent-behavior-in-dev), [Diagnosing Agent Failure Modes](/learn/agentic-ai/common-agent-failure-modes)

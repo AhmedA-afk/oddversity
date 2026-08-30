@@ -1,0 +1,44 @@
+---
+title: "Recovering When Tools Fail"
+track: "agentic-ai"
+status: live
+summary: "Designing retry logic, backoff, and fallback paths so an agent recovers from failed tool calls instead of stalling or looping."
+duration: "5 min read"
+---
+
+An agent that only works when every tool call succeeds on the first try isn't ready for production. Tools time out, APIs return malformed JSON, rate limits kick in, and the model itself sometimes calls a tool with the wrong arguments. What separates a fragile agent from a reliable one is how it handles the failure, not whether failures happen.
+
+## What actually fails
+
+Tool failures fall into a few recurring buckets: transient errors (network blips, rate limits, 500s) that usually succeed on a second attempt; malformed calls, where the model passes an argument that doesn't match the tool's schema; and permanent errors, where the operation is simply invalid — a file that doesn't exist, a record that was already deleted. Each needs a different response. Retrying a permanent error just burns tokens and time; failing to retry a transient one means the agent gives up on something that would have worked seconds later.
+
+## Retry with backoff, not brute force
+
+For transient failures, retry — but with exponential backoff and a hard cap. Wait 1 second, then 2, then 4, and stop after 3–5 attempts rather than looping forever. Add jitter (a small random offset) so multiple agents or parallel calls don't all retry in lockstep and hammer the same endpoint at once. Respect a `Retry-After` header when the API provides one instead of guessing.
+
+```
+attempt = 0
+while attempt < max_retries:
+    result = call_tool()
+    if result.ok:
+        return result
+    if not is_retryable(result.error):
+        break
+    sleep(base_delay * 2**attempt + jitter())
+    attempt += 1
+return fallback_or_surface_error(result)
+```
+
+The `is_retryable` check matters as much as the loop. A 429 or a timeout is retryable. A 400 saying the tool arguments were invalid is not — retrying identical bad input just returns the same error.
+
+## Feed the error back to the model
+
+When the failure is a malformed tool call — a missing required field, a value that doesn't match the schema — the fix usually isn't a blind retry, it's giving the model the actual error message and letting it reformulate the call. This is one reason [tool schemas](/learn/tools-function-calling/designing-a-tool-schema) matter: a clear validation error ("`user_id` is required") lets the model self-correct on the next turn far better than a bare stack trace or a silent failure would.
+
+## Fallbacks and giving up gracefully
+
+Not every failure should trigger a retry loop. Sometimes the right move is a fallback: if a search tool is down, fall back to a cached result or a simpler tool. Sometimes it's surfacing the failure to the user rather than pretending success — an agent that silently skips a failed action and reports "done" erodes trust fast. Design an explicit ceiling: after N retries or a total time budget, stop and report what happened instead of looping indefinitely, which is one of the more common [agent failure modes](/learn/agentic-ai/common-agent-failure-modes) to watch for in a trace.
+
+Good error handling isn't just resilience engineering bolted onto an agent — it's part of the agent's actual behavior. How it responds to a broken tool is as much a design decision as which tools it has in the first place.
+
+**Related:** [Giving Agents Tools](/learn/agentic-ai/tool-use-basics), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies)

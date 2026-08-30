@@ -1,0 +1,63 @@
+---
+title: "Incremental JSON Repair: Fixing Truncated Output Instead of Discarding It"
+track: "structured-outputs"
+status: live
+summary: "Salvage malformed or cut-off JSON on the fly instead of throwing away the whole response and retrying."
+duration: "5 min read"
+---
+
+A model hits its output token limit mid-object, or a network stream drops halfway through an array. The JSON you get back looks like `{"items": [{"name": "wid` — technically invalid, but not actually useless. Most teams reach for a full retry here. That's slower and more expensive than it needs to be, and it throws away tokens you already paid for.
+
+## Why truncation isn't the same failure as garbage
+
+A parser error can mean two very different things. Either the model produced structurally wrong output — wrong types, hallucinated fields, a stray comment — or it produced *correct* output that simply stopped early because generation was cut off. The second case is mechanical, not a reasoning failure: every character up to the cutoff point is valid, and the shape of what's missing is predictable from the schema. That distinction is the whole idea behind incremental repair — you don't need the model to "try harder," you need to close the brackets it didn't get to.
+
+## What a repair pass actually does
+
+A JSON repair function walks the truncated string and reconstructs a parseable document by tracking open structures rather than re-running the model:
+
+```python
+def repair_truncated_json(s: str) -> str:
+    stack = []
+    in_string = False
+    escape = False
+    for ch in s:
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "{[":
+            stack.append(ch)
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+
+    if in_string:
+        s += '"'
+    # drop a trailing dangling comma or colon before closing
+    s = s.rstrip().rstrip(",").rstrip(":")
+    while stack:
+        opener = stack.pop()
+        s += "}" if opener == "{" else "]"
+    return s
+```
+
+Run the output through this before you give up on it. Libraries like `json-repair` (Python) and `partial-json-parser` / `best-effort-json-parser` (JS) do the same thing with more edge cases covered — unterminated strings, unmatched quotes, numbers cut off mid-digit. Use one instead of hand-rolling this in production; the sketch above is to show the mechanism, not to ship.
+
+## Deciding what to do with a repaired partial
+
+Repair gets you a parseable object, but it may still be *incomplete* — the last array element might be missing fields it was mid-way through writing. Three options, in order of preference:
+
+1. **Drop the last, possibly-partial element** of any array or object that was still open when truncation hit, keep everything before it. This is safe for list-shaped extraction where each item stands alone.
+2. **Validate against your schema** and only keep the repaired document if it passes — if a required field truthfully isn't there, treat it as a repair failure, not a partial success. See [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) for the broader retry-on-invalid pattern this fits into.
+3. **Re-request only the missing tail** — if your provider supports continuing a truncated generation, ask it to resume from the cutoff instead of regenerating the whole payload.
+
+The failure mode to design against explicitly is truncation itself: raise `max_tokens`, or restructure the schema so large arrays stream as multiple smaller calls rather than one object that can get cut off partway through. Repair is a safety net for the truncation you didn't catch, not a substitute for sizing the request correctly. It pairs naturally with [streaming structured output](/learn/structured-outputs/streaming-structured-output), where you're already parsing partial JSON as it arrives and can apply the same incremental logic token by token instead of only at the end.
+
+**Related:** [Streaming Structured Output](/learn/structured-outputs/streaming-structured-output), [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), [Structured Output Failure Modes](/learn/structured-outputs/structured-output-failure-modes)

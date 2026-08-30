@@ -1,0 +1,44 @@
+---
+title: "Testing a Harness Against Simulated Tool Environments"
+track: "harness-design"
+status: live
+summary: "Fake the filesystem, APIs, and shell your harness talks to so agent behavior is testable, deterministic, and free of real side effects."
+duration: "5 min read"
+---
+
+You can't unit-test an agent by actually letting it delete files, hit a live payment API, and hope you remember to reset state afterward. The fix isn't to test less — it's to give the harness a fake world that looks exactly like the real one from the model's point of view.
+
+## Why the model can't tell the difference
+
+A simulated tool environment swaps the real implementation behind each [tool in the registry](/learn/harness-design/tool-routing-and-registries) for one backed by fake state — an in-memory filesystem instead of disk, a stub HTTP client instead of a live API, a scripted shell instead of a real subprocess. The tool names and schemas stay identical, so the model never knows anything changed. That's the whole point: you're not testing the model, you're testing whether your control loop, permission checks, and error handling behave correctly given a known, scriptable sequence of tool results.
+
+```python
+class FakeFilesystem:
+    def __init__(self, files: dict[str, str]):
+        self.files = dict(files)
+
+    def read_file(self, path):
+        if path not in self.files:
+            return {"error": f"no such file: {path}"}
+        return {"content": self.files[path]}
+
+    def write_file(self, path, content):
+        self.files[path] = content
+        return {"ok": True}
+```
+
+Swap this in for the real `read_file`/`write_file` handlers and the harness runs its full loop — planning, tool calls, [permission gates](/learn/harness-design/permission-and-approval-systems), retries — without ever touching disk.
+
+## What determinism buys you
+
+Real tool environments are noisy: a flaky network call, a file that changed between two test runs, an API that rate-limits you mid-suite. None of that is what you're trying to test when you're checking "does the harness retry a failed tool call exactly once" or "does it stop after a denied permission instead of looping." A simulated environment lets you fix every tool result in advance, so a test failure means your harness logic broke, not that the internet had a bad day. This is what makes agent behavior regression-testable at all — without it, you're stuck eyeballing transcripts.
+
+## Scripting failure, not just success
+
+The real value shows up when you script the environment to misbehave on purpose: a shell command that times out, a file read that returns malformed JSON, an API that returns a 500 on the second call but succeeds on the third. These are the paths that are hardest to trigger reliably against real systems and easiest to get wrong in a harness — silent swallowing of errors, retry loops that never terminate, state left half-updated after a crash. A simulated environment turns "what if the tool fails halfway through" from a hypothetical into a fixture you run on every commit.
+
+## Where the simulation ends
+
+Don't over-fake it. The simulated environment should live at the tool-execution boundary — the same seam the router already dispatches through — not inside your prompt composition or model-calling logic. If you mock too high up the stack, you stop testing the actual code paths a real session runs, which defeats the purpose. Keep the model calls real (or recorded) and the tool *effects* fake; that's the boundary that matches how [sandboxed execution](/learn/harness-design/subprocess-isolation-and-sandboxing) is already isolated in production, so your test harness and your production harness share the same shape.
+
+**Related:** [Routing Tool Calls to Real Code](/learn/harness-design/tool-routing-and-registries), [Sandboxing Tool Execution in a Harness](/learn/harness-design/subprocess-isolation-and-sandboxing), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries)

@@ -1,0 +1,61 @@
+---
+/**
+ * The wordmark. One word, split into its two halves and coloured so the
+ * wordplay is visible rather than something you have to be told: the odd part
+ * warm and forward, the institutional part cool and steady behind it.
+ *
+ * Defined once here so the bar, the footer and any future surface can never
+ * drift apart.
+ */
+interface Props {
+  /** Type size in px. The tick and spacing scale from it. */
+  size?: number;
+  /** Render as a link to the home page. */
+  href?: string | null;
+  /** Screen-reader label when used as a link. */
+  label?: string;
+}
+const { size = 21, href = '/', label = 'Oddversity — home' } = Astro.props;
+const Tag = href ? 'a' : 'span';
+---
+<Tag
+  class="wm"
+  href={href ?? undefined}
+  aria-label={href ? label : undefined}
+  style={`--wm-size:${size}px`}
+>
+  <span class="tick" aria-hidden="true"></span>
+  <span class="words"><span class="odd">Odd</span><span class="versity">versity</span></span>
+</Tag>
+
+<style>
+  .wm { display: inline-flex; align-items: center; gap: calc(var(--wm-size) * 0.38); flex: none; }
+  .wm:hover { text-decoration: none; }
+
+  /* The tick carries both colours, so the mark still reads as one object
+     wherever it sits. */
+  .tick {
+    width: calc(var(--wm-size) * 0.24);
+    height: calc(var(--wm-size) * 0.92);
+    border-radius: 1px;
+    background: linear-gradient(
+      to bottom,
+      var(--brand-warm) 0 50%,
+      var(--brand-cool) 50% 100%
+    );
+  }
+
+  /* One word, so no space between the halves — inline, not flex, and the
+     accessible name reads "Oddversity" exactly as the eye does. */
+  .words {
+    display: inline;
+    font-family: 'Source Serif 4', 'Source Serif 4 Fallback', Georgia, serif;
+    font-weight: 600;
+    font-size: var(--wm-size);
+    line-height: 1;
+    letter-spacing: -.014em;
+    white-space: nowrap;
+  }
+  .odd { color: var(--brand-warm); }
+  .versity { color: var(--brand-cool); }
+</style>

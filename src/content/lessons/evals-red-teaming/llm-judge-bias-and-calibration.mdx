@@ -1,0 +1,35 @@
+---
+title: "LLM-Judge Bias: Position, Verbosity, and Self-Preference Effects"
+track: "evals-red-teaming"
+status: live
+summary: "Model judges have systematic blind spots — position, length, and self-preference — and each one has a concrete fix."
+duration: "5 min read"
+---
+
+An LLM judge doesn't grade like a careful human grader. It has predictable, measurable biases that will quietly distort your eval scores unless you design around them — and each bias has a specific, cheap countermeasure.
+
+## Position bias
+
+In pairwise grading, judges favor whichever response appears first (or, less often, last) in the prompt — independent of quality. Ask a judge to pick between response A and response B, then swap their order and ask again, and it's common to see the verdict flip on a meaningful fraction of examples. That's not noise in the underlying quality difference; it's the judge anchoring on position.
+
+The fix is **swapping**: run every pairwise comparison twice, once in each order, and only count a verdict as a real win if it holds in both directions. Ties (the judge flips) get scored as ties rather than silently inflating one side's win rate. This roughly doubles judge calls but removes the single largest source of noise in pairwise setups — see [Pairwise vs. Pointwise Grading](/learn/evals-red-teaming/pairwise-vs-pointwise-grading) for when pairwise is worth that cost in the first place.
+
+## Verbosity bias
+
+Judges tend to rate longer answers higher, even when the extra length adds no information — padding, repeated caveats, and restating the question all nudge scores up. This is dangerous specifically because it rewards exactly the kind of bloat you're usually trying to eliminate from production output.
+
+You can't fully prompt your way out of this, but two things help: give the judge an explicit rubric that scores conciseness as its own dimension (not just "quality"), and, where you can, length-normalize by capping or truncating outputs to a similar range before grading so length differences aren't doing the persuading.
+
+## Self-preference bias
+
+A model judge scores outputs from its own model family higher than outputs from other models, even when a blinded human wouldn't agree. This shows up most when you're using the same model (or family) as both generator and judge — a very common and convenient setup, and exactly the one where the bias is worst.
+
+The mitigation is to use a **different model family as judge** than the one under test whenever possible, or to run the same eval with two judges from different families and check whether the ranking agrees. If it doesn't, trust neither number until a human spot-check breaks the tie.
+
+## Rubric anchoring
+
+The single highest-leverage fix across all three biases is giving the judge a detailed rubric with concrete anchors — what a 1, 3, and 5 look like, in specifics, not "poor/good/excellent." A vague prompt like "rate this response's quality 1-10" leaves the judge to invent its own criteria on the fly, which is exactly when position, length, and model-identity signals fill the gap. A rubric that spells out what to look for gives the judge something more reliable to actually grade against, shrinking (though not eliminating) all three effects at once.
+
+None of this means model-graded evals are untrustworthy — it means treating judge output the way you'd treat any measurement instrument with known systematic error: calibrate it, and validate periodically against a human sample.
+
+**Related:** [LLM-as-Judge: Grading Outputs with a Model](/learn/evals-red-teaming/llm-as-judge), [Pairwise vs. Pointwise: Two Ways to Grade Model Output](/learn/evals-red-teaming/pairwise-vs-pointwise-grading), [Confidence Intervals and Sample Size for Eval Scores](/learn/evals-red-teaming/statistical-rigor-in-evals)

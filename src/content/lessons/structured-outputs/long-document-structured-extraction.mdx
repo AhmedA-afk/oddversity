@@ -1,0 +1,36 @@
+---
+title: "Long-Document Structured Extraction: One Schema Instance from Many Passes"
+track: "structured-outputs"
+status: live
+summary: "Splitting a document across multiple calls without splitting the schema it fills."
+duration: "6 min read"
+---
+
+A 200-page contract doesn't fit in one call's context, but your schema still expects one `parties` array, one `effective_date`, one `obligations` list — not twenty fragments you have to reconcile by hand. The fix is a map-reduce shape: extract per-chunk, then merge into the single instance the schema promised.
+
+## Split the document, not the schema
+
+Chunk the document (see [chunking strategies](/learn/rag/chunking-strategies-for-documents)) with real overlap — a clause that starts on page 40 and ends on page 41 must appear whole in at least one chunk, or you'll extract half an obligation. For each chunk, don't ask the model to fill the full schema; ask for a partial instance where every field is optional and arrays default to empty. A chunk about termination clauses has nothing to say about the payment schedule, and forcing it to guess just manufactures noise for the merge step.
+
+```
+schema per chunk: {
+  parties?: Party[]
+  effective_date?: string
+  obligations?: Obligation[]
+  termination_clauses?: Clause[]
+}
+```
+
+## Merge with rules, not another prompt
+
+Once you have N partial instances, combining them is a coding problem, not another LLM call — deterministic code is cheaper, faster, and auditable. Scalar fields (`effective_date`) take the first non-null value, or flag a conflict if two chunks disagree. Array fields (`obligations`, `parties`) concatenate and then deduplicate — by ID if the source has one, otherwise by a similarity check on the serialized object, since the same clause split across a chunk boundary often gets extracted twice with slightly different wording.
+
+Where the source has genuinely structured anchors — page numbers, section headers, invoice line items — carry them through the schema as a `source_chunk` or `page` field on each extracted item. That turns conflicts and duplicates from a guessing game into a lookup: you can point back at exactly which chunk produced a disputed value.
+
+## When merging needs judgment, not just rules
+
+Some conflicts aren't mechanical — two chunks both extract a "total amount" and they genuinely disagree because the document itself is ambiguous (a running total vs. a line total). For these, run a second, smaller pass: feed the model the handful of conflicting fragments alongside the surrounding chunk text and ask it to resolve the discrepancy, rather than re-running extraction over the whole document. This keeps the expensive step — reasoning over ambiguity — scoped to the few cases that need it, while the bulk of the merge stays cheap deterministic code.
+
+Validate the final merged object against the full schema once, at the end — that's where you catch a required field no chunk happened to populate, which usually means the chunking missed the section that contains it.
+
+**Related:** [Structured Extraction from PDFs, Forms, and Screenshots](/learn/structured-outputs/structured-extraction-from-documents-and-images), [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents), [Nested Objects and Arrays in Output Schemas](/learn/structured-outputs/nested-and-array-schemas)

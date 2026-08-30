@@ -1,0 +1,37 @@
+---
+title: "Guardrails as Code, Not Prose"
+track: "harness-design"
+status: live
+summary: "Why safety constraints belong in schemas and validators the harness enforces, not sentences the model might skip."
+duration: "5 min read"
+---
+
+If your only safety mechanism is a line in the system prompt saying "never delete files without confirmation," you don't have a guardrail — you have a suggestion. The model reads instructions probabilistically, under load, next to a hundred other instructions competing for its attention. A rule that lives only in prose can be forgotten, deprioritized, or talked out of by a clever enough user turn. A rule enforced in code cannot.
+
+## The difference between asking and enforcing
+
+Prose guardrails describe desired behavior to the model and hope compliance follows. Code guardrails sit in the harness, outside the model's control, and check every action before it happens. Consider a tool that transfers money. The prose version says "confirm any transfer over $500 with the user." The code version has the tool-execution layer read the `amount` field, compare it against a threshold, and route to a human-approval gate if it's exceeded — with no code path that lets the transfer through otherwise.
+
+The model can still call the tool however it likes. What changes is that the harness, not the model's judgment in the moment, decides what happens next. This is the same shift that [deny-floors](/learn/harness-design/deny-floors-and-policy-layers) make at the policy level: some rules sit below the prompt entirely, so no amount of clever phrasing in a conversation can override them.
+
+## What "as code" actually looks like
+
+In practice this means writing guardrails as validators that run against structured data, not as instructions the model reads:
+
+```python
+def validate_transfer(call: ToolCall) -> ToolCall:
+    amount = call.args["amount"]
+    if amount > 500 and not call.args.get("approved_by_human"):
+        raise RequiresApproval(call)
+    return call
+```
+
+This works because the tool call itself is structured — a JSON object with named fields the harness can inspect deterministically, the same reliability that [schema design](/learn/structured-outputs/schema-design-for-reliability) buys you for any model output. A free-text guardrail has to parse the model's intent from language; a code guardrail just reads a field. That's the whole advantage: verification moves from "does this text seem to comply" to "does this value pass the check."
+
+## Where guardrails-as-code fits in a harness
+
+Guardrails as code aren't a replacement for good prompting — they're what catches the cases prompting misses. A well-written prompt reduces how often the model tries something unsafe. The code layer is what happens when it tries anyway: a scope check on which files a tool can touch, a rate limiter on how many destructive calls happen per session, a regex or schema check on output before it reaches a user. Each of these is testable in isolation, the way you'd test [permission and approval gates](/learn/harness-design/permission-and-approval-systems) — you can write a unit test that asserts a $10,000 transfer without approval raises an error, something you can never do reliably against "the model usually asks first."
+
+The practical rule: if a violation would be bad enough that you'd want to know it's impossible, not just unlikely, put the check in code. Prompts are for shaping behavior. Code is for guaranteeing it.
+
+**Related:** [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability)

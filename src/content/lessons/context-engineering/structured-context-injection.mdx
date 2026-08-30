@@ -1,0 +1,41 @@
+---
+title: "Structuring Injected Context So the Model Can Actually Use It"
+track: "context-engineering"
+status: live
+summary: "Formatting retrieved or tool output with tables, IDs, and sections so the model can reliably reference it."
+duration: "6 min read"
+---
+
+Dumping retrieved documents or tool output into the prompt as a wall of raw text is the single easiest way to get a model that "read" the context but can't actually use it. How you format injected context matters almost as much as what you include.
+
+## The problem with unstructured dumps
+
+Say you retrieve five support tickets and paste their raw JSON, or five documents and paste their raw text, back to back, with no separators. The model can usually summarize the gist. But ask it to cite which ticket had the refund request, or quote the exact line from document three, and it starts guessing. Nothing in the text told it where one source ends and the next begins, or gave it a stable handle to point back to.
+
+This shows up constantly in RAG answers that hallucinate citations, agents that call the wrong tool result, and summaries that blend two sources into one false claim. The content was in context. The model just had no scaffolding to address it by.
+
+## Give every chunk an ID and a boundary
+
+The fix is mechanical: wrap each injected item in a clear boundary and give it a stable identifier the model can reference in its output.
+
+```xml
+<document id="doc_3" source="refund-policy.pdf" page="2">
+Refunds are issued within 5-7 business days...
+</document>
+
+<document id="doc_4" source="ticket_9821.json">
+Customer requested refund on 2026-08-12...
+</document>
+```
+
+Now "cite doc_4" is an unambiguous instruction, and you can grep the model's output for `doc_id` references to check grounding. The same trick works with markdown headings (`### Source: ticket_9821`) or a simple numbered list — the format matters less than the fact that every chunk has a clean start, a clean end, and a name.
+
+For tabular or list-shaped data — search results, database rows, tool outputs with repeated fields — a markdown table beats prose almost every time. Models parse column-aligned data more reliably than the same facts written as sentences, and it costs fewer tokens than repeating field names in every row.
+
+## Sections over stream-of-consciousness
+
+At the prompt level, separate distinct kinds of context into labeled sections rather than interleaving them: retrieved documents in one block, conversation history in another, tool results in a third. This is the same instinct behind [delimiters and formatting](/learn/prompt-engineering/delimiters-and-formatting) in prompt engineering — clear fences stop the model from treating instructions as content or content as instructions, and here they stop one source from bleeding into another.
+
+Structure isn't free — tags and headers cost tokens, which matters under a tight [token budget](/learn/context-engineering/token-budgeting-strategies). The rule of thumb: structure pays for itself whenever the model needs to reference, cite, or distinguish between sources; skip it for a single undifferentiated blob where nothing downstream depends on knowing where it came from.
+
+**Related:** [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies), [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents)

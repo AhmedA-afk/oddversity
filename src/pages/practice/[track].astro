@@ -1,0 +1,45 @@
+---
+import Layout from '../../components/Layout.astro';
+import Quiz from '../../components/Quiz.astro';
+import { getQuizTrack, quizTracks } from '../../data/quizzes';
+
+export function getStaticPaths() {
+  return quizTracks.map((track) => ({ params: { track: track.id } }));
+}
+
+const track = getQuizTrack(Astro.params.track!);
+if (!track) throw new Error('Quiz track not found');
+
+const index = quizTracks.findIndex((t) => t.id === track.id);
+const prev = quizTracks[index - 1];
+const next = quizTracks[index + 1];
+---
+<Layout title={`${track.name} practice quiz`} description={track.summary} type="learning-resource" breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Practice', url: '/practice' }, { name: track.name, url: `/practice/${track.id}` }]}>
+  <section class="quiz-head container">
+    <a class="back mono" href="/practice">← Practice room</a>
+    <span class="eyebrow">{track.questions.length} questions · instant explanations</span>
+    <h1>{track.name} quiz</h1>
+    <p>{track.summary} Take it once cold, then follow the linked lessons for anything that needs another pass.</p>
+  </section>
+  <section class="quiz-wrap container"><Quiz questions={track.questions} /></section>
+  <nav class="quiz-pager container" aria-label="Quiz navigation">
+    {prev ? <a href={`/practice/${prev.id}`} class="pg"><span class="mono">← Previous quiz</span><span class="pt">{prev.name}</span></a> : <span></span>}
+    {next ? <a href={`/practice/${next.id}`} class="pg alignr"><span class="mono">Next quiz →</span><span class="pt">{next.name}</span></a> : <span></span>}
+  </nav>
+</Layout>
+
+<style>
+  .quiz-head { padding-block: 48px 8px; max-width: 800px; }
+  .back { display: block; color: var(--muted); font-size: 11px; margin-bottom: 30px; }
+  .back:hover { color: var(--accent); text-decoration: none; }
+  .quiz-head h1 { font-size: clamp(34px, 5vw, 48px); margin-top: 13px; }
+  .quiz-head p { margin-top: 15px; color: var(--muted); font-size: 16px; line-height: 1.65; max-width: 62ch; }
+  .quiz-wrap { max-width: 800px; padding-bottom: 12px; }
+  .quiz-pager { max-width: 800px; display: flex; justify-content: space-between; gap: 16px; padding-top: 34px; margin-top: 30px; border-top: 1px solid var(--rule); }
+  .quiz-pager .pg { display: flex; flex-direction: column; gap: 4px; }
+  .quiz-pager .pg:hover { text-decoration: none; }
+  .quiz-pager .pg.alignr { text-align: right; margin-left: auto; }
+  .quiz-pager .mono { font-size: 11px; color: var(--muted); }
+  .quiz-pager .pt { font: 500 15px/1.2 'Source Serif 4', 'Source Serif 4 Fallback', Georgia, serif; color: var(--text); }
+  .quiz-pager .pg:hover .pt { color: var(--accent); }
+</style>

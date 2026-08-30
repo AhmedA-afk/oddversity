@@ -1,0 +1,46 @@
+---
+title: "Bayes' Theorem for AI Practitioners"
+track: "maths-foundations"
+status: live
+summary: "How to update a belief given new evidence — and why it's the quiet logic behind classifiers, spam filters, and calibration."
+duration: "6 min read"
+---
+
+Bayes' theorem answers one question: given some evidence, how should you update what you believed before you saw it? Every classifier, spam filter, and confidence score in AI is doing some version of this, whether or not the code says so.
+
+## The formula, read as a sentence
+
+The theorem is usually written:
+
+```
+P(A|B) = P(B|A) * P(A) / P(B)
+```
+
+Read it left to right as a recipe, not a wall of symbols. `P(A)` is your **prior** — what you believed about A before seeing any evidence. `P(B|A)` is the **likelihood** — how probable the evidence is if A is true. `P(B)` is the **evidence** — how probable that evidence is overall, across every way it could have happened. `P(A|B)`, the thing you actually want, is the **posterior** — your updated belief about A now that you've seen B.
+
+So Bayes' theorem is really just: `posterior = prior * likelihood / evidence`. You start with a belief, you weigh it by how well the evidence fits, and you rescale so the numbers still add up to a valid probability.
+
+## A concrete example: spam filtering
+
+Say 1% of emails are spam (`P(spam) = 0.01`), and the word "prize" appears in 40% of spam emails but only 0.5% of legitimate ones. An email arrives containing "prize." What's the chance it's actually spam?
+
+```
+P(spam|prize) = P(prize|spam) * P(spam) / P(prize)
+              = 0.40 * 0.01 / (0.40*0.01 + 0.005*0.99)
+              = 0.004 / 0.00895
+              ≈ 0.447
+```
+
+Even with a strong signal word, the email is only about 45% likely to be spam — because spam is rare to begin with, so most emails containing "prize" are still legitimate mail that happens to mention it. This is the part intuition usually gets wrong: a low prior can drag down even a fairly convincing piece of evidence. Naive Bayes classifiers are built by chaining exactly this update across every word in a document, then picking whichever class ends up with the highest posterior.
+
+## Where it shows up in modern AI systems
+
+You rarely write Bayes' formula directly when working with LLMs, but the reasoning pattern is everywhere:
+
+- **Calibration**: a well-calibrated model's stated confidence should track how often it's actually right — that's a Bayesian property, and it's what confidence and uncertainty signals are trying to measure.
+- **Retrieval and search**: ranking documents by how likely a query implies relevance is a posterior computation, even when the implementation is a learned scorer rather than an explicit formula.
+- **Priors as a debugging lens**: when a model gives a confidently wrong answer, it's often because its prior (what's common in training data) overwhelmed weak evidence in the prompt — the same failure mode as the spam example, just inverted.
+
+The mechanical takeaway: a strong prior needs strong evidence to overturn it, and evidence is only as informative as it is *rare under the alternative*. That single idea explains a surprising amount of both classical ML and how to think about model confidence.
+
+**Related:** [Probability Basics for AI](/learn/maths-foundations/probability-basics-for-ai), [Confidence Signals: What Model Certainty Actually Reflects](/learn/hallucinations/confidence-and-uncertainty-signals), [Entropy and Cross-Entropy: Measuring Surprise](/learn/maths-foundations/entropy-and-cross-entropy)

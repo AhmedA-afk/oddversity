@@ -1,0 +1,38 @@
+---
+title: "Self-Correction When the Model Calls a Tool Wrong"
+track: "tools-function-calling"
+status: live
+summary: "Feed a schema validation error back to the model as a tool result and let it repair its own malformed call."
+duration: "4 min read"
+---
+
+A model calls a tool with a missing field, a string where an enum was expected, or an argument shaped like last turn's tool instead of this one's. The fix isn't a smarter parser on your side — it's handing the mistake back to the model and letting it try again.
+
+## Validate before you execute
+
+Never let a malformed call reach your tool's actual implementation. Run the arguments through schema validation first (JSON Schema, Pydantic, Zod — whatever produced the schema in the first place, see [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema)). If validation fails, don't execute anything and don't crash the turn. Construct a tool result that describes exactly what was wrong, and return it in the same slot a real result would occupy:
+
+```json
+{
+  "error": "validation_failed",
+  "message": "field 'priority' must be one of [\"low\",\"medium\",\"high\"], got \"urgent\""
+}
+```
+
+The model reads this like any other observation and, in most cases, just fixes the call on the next turn — no special-casing needed on your end beyond generating a clear message.
+
+## Why the model is good at this
+
+This works because the failure is legible. The model already saw the schema when it made the call; a validation error names the exact field and the exact constraint it violated, so correcting it is pattern-matching, not guesswork. This is a narrower case of the same principle covered in [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries) — errors are messages the model reasons over, not exceptions your code swallows. The difference here is the failure never touched real infrastructure: nothing ran, so retrying costs nothing but a turn.
+
+Vague messages break this. `"Invalid input"` gives the model nothing to correct — it might retry with a different wrong guess, or drift toward calling an unrelated tool. Always name the field, the constraint, and ideally the offending value.
+
+## Cap it, and watch for the same mistake twice
+
+Self-correction usually resolves in one turn. It shouldn't be allowed to run forever. Put a small retry ceiling on a single tool call — two attempts is a reasonable default — matching the loop cap discussed in [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries). If the model makes the identical mistake twice, more validation-error text won't help; that's usually a sign the schema itself is ambiguous or the tool description undersells a constraint (see [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow)). Stop feeding errors back at that point and either fall back to a simpler call, ask the user for the missing piece, or surface the failure — don't let a repair loop burn turns silently.
+
+## A narrower job than repair libraries
+
+This is not the same problem as fixing truncated or slightly-malformed JSON syntax — that's [Incremental JSON Repair](/learn/structured-outputs/incremental-json-repair), usually solved without a model call at all. Self-correction on bad tool calls is about *semantic* validity: the JSON parses fine, but the values violate the contract the tool actually needs. That's a case only the model — with the surrounding conversation and the original intent still in view — can reliably fix.
+
+**Related:** [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema), [Common Tool-Calling Failure Modes](/learn/tools-function-calling/common-tool-calling-failure-modes)

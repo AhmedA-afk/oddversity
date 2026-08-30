@@ -1,0 +1,31 @@
+---
+title: "The Bias-Variance Tradeoff"
+track: "ai-foundations"
+status: live
+summary: "Why a model that's too simple underfits and one that's too flexible overfits, and how to find the workable middle."
+duration: "5 min read"
+---
+
+Every prediction error a model makes splits into two very different sources, and pushing one down tends to push the other up. Understanding which one is hurting you is the difference between fixing a model and flailing at it.
+
+## Two ways to be wrong
+
+**Bias** is error from a model that's too simple to capture the real pattern. Fit a straight line to data that curves, and no amount of tuning saves you — the line is structurally wrong. High-bias models underfit: they miss real signal, and their errors show up consistently on both training and new data, because the model never learned the shape of the problem in the first place.
+
+**Variance** is error from a model that's too sensitive to the specific data it happened to train on. Give it enough flexibility — a deep decision tree, a huge polynomial, a network with far more parameters than examples — and it starts fitting the noise: quirks, outliers, and sampling luck that won't repeat. High-variance models overfit: they look great on training data and fall apart on anything new, because they memorized rather than generalized. This is the same failure covered in depth in [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting) — bias-variance is the mechanism underneath it.
+
+## Why you can't kill both at once
+
+Model capacity is the dial connecting them. Turn it down (fewer parameters, more constraints, simpler architecture) and bias rises while variance falls — the model is stable but structurally limited. Turn it up and variance rises while bias falls — the model can represent the true pattern but also has room to chase noise. Total error is roughly the sum of both, plus irreducible noise you can't remove no matter what you do. That sum traces a U-shape as capacity increases: error drops as bias-driven underfitting fades, bottoms out somewhere in the middle, then climbs again as variance-driven overfitting takes over. The job isn't eliminating either term — it's finding where the sum is smallest for the data you actually have.
+
+## Reading the tradeoff off real numbers
+
+You can't see bias and variance directly, but you can see their fingerprint by comparing training and validation error, which is exactly what [Train/Validation/Test Splits, Done Right](/learn/ai-foundations/train-validation-test-splits) sets you up to do:
+
+- **Both errors high, close together** → high bias. The model is underpowered; add capacity, features, or training time.
+- **Training error low, validation error much higher** → high variance. The model is overfitting; add data, add regularization, or reduce capacity.
+- **Both errors low and close together** → you're near the sweet spot.
+
+More training data mainly attacks variance — it gives a flexible model less room to memorize noise, since the noise doesn't repeat across a bigger sample. It does almost nothing for bias, because a model that's structurally too simple stays too simple no matter how much data you feed it. That's why "just get more data" fixes overfitting but not underfitting, and why diagnosing which regime you're in has to come before choosing a fix.
+
+**Related:** [Generalization vs. Overfitting](/learn/ai-foundations/generalization-and-overfitting), [Train/Validation/Test Splits, Done Right](/learn/ai-foundations/train-validation-test-splits), [L1 vs. L2 Regularization](/learn/maths-foundations/l1-vs-l2-regularization)

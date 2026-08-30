@@ -1,0 +1,49 @@
+---
+title: "Returning Tool Results to the Model"
+track: "tools-function-calling"
+status: live
+summary: "Format tool outputs so the model can reason over them correctly on the next turn."
+duration: "6 min read"
+---
+
+The model asks for a tool, you run it, and now you have a result. Where you put that result and how you shape it matters as much as the tool call itself — a well-designed schema is wasted if the response comes back as an unreadable wall of text.
+
+## The result goes back as a message, not a reply
+
+Tool calling is a two-turn round trip. The model's turn ends with a tool-use request (a name, an id, and arguments). Your code executes it, then you send a new message back in the conversation containing a tool-result block matched to that same id. The model never sees your function call directly — it only sees what you put in that result block, so treat it as the model's only window into what actually happened.
+
+Most SDKs (including Claude's) expect the result as a `tool_result` content block referencing the original `tool_use_id`:
+
+```json
+{
+  "role": "user",
+  "content": [
+    {
+      "type": "tool_result",
+      "tool_use_id": "toolu_01A2b3",
+      "content": "Temperature: 68F, Conditions: partly cloudy"
+    }
+  ]
+}
+```
+
+Get the id wrong and the turn errors out or the model silently loses track of which call the result belongs to — this matters even more once you're running [parallel tool calls](/learn/tools-function-calling/parallel-tool-calls), where several results need to map to several ids in one message.
+
+## Shape the content for reading, not just for correctness
+
+A raw database row or an unformatted JSON blob is valid, but it isn't necessarily useful. The model reads tool results the same way it reads everything else — as text pushed through attention — so a shorter, cleaner result is easier to reason over correctly than a technically-complete dump. A few habits that help:
+
+- Strip fields the model doesn't need for the next step (internal ids, pagination metadata, HTML markup).
+- Prefer flat, labeled text or small JSON over deeply nested structures when the result is going straight into reasoning.
+- Keep large results (a full file, a long search page) truncated or summarized, with a note that they were truncated — silent truncation reads to the model as a complete answer.
+- If the tool failed, say so plainly in the content and mark it as an error rather than returning an empty string or a stack trace — see [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries) for the failure-signaling contract.
+
+### Multiple pieces of information
+
+When one tool call produces more than one useful thing — a value plus a chart image, or text plus a citation — you can return multiple content blocks inside a single `tool_result`, including image blocks alongside text. Keep them ordered the way you'd want a person to read them; the model doesn't reorder or re-rank what you hand it.
+
+## What comes back is context, so budget it
+
+Every tool result becomes part of the conversation the model reads on every subsequent turn, unless something prunes it. A tool that returns a 20,000-token document on every call will quietly eat your context budget across a long [sequential, multi-step](/learn/tools-function-calling/sequential-multi-step-tool-use) tool-use loop. Treat result formatting as part of your context budget, not just an output-correctness problem, and check what actually lands in the transcript when you're [testing and debugging tool calls](/learn/tools-function-calling/testing-and-debugging-tool-calls).
+
+**Related:** [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls), [Sequential, Multi-Step Tool Use](/learn/tools-function-calling/sequential-multi-step-tool-use)

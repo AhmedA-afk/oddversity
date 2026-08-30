@@ -1,0 +1,31 @@
+---
+title: "Executing Tool Calls Safely"
+track: "tools-function-calling"
+status: live
+summary: "Never trust model-generated arguments — validate, authorize, and bound every tool call before it touches a real system."
+duration: "5 min read"
+---
+
+A model deciding to call `delete_file` or `send_email` is just a suggestion. The moment your code takes those arguments and runs them against a real filesystem, database, or API, you've crossed from language generation into execution — and everything you'd validate from an untrusted user, you must validate from the model too.
+
+## Treat model output as untrusted input
+
+The model's arguments come from a probability distribution, not a form field with browser-level validation. It can hallucinate a field, invent an ID that doesn't exist, pass a negative quantity, or produce a value that's syntactically valid JSON but semantically wrong (a `refund_amount` bigger than the original charge, a `user_id` belonging to someone else). Schema validation at the API layer only checks shape — string, number, required field present. It says nothing about whether `amount: 50000` is a reasonable refund. That check is yours to write, at the boundary between "the model decided" and "the system acted."
+
+The pattern is the same one you'd use for any external input: validate types and ranges, check the referenced entity actually exists and the caller can act on it, and reject or clarify rather than coerce silently. If the model calls `update_price` with a value ten times the current price, that's worth a second confirmation loop, not a silent execute.
+
+## Separate deciding from doing
+
+Give the executor its own authorization logic, independent of what the model claims. If a tool call updates a record, re-check permissions against the actual acting user in your system — not a `user_id` the model happened to pass in its arguments. The model's context can be manipulated (through [prompt injection](/learn/evals-red-teaming/prompt-injection-basics) from a document it read, for instance), so any authorization decision baked into the arguments themselves is a decision an attacker can influence. Keep the source of truth for "is this allowed" in code that never reads from the model's output.
+
+## Match blast radius to risk
+
+Not every tool needs the same scrutiny. A read-only lookup can execute automatically. A destructive or hard-to-reverse action — sending money, deleting data, posting publicly — deserves a human-in-the-loop confirmation step, a dry-run mode, or at minimum a tight [sandbox](/learn/tools-function-calling/sandboxing-tool-execution) that limits what damage a bad call can do. Decide this per tool, not per session: an agent might be fully autonomous for search and firmly gated for write actions. This is the same allow/ask/deny thinking that shows up in [harness permission design](/learn/harness-design/permission-and-approval-systems) — the execution layer is where those policies actually get enforced.
+
+## Log before you act
+
+Record the tool name, the arguments, and the calling context before execution, not after. If something goes wrong — a wrong deletion, a bad transaction — you need the trace of what the model asked for, separate from what your system did with it. That separation also makes it obvious whether a failure was a model mistake (bad arguments) or an execution mistake (bad handling of good arguments), which determines whether the fix belongs in your prompt or your code.
+
+None of this replaces the guarantees you'd want from a well-designed [tool schema](/learn/tools-function-calling/designing-a-tool-schema) — it's what happens after the schema has already done its job and the call is sitting in your hands, about to run.
+
+**Related:** [Sandboxing Tool Execution](/learn/tools-function-calling/sandboxing-tool-execution), [Handling Tool Errors and Retries](/learn/tools-function-calling/handling-tool-errors-and-retries), [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems)

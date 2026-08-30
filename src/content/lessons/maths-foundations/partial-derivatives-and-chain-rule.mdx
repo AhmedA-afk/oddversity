@@ -1,0 +1,42 @@
+---
+title: "Partial Derivatives and the Chain Rule"
+track: "maths-foundations"
+status: live
+summary: "How a function of many inputs gets differentiated one variable at a time, then chained across layers — the calculus backprop runs on."
+duration: "6 min read"
+---
+
+A neural network's loss depends on millions of weights at once. To know how to nudge any single one, you need a derivative that holds every other weight still — that's a partial derivative — and a way to chain that signal backward through every layer it passed through on the way to the output.
+
+## Holding everything else still
+
+For a function of one variable, the derivative is unambiguous: there's only one direction to move in. A loss function `L(w1, w2, w3, ...)` has no single direction — it has one dimension per weight. The partial derivative with respect to `w1`, written `∂L/∂w1`, answers a narrower question: if you freeze every other weight and nudge only `w1`, how does `L` change?
+
+Mechanically, this is ordinary single-variable differentiation. Treat every other variable as a constant, differentiate with respect to the one you care about, and repeat for each variable you need. For `f(x, y) = x^2 * y + y^3`:
+
+```
+∂f/∂x = 2xy         (y treated as constant)
+∂f/∂y = x^2 + 3y^2   (x treated as constant)
+```
+
+Stack all the partials into one vector and you get the gradient — covered in [Gradients: Slopes in Many Dimensions](/learn/maths-foundations/gradients-and-slopes). The partial derivative is the per-coordinate reading; the gradient is all of those readings taken together.
+
+## Why you can't skip straight to the answer
+
+A network's output isn't a direct function of an early weight — it's a function of a function of a function. Weight `w` feeds into a neuron's pre-activation `z`, `z` feeds into an activation `a`, `a` feeds into the next layer, and so on until you reach the loss `L`. There's no formula for `∂L/∂w` sitting in a textbook; it has to be assembled from the pieces along that path.
+
+The chain rule is exactly that assembly instruction: multiply the local derivatives along the path.
+
+```
+∂L/∂w = ∂L/∂a · ∂a/∂z · ∂z/∂w
+```
+
+Each factor is a derivative you actually know how to compute in isolation — how the loss changes with the activation, how the activation changes with the pre-activation (the slope of something like ReLU or sigmoid), how the pre-activation changes with the weight (just the input feeding it). None of them require knowing the whole network's behavior; each is a local, one-step fact. The chain rule says their product gives you the global effect.
+
+## Where this shows up: backpropagation
+
+This is not a side fact about calculus — it's the entire mechanism [Backpropagation: How Networks Assign Blame](/learn/maths-foundations/backpropagation-intuition) runs on. Backprop computes `∂L/∂a` at the output layer first, then walks backward, and at each layer multiplies by that layer's local derivatives to get `∂L/∂w` for every weight in it. It never recomputes a derivative from scratch — it reuses the ones already computed at the layer just ahead, which is exactly the chained product above, applied one layer at a time and cached along the way.
+
+This is also why activation functions matter so much: if `∂a/∂z` is close to zero almost everywhere (as with a saturated sigmoid), the chained product collapses toward zero regardless of how large the other factors are — the vanishing gradient problem is a direct, mechanical consequence of multiplying small local derivatives together across many layers.
+
+**Related:** [Gradients: Slopes in Many Dimensions](/learn/maths-foundations/gradients-and-slopes), [Backpropagation: How Networks Assign Blame](/learn/maths-foundations/backpropagation-intuition), [Gradient Descent, Intuitively](/learn/maths-foundations/gradient-descent-intuition)

@@ -1,0 +1,28 @@
+---
+title: "How to actually learn AI in 2026"
+description: "A practical study loop for moving from model vocabulary to dependable AI features."
+published: "2026-08-29"
+tags: ["Learning", "AI engineering", "Career"]
+---
+
+The fastest way to learn AI is not to memorize every new model release. It is to build a small number of complete mental models, then use them to make and test decisions.
+
+## Start with the runtime path
+
+Learn enough about tokens, context, generation, and embeddings to explain what a request actually does. Then build one small feature end to end: input, model call, validation, failure handling, and a visible result. The [AI foundations track](/learn/ai-foundations) and [first end-to-end app lesson](/learn/genai-app-dev/shipping-your-first-end-to-end-app) are enough to begin.
+
+## Add the evidence path
+
+Once a feature uses private or changing information, learn retrieval, chunking, citations, and access control. A RAG diagram is easy to draw; debugging a missing or unauthorized source is where the durable skill lives. Use the [RAG track](/learn/rag) and try the [document Q&A scenario](/scenarios/document-qa).
+
+## Add the action path carefully
+
+Tools and agents are useful when the next step is uncertain, but they create authority and failure modes. Start with read-only tools, typed arguments, explicit stop conditions, and traces. Add writes only behind a reviewable boundary. The [agents quiz](/practice/agents) is a quick self-check.
+
+## Build an eval before you build confidence
+
+Keep a small dataset of ordinary, ambiguous, long, and adversarial requests. Run it before and after changes. Track quality, groundedness, latency, cost, and serious failure rates. A score is useful only when it changes what you ship.
+
+## A weekly loop
+
+Read one concept, implement one narrow path, break it deliberately, write down the failure, and turn that failure into a test. Repeating that loop will compound more reliably than chasing a new prompt trick every week.

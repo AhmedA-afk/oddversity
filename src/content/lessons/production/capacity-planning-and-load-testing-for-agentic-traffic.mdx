@@ -1,0 +1,27 @@
+---
+title: "Load-Test Agentic Traffic Where One Request Fans Out Into Dozens"
+track: "production"
+status: live
+summary: "Plan capacity around token throughput and tool-call fan-out, not just requests per second."
+duration: "6 min read"
+---
+
+A traditional web request does one unit of work: hit the API, hit the database, return. An agent request does not. One user message can trigger a planning call, five tool calls, three of which call sub-agents, each making its own model calls to summarize results. Capacity planning built around "requests per second" was designed for the first world. It quietly breaks in the second.
+
+## The request is not the unit of load
+
+If your dashboard tracks incoming HTTP requests per second, you're measuring the wrong thing. A single incoming request from a user can turn into 5, 20, or 80 downstream model calls depending on how deep the agent's plan goes, how many tools it decides to invoke, and whether any of those tools spawn their own agents. Fan-out is not fixed — it's a distribution that shifts with the model, the prompt, and even the specific task the user gave it. A support-bot query might fan out to 2 calls; a coding-agent task like "refactor this module and update the tests" might fan out to 40.
+
+This means the thing you actually need to forecast is **downstream model calls per incoming request**, and its variance, not just its average. Two systems handling 100 req/s can have wildly different backend load if one averages 3x fan-out and the other averages 15x — and if the 15x system has a long tail (a few requests that spawn 200 calls), that tail is what takes down your provider's rate limits during a traffic spike, not the median.
+
+## Load-test on the right axes
+
+Instrument fan-out directly: calls-per-request, tokens-per-request (input and output separately, since they're priced and rate-limited differently), and tool-invocations-per-request. Then load-test by replaying realistic *tasks*, not synthetic single-turn prompts — a load test that only sends short one-shot questions will never surface the fan-out spike that a real "go build me X" request causes. Capture a sample of real production transcripts (redacted) and replay their task shapes at increasing concurrency.
+
+Watch three ceilings simultaneously: your own service's compute and concurrency limits, the model provider's tokens-per-minute and requests-per-minute limits (which agentic fan-out can exhaust far faster than raw traffic volume suggests), and any downstream tool APIs the agent calls, which usually have no idea they're now on an agent's critical path and will rate-limit you without warning.
+
+## Plan headroom around the tail, not the average
+
+Because fan-out is heavy-tailed, average-based capacity planning underprovisions for the requests that matter most. Size your provider quota and concurrency pools against p95 or p99 fan-out, add explicit [backpressure](/learn/production/rate-limiting-llm-apps) so a burst of high-fan-out requests degrades gracefully instead of cascading, and route the deepest tasks to [cheaper or capped models](/learn/production/model-routing-by-task-complexity) when you're near a ceiling rather than letting them exhaust the shared quota that every other tenant depends on.
+
+**Related:** [Rate-Limit and Add Backpressure to LLM Traffic](/learn/production/rate-limiting-llm-apps), [Shed Load Gracefully Instead of Falling Over](/learn/production/load-shedding-and-graceful-degradation), [Set Per-Tenant Token Budgets and Quotas](/learn/production/per-tenant-token-budgets-and-quotas)

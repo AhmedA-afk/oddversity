@@ -1,0 +1,52 @@
+---
+title: "Context Observability: Instrumenting What's Actually in the Window"
+track: "context-engineering"
+status: live
+summary: "Log and visualize token spend by section so context bloat gets caught before it silently degrades output."
+duration: "6 min read"
+---
+
+You can't manage what you can't see, and most teams ship agents that have no idea what's actually in their own context window. They know the total token count because the API response says so. They have no idea whether that count is 200 tokens of system prompt, 40,000 tokens of stale tool output, and 3,000 tokens of the thing that actually matters.
+
+## Why total token count isn't enough
+
+A single number — "18,432 tokens this turn" — tells you cost. It tells you nothing about composition. Two requests can both burn 18k tokens with wildly different outcomes: one is mostly relevant retrieved documents, the other is mostly a tool result from three turns ago that nobody trimmed. Both look identical on a cost dashboard. Only one of them is quietly making the model worse, because irrelevant tokens don't just cost money — they compete for attention and dilute the signal the model needs (see [context rot](/learn/context-engineering/context-rot)).
+
+Context observability means breaking that single number apart by source: system prompt, conversation history, retrieved documents, tool outputs, scratchpad, and the user's actual message. Log each section's token count separately, on every call, and you have a dataset instead of a vibe.
+
+## Instrumenting the breakdown
+
+The mechanics are simple. Before you assemble the final prompt, you already have the pieces as separate strings or message objects — you're concatenating them anyway. Tokenize each piece individually (with the tokenizer your model actually uses, not a rough word count) and log the result as structured data:
+
+```json
+{
+  "turn_id": "req_8f21",
+  "total_tokens": 41200,
+  "sections": {
+    "system_prompt": 1100,
+    "conversation_history": 6400,
+    "retrieved_docs": 12300,
+    "tool_outputs": 19800,
+    "scratchpad": 900,
+    "user_message": 700
+  }
+}
+```
+
+Emit this alongside your normal request logs — same trace ID, same timestamp — so it joins cleanly with latency and cost data. This is a direct extension of the same discipline covered in [cost budgets and usage tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking); the difference is you're tracking composition, not just totals.
+
+## What the data catches
+
+Once you have per-section history, three failure patterns jump out immediately:
+
+**Section creep.** Plot `tool_outputs` tokens over the life of a long-running agent session. A healthy pattern is roughly flat or sawtoothed (it grows, then something summarizes or evicts it). A pattern that climbs monotonically means nothing is ever being cleaned up — a strong candidate for [tool output deduplication](/learn/context-engineering/tool-output-deduplication) or a sliding window.
+
+**Budget violations.** If you've set explicit budgets per section (see [token budgeting strategies](/learn/context-engineering/token-budgeting-strategies)), observability is what tells you when reality stops matching the plan — retrieved_docs was supposed to cap at 8k and is now averaging 15k because a chunking change upstream silently doubled chunk size.
+
+**Correlation with quality.** This is the payoff. Join your per-section token logs with eval scores or user feedback on the same turns. If accuracy drops precisely on turns where `conversation_history` crosses some threshold, you've found a real, quantified case of context rot instead of a hunch — and you have the exact number to design a compaction trigger around.
+
+## Keep the log cheap
+
+Don't tokenize twice — reuse the counts your provider's SDK already returns for cached vs. uncached segments where possible, and only run a full local tokenizer pass when you need the section-level breakdown the API doesn't give you. The logging itself should add negligible latency; it's a side channel, not part of the critical path.
+
+**Related:** [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Token Budgeting: Splitting a Fixed Context Window](/learn/context-engineering/token-budgeting-strategies), [Cost Budgets and Usage Tracking](/learn/genai-app-dev/cost-budgets-and-usage-tracking)

@@ -1,0 +1,36 @@
+---
+title: "Compaction: Summarizing History to Reclaim Context Space"
+track: "context-engineering"
+status: live
+summary: "When conversation history fills the context window, compress it into a summary instead of dropping it outright."
+duration: "5 min read"
+---
+
+A long-running agent session eventually hits a wall: the transcript itself is bigger than the context window. Compaction is the fix — instead of truncating history and losing it, you summarize it, replacing dozens of turns with a compact paragraph that keeps the thread intact.
+
+## Why not just drop old turns
+
+A [sliding window](/learn/context-engineering/sliding-window-context-management) is the simplest option: roll off the oldest messages as new ones arrive. It's cheap, but it's also lossy in a specific way — if the user set a constraint ten turns ago ("use TypeScript, not JS"), a sliding window eventually forgets it entirely, and the model quietly violates it. Compaction is the alternative: before anything falls out of the window, an LLM call condenses the aging turns into a summary that preserves decisions, constraints, and open threads, even as it discards the verbatim wording.
+
+## What a compaction pass actually does
+
+The mechanics are simple: take the oldest N turns, send them to the model with an instruction like "summarize this conversation so far, preserving key facts, decisions, and unresolved questions," and splice the result back in as a single system or assistant message at the start of the transcript. The recent turns stay verbatim — compaction targets the part of the conversation the model is least likely to need word-for-word.
+
+This is exactly what long coding-agent sessions do under the hood: as a session runs for hours across many tool calls, the harness periodically compacts the early history (file reads, failed attempts, resolved errors) into a running summary, so the agent doesn't rerun the same commands.
+
+A good summary prompt is opinionated about what to keep:
+
+- Decisions made and why ("chose Postgres over Mongo for transactional guarantees")
+- Facts established (file paths, API shapes, user constraints)
+- Anything still open or unresolved
+- Explicitly *not* the raw back-and-forth that led there
+
+## The cost you're trading
+
+Compaction isn't free. Each pass is itself an LLM call, adding latency and token cost, and every summary is a lossy compression — detail the model judged unimportant at the time can turn out to matter later. This is a case of [context rot](/learn/context-engineering/context-rot) in reverse: too little context loses fidelity, but so does over-aggressive summarization. Teams tune this by compacting only when usage crosses a threshold (say, 70% of the window) rather than on every turn, and by keeping the most recent turns raw so precision is highest where the conversation is actively live.
+
+## Compaction vs. other context strategies
+
+Compaction sits alongside [relevance filtering](/learn/context-engineering/relevance-filtering) and [retrieval](/learn/context-engineering/retrieval-vs-context-stuffing) as a way to manage a fixed budget, but it solves a different problem. Filtering and retrieval decide *what to include* from a large corpus; compaction decides *how to shrink what's already in the conversation*. In production systems the two combine: retrieval brings in fresh, relevant material each turn, while compaction keeps the growing conversation history itself from crowding that material out.
+
+**Related:** [Sliding Windows: Rolling Off Old Turns Without Losing the Thread](/learn/context-engineering/sliding-window-context-management), [Context Rot: When More Tokens Make the Model Worse](/learn/context-engineering/context-rot), [Memory vs State: What Persists Across Turns and Sessions](/learn/context-engineering/conversation-memory-and-state)

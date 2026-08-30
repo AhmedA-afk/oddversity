@@ -1,0 +1,54 @@
+---
+title: "AI system design interview questions"
+topic: "System design for AI"
+description: "Eight system-design prompts for building dependable AI features under real product constraints."
+order: 7
+---
+
+## 1. How would you design an AI support assistant?
+
+Start with a narrow set of support intents and a clear escalation path. Retrieve approved help content, produce cited drafts, validate structured fields, and let a human or deterministic policy decide whether a message can be sent.
+
+Define success in terms of resolution quality, groundedness, escalation accuracy, latency, and cost. Avoid presenting a fluent answer as a resolution metric.
+
+## 2. How would you design document question answering?
+
+Ingest documents with stable IDs and access controls, parse them into structure-aware chunks, index both lexical and semantic signals, retrieve with permissions applied, and return answers with source locations. Include a “not found” path.
+
+Test updates, conflicting versions, tables, scanned pages, and unauthorized documents. RAG is only correct if retrieval and access control are correct.
+
+## 3. How would you design a tool-using agent?
+
+Wrap a bounded loop around a model, a small tool registry, typed argument validation, authorization, budgets, traces, and explicit stop states. Put deterministic checks around actions with side effects and require approval where the risk warrants it.
+
+Begin with a workflow baseline so you can show what the agent adds. See [the control loop](/learn/harness-design/the-control-loop).
+
+## 4. How would you manage model and prompt changes?
+
+Version model choice, prompt, schema, retrieval settings, and tool definitions together. Run offline evals, shadow or canary a release where possible, compare cost and latency, and keep a fast rollback path.
+
+Do not change several high-leverage variables at once unless the release is treated as a new configuration with its own baseline.
+
+## 5. How would you design for rate limits?
+
+Use bounded retries with exponential backoff and jitter, honor provider retry guidance, cap concurrency, queue work that can wait, and distinguish transient failures from invalid requests. Cache safe results and stream long operations when the user benefits.
+
+Track attempts and provider response classes so retries do not become invisible cost. Oddversity's [rate-limit lesson](/learn/genai-app-dev/rate-limits-and-retry-strategies) covers the mechanics.
+
+## 6. How would you observe an LLM feature?
+
+Log request IDs, configuration versions, latency, token usage, cost, tool calls, retrieval IDs, validation outcomes, and user-visible status. Redact secrets and sensitive content, and sample traces when full payload capture is not justified.
+
+Pair operational telemetry with quality signals from evals, user feedback, and targeted review. A healthy API can still produce poor answers.
+
+## 7. How would you make an AI feature private?
+
+Map data flows first. Minimize retention, isolate tenants, apply access checks before retrieval, encrypt data in transit and at rest, control provider logging and training settings, redact sensitive fields, and document subprocessors.
+
+Privacy is a system property, not a prompt instruction. Test cross-tenant retrieval and leakage explicitly.
+
+## 8. How would you estimate cost before launch?
+
+Estimate requests by path, input and output tokens, model price, retrieval and storage, tool calls, retries, cache hit rate, and human review. Multiply by realistic traffic distributions and include worst-case loops or long contexts.
+
+Then instrument actual usage and compare it with the model. [Token and cost tracking](/learn/production/token-and-cost-tracking) is the operational follow-through.

@@ -1,0 +1,10 @@
+user_id,movie_id,rating,split
+u1,m1,5,train
+u1,m3,5,test
+u2,m2,3,train
+u2,m3,5,train
+u2,m1,4,test
+u3,m2,3,train
+u3,m3,5,train
+u3,m1,4,test
+

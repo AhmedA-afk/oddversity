@@ -1,0 +1,36 @@
+---
+title: "Running MCP Servers in Production"
+track: "mcp"
+status: live
+summary: "What changes when an MCP server stops being a local script and starts serving real traffic."
+duration: "6 min read"
+---
+
+A server that works great from your editor's MCP config can still fall over the first week it serves real users. Production means other people depend on it being up, fast, and safe when they're not watching.
+
+## Pick a transport that survives multiple clients
+
+Local stdio servers are single-process, single-client, and die with their parent process — fine for development, wrong for production. A production MCP server should run over HTTP so it can live behind a process manager, restart independently of any one client, and serve several sessions at once. See [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http) for the tradeoffs, and treat auth as a separate concern from transport — a networked server needs real credential handling, covered in [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals).
+
+## Log every call, not just errors
+
+When a tool call fails at 2am, the only evidence you'll have is whatever you logged. Structured logs — one line per tool invocation, with the tool name, arguments (redacted if sensitive), duration, and result status — turn a mystery into a five-minute diagnosis. Log at the boundary of every tool handler, not just at top-level request entry, so a failure inside one tool doesn't blend into the noise of a healthy request around it. Pair this with basic uptime and latency monitoring on the server process itself: an MCP server that silently stops responding to `tools/list` looks identical to a network blip until something is actively checking.
+
+## Fail loudly and specifically
+
+A client calling a broken tool needs a structured error it can reason about, not a stack trace or a generic "something went wrong." Return errors that distinguish between the categories a client actually needs to handle differently:
+
+```
+- invalid arguments (client's fault, retrying won't help)
+- upstream dependency down (retry with backoff might help)
+- rate limited (retry after a delay)
+- internal bug (log loudly, don't retry blindly)
+```
+
+Vague errors push debugging work onto whoever is running the client, and in an agentic loop a vague error often just gets retried in a loop instead of fixed.
+
+## Treat it like any other service you're on the hook for
+
+Once a server has real traffic, the questions that matter are the ordinary ones: What happens on deploy — do in-flight tool calls get dropped? What's the restart policy if the process crashes? Is there a health check something else polls? Does a spike in one client's usage starve every other client sharing the server? None of this is MCP-specific — it's the same operational discipline any backend needs — but it's easy to skip because an MCP server often starts life as a quick internal script. Before it earns "production" status, run it through the same checklist you'd apply to a REST API: versioned releases (see [Versioning MCP Servers Without Breaking Clients](/learn/mcp/versioning-mcp-servers-without-breaking-clients)), monitored health, and a plan for what a client should do when the server is temporarily unavailable. When something does go wrong in the field, [Debugging Common MCP Failures](/learn/mcp/debugging-common-mcp-failures) is the place to start.
+
+**Related:** [MCP Transports: stdio vs. HTTP](/learn/mcp/mcp-transports-stdio-vs-http), [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals), [Debugging Common MCP Failures](/learn/mcp/debugging-common-mcp-failures)

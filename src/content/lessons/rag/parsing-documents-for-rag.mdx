@@ -1,0 +1,36 @@
+---
+title: "Parsing PDFs, Tables, and Scanned Documents for RAG"
+track: "rag"
+status: live
+summary: "Extracts clean text and structure from messy real-world files before anything gets chunked."
+duration: "6 min read"
+---
+
+A RAG pipeline is only as good as the text it starts with. If parsing mangles a table into a wall of numbers, or drops a scanned page entirely, no amount of clever chunking or reranking downstream will recover the lost meaning.
+
+## Why parsing is the hidden bottleneck
+
+Most RAG tutorials start from clean markdown or plain text. Real documents are not that: PDFs with two-column layouts, tables that span pages, scanned contracts with no text layer, slide decks where the meaning lives in spatial position rather than reading order. A naive text extractor reads a PDF left-to-right by coordinate, which means a two-column page comes out with lines from both columns interleaved into gibberish. Fix parsing first, because every later stage (chunking, embedding, retrieval) inherits its mistakes silently — a broken table doesn't throw an error, it just retrieves badly forever.
+
+## Text layout: columns, headers, and reading order
+
+For digital PDFs, the fix is a layout-aware parser rather than a naive text-stream reader. Tools like `unstructured`, `PyMuPDF` (with layout analysis), or `pdfplumber` detect column boundaries and reconstruct reading order block by block, instead of following raw character positions. Cloud document AI services (Google Document AI, Azure Document Intelligence, AWS Textract) go further, using layout models trained specifically to separate headers, footers, body columns, and captions. The output you want is not just text but text tagged with structural role, so a repeated page header doesn't get chunked in as if it were content on every single page.
+
+## Tables: don't flatten them into prose
+
+A table extracted as raw text loses its grid — "Revenue Q1 Q2 Q3 120 145 160" tells a retriever almost nothing about which number belongs to which quarter. Two approaches work well:
+
+1. **Extract to structured form** (CSV/JSON or an HTML table) using a table-detection model, and embed a markdown-rendered version of that table as its own chunk, keeping row and column headers attached to every cell.
+2. **Summarize the table in prose** alongside the structured version, so a semantic query like "what was Q2 revenue" can match on meaning even if the exact number is buried in a grid the embedding model represents poorly.
+
+Either way, treat tables as first-class chunks with their own metadata — page number, source table title — rather than letting them dissolve into surrounding paragraph text.
+
+## Scanned documents and OCR
+
+A scanned page has no text layer at all — just an image. Here OCR is the parsing step: `Tesseract` for a free/open baseline, or vision-capable document APIs (AWS Textract, Azure Document Intelligence, Google Document AI, or increasingly a multimodal LLM prompted to transcribe) for better accuracy on messy scans, handwriting, or stamps. OCR quality directly gates retrieval quality: garbled OCR output produces chunks with typos and broken words that embeddings can't match against a clean query. Always spot-check OCR output on a sample before indexing at scale, and consider keeping the source image reference in metadata so a low-confidence OCR chunk can fall back to [multimodal retrieval](/learn/rag/multimodal-rag) over the image itself.
+
+## Building this into your pipeline
+
+Parsing sits before [chunking](/learn/rag/chunking-strategies-for-documents), so get the format right first: normalize everything — PDFs, scans, tables — into a consistent intermediate representation (markdown with embedded table blocks works well) before your chunker ever sees it. That intermediate layer is also where you attach metadata like page number and section heading, which later powers [metadata filtering in retrieval](/learn/rag/metadata-filtering-in-retrieval).
+
+**Related:** [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents), [Multimodal RAG: Retrieving Over Images and Layout](/learn/rag/multimodal-rag), [Metadata Filtering in Retrieval](/learn/rag/metadata-filtering-in-retrieval)

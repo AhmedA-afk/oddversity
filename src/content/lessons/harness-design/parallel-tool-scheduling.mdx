@@ -1,0 +1,33 @@
+---
+title: "Scheduling Parallel Tool Calls Without Races"
+track: "harness-design"
+status: live
+summary: "Some tool calls are safe to fire concurrently; others corrupt state if you don't serialize them. Here's how to tell them apart."
+duration: "5 min read"
+---
+
+Modern models can emit several tool calls in one turn — three file reads and a grep, say. Your harness has to decide which of those can actually run at the same time, and which ones will step on each other if you let them.
+
+## Reads are free, writes are not
+
+The simplest rule: calls that only observe state — reading a file, listing a directory, searching the web, running a read-only query — can almost always run in parallel. Nothing about running three greps at once changes what any of them returns.
+
+Calls that mutate state are the risk. Two `Edit` calls against the same file, a `Write` and a `Read` on the same path, two shell commands that both `cd` and touch the working directory — these have an ordering dependency the model didn't express, because the model doesn't know your filesystem semantics. If your harness dispatches them concurrently anyway, you get a race: whichever finishes last wins, silently, and the model never finds out its edit was clobbered.
+
+A working scheduler classifies each call along two axes: does it read or write, and what resource does it touch. Same-resource writes serialize. Reads against a resource that something else is concurrently writing either wait or get flagged as possibly-stale. Everything else — different files, different resources, pure reads — parallelizes freely.
+
+## Building the conflict check
+
+You don't need a general-purpose lock manager. Most harnesses key on something coarse and cheap to compute: the file path for filesystem tools, the session or table name for a database tool, the URL host for network calls. Before dispatching a batch of calls the model requested in one turn, walk the batch and group by resource key. Within a group, if any call is a write, run that group's calls in submission order and hold the rest of the batch until it settles. Groups with no shared key run concurrently.
+
+This is deliberately conservative — it will serialize calls that would have been fine in parallel because they happened to share a coarse key (two edits to different lines of the same file, say). That's the right trade. A false serialization costs a little latency; a false parallelization costs correctness, and the failure is a corrupted file or a silently dropped edit that's hard to trace back to a race days later.
+
+## What still goes wrong
+
+Coarse keys don't catch everything. A shell command with an unpredictable side effect — `rm`, a script that writes to a path the harness can't see from the command string — looks like an opaque write to *something*, and the safest posture is to treat any `Bash`-shaped tool as write-and-serialize by default unless you can prove the specific invocation is read-only. Some harnesses do this by pattern-matching known-safe commands (`ls`, `git status`, `cat`) and treating everything else as exclusive.
+
+The other failure mode is ordering guarantees the model assumes but the harness doesn't provide. If a model calls a search tool then a fetch tool in the same turn expecting the fetch to see the search's output, that's not a parallelism bug — it's a dependency the model encoded implicitly by call order, and your scheduler needs to preserve turn-relative ordering for calls that reference each other's results even when it could otherwise parallelize them.
+
+Get the resource-keyed serialization right and most of this collapses into a small, testable rule instead of a source of intermittent bugs.
+
+**Related:** [Routing Tool Calls to Real Code](/learn/harness-design/tool-routing-and-registries), [Parallel Tool Calls](/learn/tools-function-calling/parallel-tool-calls), [Handling Ctrl-C: Clean Interruption Mid-Tool-Call](/learn/harness-design/interrupt-and-cancellation-handling)

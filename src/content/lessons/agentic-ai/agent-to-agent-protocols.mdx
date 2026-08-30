@@ -1,0 +1,34 @@
+---
+title: "Agent-to-Agent Protocols: How Agents Will Talk to Each Other"
+track: "agentic-ai"
+status: live
+summary: "Emerging standards like A2A let agents built by different teams discover, negotiate with, and delegate to one another."
+duration: "5 min read"
+---
+
+MCP solved how one agent talks to its tools. It didn't solve how one agent talks to *another agent* — one it doesn't control, built by a different team, possibly on a different framework entirely. That's the gap agent-to-agent protocols are trying to close.
+
+## Why this is a different problem than tool calling
+
+When your agent calls a tool, you know the contract in advance: you wrote the schema, or you read someone's OpenAPI spec. Tool use assumes a fixed, known interface.
+
+Agent-to-agent communication doesn't get that luxury. Say your travel-planning agent needs to hand a sub-task to a hotel-booking agent that some other company built and hosts. You don't know its internal reasoning, its memory, or its tools — and you shouldn't have to. You just need a way to say "here's a task, here's what I need back," and trust the other agent to figure out how to do it, possibly by delegating further to *its* sub-agents.
+
+That's a peer relationship, not a tool call. It needs a handshake for capability discovery ("what can you actually do?"), a way to hand off a task and track its state across a conversation that might take minutes or days, and a way to exchange rich results — not just a JSON blob, but potentially files, forms, or a back-and-forth negotiation.
+
+## What A2A (and friends) actually specify
+
+Google introduced Agent2Agent (A2A) in 2025, and it's since moved to Linux Foundation stewardship as a vendor-neutral, open standard, with other efforts like IBM's Agent Communication Protocol (ACP) exploring similar territory. The core ideas that show up across these proposals:
+
+- **Agent Cards** — a published, machine-readable description of what an agent does, its skills, and how to authenticate to it. Think of it as a much richer `robots.txt` for agents: a discovery document another agent (or its orchestrator) can fetch before deciding to delegate.
+- **Tasks with lifecycle** — a unit of work with a stable ID that moves through states like submitted, working, input-required, and completed. This matters because agent-to-agent work is often long-running and asynchronous, unlike a synchronous tool call.
+- **Structured, multi-turn exchange** — the ability for the receiving agent to ask a clarifying question mid-task, and for either side to attach artifacts (files, structured data) rather than being limited to plain text.
+- **Transport-agnostic messaging** over HTTP, typically JSON-RPC or similar, so it composes with existing web infrastructure rather than inventing a new wire protocol from scratch.
+
+Notice what this is *not*: it's not a replacement for MCP. MCP governs how an agent uses tools and resources. A2A-style protocols govern how autonomous agents delegate work to each other as peers. A single system can use both — an agent might use MCP to query a database, and A2A to hand a sub-task to a partner company's agent.
+
+## Why "emerging" is the right word
+
+None of this is settled the way HTTP or OAuth is settled. Agent cards, task-state machines, and cross-vendor auth are all still being hammered out, and adoption is uneven — plenty of production multi-agent systems today just use REST APIs with bespoke conventions instead. Treat A2A as a signal of where the industry is heading — standardized discovery and delegation across organizational boundaries — rather than something you need in your stack today. If you're building [multi-agent systems](/learn/agentic-ai/multi-agent-patterns) entirely within one codebase, your own orchestrator's message-passing is still simpler and more reliable than adopting an external standard.
+
+**Related:** [Multi-Agent Patterns: Orchestrator, Pipeline, Debate](/learn/agentic-ai/multi-agent-patterns), [What Is MCP](/learn/mcp/what-is-mcp), [Choosing an Orchestration Framework](/learn/agentic-ai/agent-orchestration-frameworks)

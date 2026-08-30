@@ -1,0 +1,44 @@
+---
+title: "Schema Versioning: Evolving a Contract Without Breaking Consumers"
+track: "structured-outputs"
+status: live
+summary: "How to change an LLM output schema over time without breaking every consumer still parsing the old shape."
+duration: "5 min read"
+---
+
+Your extraction schema will change. You'll add a field, split one field into two, or rename `customer_name` to `full_name` because someone finally noticed it wasn't just first names. The question isn't whether the schema changes — it's whether the three downstream services still parsing the old shape crash when it does.
+
+## Treat the schema like an API, because it is one
+
+The moment a schema output feeds a database write, a UI render, or another service's input, it's a contract, not an implementation detail. That means the same discipline you'd apply to a REST API applies here: additive changes are cheap, breaking changes are expensive, and "breaking" is defined by what consumers actually read, not by what you intended.
+
+Concretely:
+
+- **Additive and safe:** adding a new optional field, adding a new enum value a consumer doesn't switch on yet, widening a type (e.g., a string that used to be an enum).
+- **Breaking:** renaming a field, removing a field, changing a field's type, narrowing an enum, making an optional field required.
+
+Most "urgent" schema changes are actually additive if you resist the urge to delete the old field in the same release. Add `full_name`, keep populating `customer_name` as a deprecated alias for a release or two, then remove it once telemetry shows nothing reads it.
+
+## Put a version in the payload, not just in your head
+
+Once a schema has shipped to any consumer, stamp every output with a version marker:
+
+```json
+{
+  "schema_version": "2.1",
+  "customer": {
+    "full_name": "Ada Lovelace",
+    "customer_name": "Ada Lovelace"
+  }
+}
+```
+
+This does two things. First, it lets consumers branch on version instead of guessing from field presence, which is fragile — a missing field could mean "old schema" or "model forgot it." Second, it gives you a place to log which versions are actually in the wild, so "can we delete the old field yet" becomes a query instead of an act of faith.
+
+Where you enforce the schema matters too. If you're using [JSON Schema](/learn/structured-outputs/json-schema-for-outputs) or a [Pydantic/Zod model](/learn/structured-outputs/pydantic-zod-schema-patterns), keep the old and new schema versions as separate named types (`CustomerV1`, `CustomerV2`) rather than one type with everything optional — a schema where every field might-or-might-not-exist stops the compiler (or Pydantic) from catching the exact bugs versioning exists to prevent.
+
+## Migrate at the boundary, not throughout the codebase
+
+The cleanest pattern is a translation layer immediately after generation: the model always targets the current schema version, and a migration function upgrades any older cached or replayed data to match before it touches business logic. That keeps "supports three schema versions" a single function's problem instead of a scatter of `if hasattr(...)` checks through the codebase. This is the same shape as [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) — one seam where malformed or outdated shapes get fixed before anything downstream has to know they existed.
+
+**Related:** [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability), [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), [Versioning Tool Schemas Without Breaking Running Agents](/learn/tools-function-calling/tool-schema-versioning)

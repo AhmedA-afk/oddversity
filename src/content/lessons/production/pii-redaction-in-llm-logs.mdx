@@ -1,0 +1,55 @@
+---
+title: "Redact PII Before It Hits Your Logs"
+track: "production"
+status: live
+summary: "Strip personal data from prompts and completions before they're logged, cached, or sent to a model provider."
+duration: "5 min read"
+---
+
+Every LLM call you log is a snapshot of what a real user typed — names, emails, phone numbers, sometimes medical or financial details, pasted straight into a prompt. If your logging pipeline captures raw prompts and completions, you've just built a second, less-guarded copy of your production database.
+
+## Why this bites teams that skip it
+
+Logs feel like exhaust — low-stakes, disposable, "just for debugging." But they usually flow somewhere with weaker access controls than your primary database: a third-party observability tool, a shared Slack channel for on-call, a data warehouse with broad read access. Add prompt caching or an eval dataset built from real traffic, and that PII quietly propagates into more places, each one a new surface for a breach or a compliance finding. Under GDPR, CCPA, and similar regimes, "we logged it for debugging" is not a defense.
+
+## Redact before, not after
+
+The fix is to treat redaction as a pipeline step that runs *before* anything is written to disk or sent over the wire — not a cleanup job you run on logs after the fact. A practical approach:
+
+```python
+import re
+
+PATTERNS = {
+    "email": re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"),
+    "phone": re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"),
+    "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+}
+
+def redact(text: str) -> str:
+    for label, pattern in PATTERNS.items():
+        text = pattern.sub(f"[REDACTED_{label.upper()}]", text)
+    return text
+
+log_entry = {
+    "prompt": redact(raw_prompt),
+    "completion": redact(raw_completion),
+}
+```
+
+Regex catches structured PII (emails, phone numbers, SSNs, card numbers) cheaply and deterministically. For unstructured PII — a name buried in a sentence, an address written out in prose — regex misses too much; that's the job of a dedicated NER model (spaCy, Presidio) or a small, fast LLM call whose only task is entity detection. Many production pipelines run both: regex first for the cheap, obvious cases, then an NER pass to catch what regex can't parse.
+
+## Decide what "redacted" means for your system
+
+Redaction isn't one setting — pick per field:
+
+- **Mask**: replace with a placeholder (`[REDACTED_EMAIL]`) when you never need the value back.
+- **Tokenize**: replace with a reversible token stored in a separate, access-controlled vault, when support or debugging occasionally needs the real value.
+- **Hash**: replace with a one-way hash when you need to recognize *the same* user reappearing without ever storing their identity.
+
+Apply this at the same layer as your [structured logging](/learn/production/structured-logging-for-llm-calls) step, and decide separately how long even the redacted version is allowed to live — see [data retention policy](/learn/production/data-retention-and-privacy-policy).
+
+## Don't forget the completion, and don't forget the provider
+
+Redaction has to run on both sides of the call: a model can echo back PII from the prompt, or generate new PII-shaped text (a plausible-looking name or number) on its own. And redaction of your *logs* doesn't touch what you sent to a third-party model provider in the first place — if the provider itself must never see raw PII, that redaction has to happen before the API call, not after.
+
+**Related:** [Log Every LLM Call as Structured Data](/learn/production/structured-logging-for-llm-calls), [Set a Data Retention Policy for AI Systems](/learn/production/data-retention-and-privacy-policy), [Monitor Production Traffic for Prompt Injection and Abuse](/learn/production/prompt-injection-monitoring)

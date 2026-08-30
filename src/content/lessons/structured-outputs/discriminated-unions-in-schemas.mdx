@@ -1,0 +1,62 @@
+---
+title: "Discriminated Unions: One Field Deciding the Shape of the Rest"
+track: "structured-outputs"
+status: live
+summary: "How to model outputs that can be one of several shapes, using a type field to pick which schema applies."
+duration: "5 min read"
+---
+
+Not every output has one shape. A support ticket might resolve to a refund, an escalation, or a canned reply — and each of those needs different fields. A discriminated union is how you tell a schema "pick one of these shapes, and let one field say which."
+
+## The problem with a single flat schema
+
+The naive fix is one big object with every possible field marked optional: `refund_amount`, `escalation_reason`, `reply_text`, all nullable. It validates, but it doesn't constrain anything. A model can emit `refund_amount` on an escalation, or fill in all three at once, and the schema has no opinion about it. You've pushed the real validation into application code that checks "did the right fields show up for this case," which is exactly the work structured output was supposed to do for you.
+
+## Tagging the shape with a discriminator
+
+A discriminated union fixes this by adding one field — commonly called `type`, `kind`, or `action` — whose value determines which of several fixed shapes the rest of the object must match. In JSON Schema this is usually built with `oneOf` plus a shared `required: ["type"]`, or with a library that generates that structure for you:
+
+```json
+{
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "refund" },
+        "amount_cents": { "type": "integer" },
+        "reason": { "type": "string" }
+      },
+      "required": ["type", "amount_cents", "reason"]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "escalation" },
+        "team": { "type": "string" },
+        "priority": { "enum": ["low", "medium", "high"] }
+      },
+      "required": ["type", "team", "priority"]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "reply" },
+        "message": { "type": "string" }
+      },
+      "required": ["type", "message"]
+    }
+  ]
+}
+```
+
+Now `type: "refund"` without `amount_cents` is invalid, and `type: "reply"` with a stray `team` field is invalid too. The schema enforces the pairing instead of your code doing it after the fact.
+
+## Why models handle this well
+
+This pattern maps almost exactly onto how models already think about branching tasks — classify, then fill in the fields that follow from the classification. It reads like a well-designed [enum](/learn/structured-outputs/enums-and-constrained-fields) plus a conditional form, which is a shape LLMs have seen constantly in training data (API responses, event schemas, Redux-style actions). If your provider supports [constrained decoding](/learn/structured-outputs/constrained-decoding-under-the-hood), the decoder can even use the `type` token to restrict which subsequent tokens are legal, so the mismatch case becomes not just detectable but unreachable.
+
+## Where it gets awkward
+
+Two things trip people up. First, deeply nested unions — a union inside a union inside a union — push some providers past what they'll accept as valid schema, so flatten where you can. Second, `oneOf` in JSON Schema is stricter than it looks: if two branches could both technically match a given object, validation fails ambiguously rather than picking one, so keep each branch's `required` fields distinctive enough that only one can ever match. If you're generating these schemas from code rather than hand-writing them, [Pydantic and Zod](/learn/structured-outputs/pydantic-zod-schema-patterns) both have native discriminated-union types that compile down to exactly this JSON Schema pattern, which is worth using instead of building `oneOf` by hand.
+
+**Related:** [Enums: Locking a Field to a Fixed Set of Values](/learn/structured-outputs/enums-and-constrained-fields), [Nested Objects and Arrays in Output Schemas](/learn/structured-outputs/nested-and-array-schemas), [Pydantic and Zod: Deriving Schemas from Code](/learn/structured-outputs/pydantic-zod-schema-patterns)

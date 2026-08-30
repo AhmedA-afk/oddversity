@@ -1,0 +1,34 @@
+---
+title: "Positional Encoding: How Transformers Track Order"
+track: "llm-foundations"
+status: live
+summary: "Attention treats input as a bag of tokens, so transformers inject position info directly into embeddings to tell order apart."
+duration: "5 min read"
+---
+
+Run "dog bites man" through raw [attention](/learn/llm-foundations/attention-mechanism-explained) and it looks identical to "man bites dog" — attention scores are computed from token content, not position. Positional encoding is the fix: a signal added to each token's [embedding](/learn/llm-foundations/what-are-embeddings) that tells the model where in the sequence it sits.
+
+## The problem attention creates
+
+A transformer layer computes attention as a weighted sum over all tokens, and that sum is a set operation — shuffle the input tokens and, without positional information, you'd get the same weighted combination back, just relabeled. That's fine for a bag-of-words model, but language depends on order. Recurrent networks got position for free, one step at a time. Transformers process every token in parallel, so they need position encoded explicitly, before the first attention computation ever runs.
+
+## Sinusoidal encoding: the original fix
+
+The original transformer paper added a vector to each token embedding built from sine and cosine waves at different frequencies:
+
+```
+PE(pos, 2i)   = sin(pos / 10000^(2i/d))
+PE(pos, 2i+1) = cos(pos / 10000^(2i/d))
+```
+
+Here `pos` is the token's position and `i` indexes the embedding dimension. Low dimensions oscillate fast (they distinguish neighboring positions), high dimensions oscillate slowly (they distinguish coarse regions of the sequence). Because sine and cosine at a fixed offset can be written as a linear function of each other, the model can in principle learn to attend by relative position — "the token two back" — not just absolute position. No parameters to learn here; it's a fixed function of `pos`.
+
+## Learned and relative alternatives
+
+Many models instead learn a position embedding table directly, the same way they learn token embeddings — simpler, but it can't generalize past the maximum position seen in training. Others encode position *relatively*, injecting the offset between the query and key tokens into the attention computation itself rather than adding anything to the embeddings up front. Rotary Position Embedding (RoPE), used in most current open-weight and production LLMs, rotates each query and key vector in a way that makes their dot product depend only on their relative distance — it tends to extrapolate to longer sequences more gracefully than either sinusoidal or learned absolute encodings, which is a big part of why it's the default choice behind the long [context windows](/learn/llm-foundations/context-window-mechanics) shipping today.
+
+## Why this still matters
+
+Positional encoding is the quiet piece of the [transformer architecture](/learn/llm-foundations/the-transformer-architecture) that makes everything else legible. Get it wrong or push a model past the position range it was trained on, and quality degrades in specific, recognizable ways — the model starts losing track of where it is in a long document, confusing early and late context, or repeating itself. That's the mechanism underneath why extending a model's usable context is its own engineering problem, not just a bigger number in a config file.
+
+**Related:** [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), [Context Window Mechanics](/learn/llm-foundations/context-window-mechanics)

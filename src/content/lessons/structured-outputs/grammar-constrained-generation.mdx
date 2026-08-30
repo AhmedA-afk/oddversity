@@ -1,0 +1,38 @@
+---
+title: "Grammar-Constrained Generation Beyond JSON"
+track: "structured-outputs"
+status: live
+summary: "How libraries like Outlines and llguidance mask invalid tokens at every step to force output into any formal grammar, not just JSON."
+duration: "6 min read"
+---
+
+JSON mode is really a special case of a more general trick: at every decoding step, block every token that couldn't possibly lead to valid output. That trick works for any formal grammar, not just JSON — SQL, regexes, Python, a custom DSL for your product.
+
+## The core mechanism: masking, not prompting
+
+Constrained decoding doesn't ask the model nicely to follow a grammar. It compiles the grammar into a state machine, and at each generation step it walks that machine to figure out which tokens are legal next, then sets the logits of every other token to negative infinity before sampling. The model can only "choose" among tokens the grammar already allows, so the output is valid by construction — not validated after the fact.
+
+For JSON Schema, the grammar is derived from the schema itself: a `"quantity"` field typed as an integer restricts the next tokens to digits and a closing brace, nothing else. Grammar-constrained generation just generalizes that idea: instead of deriving the state machine from a schema, you hand it an arbitrary grammar, usually written in a variant of [EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form) or as a regular expression.
+
+## Why JSON isn't the ceiling
+
+Some formats JSON Schema can't express at all:
+
+- **A regex** — force output to match `\d{3}-\d{3}-\d{4}` for a phone number, with no schema involved.
+- **A context-free grammar** — a balanced-parens arithmetic expression, a subset of SQL, a config file format that isn't JSON.
+- **A programming language's real syntax** — valid Python or valid Terraform HCL, checked at the grammar level while the model is still writing it.
+- **Domain DSLs** — a move-notation grammar for a chess engine, a command grammar for a robot controller, a query language your app invented.
+
+Libraries like [Outlines](https://github.com/dottxt-ai/outlines) build an index over the tokenizer's vocabulary ahead of time so the "which tokens are legal here" lookup is cheap at each step instead of re-deriving it from scratch. `llguidance` (used inside Guidance and adopted as the constrained-decoding backend for several inference engines) takes a similar approach but is built for grammars that can shift dramatically mid-generation — for example a grammar with deeply recursive rules — where a naive token-mask precomputation would blow up. Both are meant to sit inside an inference server's sampling loop, not as a wrapper you call after the fact.
+
+## The tradeoffs you're accepting
+
+Constraining generation this way is not free:
+
+- **Compile time.** A complex grammar can take noticeable time to compile into its state representation the first time; well-built libraries cache this so it's paid once per grammar, not once per request.
+- **It constrains syntax, not semantics.** A grammar guarantees the SQL parses — it does not guarantee the SQL references a real column or the query is meaningful. Grammar constraint is a syntax guarantee layered under whatever [validation and repair](/learn/structured-outputs/validation-and-auto-repair) you still need for semantic correctness.
+- **It can fight the model's natural distribution.** Forcing tokens the model would never have picked at that position can occasionally produce technically-valid-but-worse output, especially with an aggressive grammar. This is one reason [thinking then structuring](/learn/structured-outputs/thinking-then-structuring) — letting the model reason in free text before the constrained segment begins — often outperforms constraining the entire response from token one.
+
+Grammar constraint is the same mechanism underneath [constrained decoding for JSON](/learn/structured-outputs/constrained-decoding-under-the-hood) — you're just pointing it at a bigger, more expressive rulebook.
+
+**Related:** [Constrained Decoding: How Guaranteed-Valid Output Actually Works](/learn/structured-outputs/constrained-decoding-under-the-hood), [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Thinking Then Structuring: Reasoning in Prose Before Emitting the Schema](/learn/structured-outputs/thinking-then-structuring)

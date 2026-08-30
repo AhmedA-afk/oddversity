@@ -1,0 +1,31 @@
+---
+title: "Computer-Use Agents: Letting a Model Operate a GUI"
+track: "agentic-ai"
+status: live
+summary: "How screenshot-driven, coordinate-clicking agents work, and why you'd reach for one only when there's no API."
+duration: "6 min read"
+---
+
+Most agents call tools through structured APIs. A computer-use agent skips that layer entirely: it looks at a screenshot, decides where to click or type, and drives a real mouse and keyboard, one action at a time.
+
+## How the loop actually works
+
+The agent doesn't see HTML or a DOM tree. It sees pixels. Each turn: take a screenshot, send it to the model along with the task and history, get back an action like "click at (412, 803)" or "type 'quarterly report'," execute that action, take a new screenshot, repeat. This is the same sense-think-act loop from [The Agent Loop](/learn/agentic-ai/the-agent-loop), but the "sense" step is a raster image instead of structured tool output, and the "act" step is a synthetic OS-level input event instead of a function call.
+
+The hard part is grounding: mapping a phrase like "the Submit button" to an actual pixel coordinate. Early versions of this were unreliable — models could describe what to click far better than they could locate it. Vision-language models trained specifically on screenshots with UI-element annotations closed much of that gap, but coordinate prediction is still the weakest link in the loop. A model that reasons perfectly about *what* to do can still miss the button by twenty pixels and click the wrong thing.
+
+Because every step is a full screenshot round-trip, computer-use agents are slow and token-hungry compared to API-based tool calls — see [Cost-Aware Agents](/learn/agentic-ai/cost-aware-agent-loops) for why that matters once a task runs for dozens of turns.
+
+## Where it beats API tool calls
+
+Computer use exists for one reason: **no API**. Plenty of real software — legacy enterprise tools, one-off internal dashboards, desktop apps, anything behind a login wall with no public endpoint — was never built to be called programmatically. If a human's only way in is a mouse and a screen, a computer-use agent can go where an API-based agent can't. It's also the fallback when an API technically exists but is undocumented, rate-limited into uselessness, or missing the one action you actually need.
+
+It's also useful for testing: driving your own product's UI the way a user would, rather than the way your test harness would, catches bugs an API-level test never sees.
+
+## Where it loses
+
+Whenever a real API exists, take it. Compare the two: a [tool call](/learn/tools-function-calling/what-is-tool-calling) to `create_invoice(customer_id, amount)` is one structured, validated, cheap request. The same action through computer use is a dozen screenshot round-trips — open the app, find the menu, click New, find the customer field, type, find the amount field, type, find Save, click, confirm — each one a chance to misclick, hit a modal it didn't expect, or get a stale screenshot mid-render. It's also fragile to UI change: a redesigned button layout breaks a coordinate-based agent in a way that never touches a well-versioned API contract.
+
+The practical rule: reach for computer use only when the interface truly has no programmatic door in, and expect to pay for it in latency, cost, and reliability compared to [tool use](/learn/agentic-ai/tool-use-basics).
+
+**Related:** [Giving Agents Tools](/learn/agentic-ai/tool-use-basics), [Computer-Use and Browser-Control Tools](/learn/tools-function-calling/computer-use-and-browser-tools), [Cost-Aware Agents: Budgeting Tokens Across a Long-Running Loop](/learn/agentic-ai/cost-aware-agent-loops)

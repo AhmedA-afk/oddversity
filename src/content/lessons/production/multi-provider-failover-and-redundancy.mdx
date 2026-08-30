@@ -1,0 +1,51 @@
+---
+title: "Fail Over Automatically When a Model Provider Goes Down"
+track: "production"
+status: live
+summary: "Detect a provider outage or degradation and reroute traffic to a backup model before anyone has to page a human."
+duration: "6 min read"
+---
+
+Every model provider has bad days: a regional outage, a silent latency spike, a model that starts timing out at 20% of requests instead of 0.1%. If your app only knows how to talk to one provider, their bad day becomes your incident. Failover means your app notices the problem and routes around it automatically.
+
+## What "down" actually means
+
+Providers rarely go fully dark. More often you see partial degradation: elevated 500s, requests that hang past your timeout, or a model that starts returning malformed output under load. A failover system needs more than an up/down check — it needs a health signal built from the same requests your users are already making.
+
+Track, per provider and per model, a rolling window of:
+
+- error rate (5xx, timeouts, rate-limit rejections)
+- p50/p95 latency
+- a small sample of output validity (did the JSON parse, did the tool call resolve)
+
+Trip a "degraded" state when error rate or latency crosses a threshold for a sustained window — not on a single failed request. One timeout is noise; 15% of requests timing out over two minutes is a signal. This is the same rolling-window thinking behind [latency and cost SLOs](/learn/production/latency-and-cost-slos): failover is what you do when the SLO you set gets breached.
+
+## Where failover lives: the gateway
+
+You cannot bolt failover onto call sites scattered across your codebase — every feature would need its own retry-and-swap logic, and they'd drift out of sync. It belongs in the layer between your app and the providers: an [LLM gateway](/learn/production/llm-gateway-and-provider-abstraction) or a [provider abstraction layer](/learn/genai-app-dev/provider-abstraction-layers).
+
+The gateway holds a routing table — primary provider, one or more fallbacks, and the health state above — and makes the failover decision on every request:
+
+```
+route(request):
+  for provider in [primary, fallback_1, fallback_2]:
+    if provider.health != "down":
+      try:
+        return provider.call(request, timeout=budget)
+      except (Timeout, RateLimited, ServerError):
+        mark_unhealthy(provider)
+        continue
+  raise AllProvidersExhausted
+```
+
+The retry loop only helps if it's bounded. Give the whole failover chain one latency budget, not one budget per hop — a user waiting for the primary to time out, then the first fallback to time out, then the second to succeed, is not a working feature.
+
+## The part people skip: prompts don't port for free
+
+Swapping providers mid-incident silently breaks things if your prompt was tuned for one model's quirks — a system prompt that leans on a specific model's formatting habits, a JSON-mode call that behaves differently across vendors, a tool schema one model interprets more strictly than another. Before you wire up a fallback, verify the same prompt and schema actually produce acceptable output on it — see [prompt portability across models](/learn/prompt-engineering/prompt-portability-across-models). Test this in normal operation, not for the first time during an outage.
+
+## Fail open, not silent
+
+A failover that swaps models without telling anyone is a trap: costs shift, quality shifts, and nobody notices until a user complains. Emit a structured event every time a request fails over — which provider, which model it landed on, why. Feed that into the same dashboards and alerts as [your on-call playbook](/learn/production/on-call-playbooks-for-ai), and keep a [kill switch](/learn/production/feature-flags-and-kill-switches) that can force traffic onto a known-good provider if the automated routing itself misbehaves. Automatic recovery should mean nobody gets paged at 3am — not that nobody ever finds out an outage happened.
+
+**Related:** [Put an LLM Gateway in Front of Every Provider](/learn/production/llm-gateway-and-provider-abstraction), [Model Routing and Multi-Provider Failover](/learn/genai-app-dev/model-routing-and-failover), [Write an On-Call Playbook for AI Failures](/learn/production/on-call-playbooks-for-ai)

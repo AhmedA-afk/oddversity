@@ -1,0 +1,178 @@
+---
+import Layout from '../../components/Layout.astro';
+import { getCollection } from 'astro:content';
+import { tracks } from '../../data/curriculum.ts';
+import { quickGuides } from '../../data/quick-guides';
+import { ogImage } from '../../data/og-images';
+
+// The reference surface is derived from the curriculum, not authored twice.
+// Pages fall into families by their slug suffix — cheatsheets, comparisons,
+// worked examples and debugging clinics — and this hub is the second way in.
+const lessons = await getCollection('lessons');
+const trackName = new Map(tracks.map((t) => [t.id, t.name]));
+
+type Row = { title: string; url: string; track: string; summary: string };
+const family = (suffix: string): Row[] =>
+  lessons
+    .filter((l) => l.id.endsWith(suffix))
+    .map((l) => {
+      const [track, ...rest] = l.id.split('/');
+      return {
+        title: l.data.title,
+        url: `/learn/${track}/${rest.join('/')}`,
+        track: trackName.get(track) ?? track,
+        summary: l.data.summary ?? '',
+      };
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
+
+const families = [
+  {
+    id: 'cheatsheets',
+    name: 'Cheatsheets',
+    blurb: 'Dense, no-prose pages of the numbers and snippets you type in — starting points, not targets.',
+    rows: family('-cheatsheet'),
+  },
+  {
+    id: 'comparisons',
+    name: 'Comparisons',
+    blurb: 'Every named approach for one job, side by side, ending in a decision rule.',
+    rows: [...family('-compared'), ...family('-methods-compared')].filter(
+      (row, i, all) => all.findIndex((r) => r.url === row.url) === i,
+    ),
+  },
+  {
+    id: 'worked-examples',
+    name: 'Worked examples',
+    blurb: 'One concrete input pushed all the way to one concrete output, with the reasoning shown at each step.',
+    rows: family('-worked-example'),
+  },
+  {
+    id: 'debugging',
+    name: 'Common mistakes',
+    blurb: 'The plausible-but-wrong mental model, why it breaks, and how to spot it in a live system.',
+    rows: family('-common-mistakes'),
+  },
+  {
+    id: 'self-check',
+    name: 'Check yourself',
+    blurb: 'Scenario questions with per-answer explanations — the misconception, not just the score.',
+    rows: family('-quiz'),
+  },
+];
+
+const guides = tracks
+  .filter((t) => quickGuides[t.id])
+  .map((t) => ({ track: t, guide: quickGuides[t.id] }));
+
+const total = families.reduce((n, f) => n + f.rows.length, 0) + guides.length;
+const itemList = families.flatMap((f) => f.rows.map((r) => ({ name: r.title, url: r.url })));
+---
+<Layout
+  title="Reference & cheatsheets"
+  description={`${total} reference pages pulled out of the Oddversity curriculum — quick guides, cheatsheets, side-by-side comparisons, worked examples, debugging clinics and self-checks. Plus a glossary of AI engineering terms.`}
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Reference', url: '/reference' }]}
+  itemList={[...guides.map(({ track }) => ({ name: `${track.name} quick guide`, url: `/learn/${track.id}/quick-guide` })), ...itemList]}
+  image={ogImage('page-reference')}
+  imageAlt="Oddversity reference"
+>
+  <section class="head container">
+    <span class="eyebrow">Reference</span>
+    <h1>The pages you come back to.</h1>
+    <p class="sub">
+      Not everything in the curriculum is meant to be read once and finished. These are the
+      pages built for looking things up mid-build — pulled out of their tracks and grouped by
+      what they're for.
+    </p>
+    <a href="/reference/glossary" class="gloss">
+      <span class="eyebrow">Also here</span>
+      <strong>Glossary — the vocabulary, defined plainly</strong>
+      <span class="gmore mono">Open the glossary →</span>
+    </a>
+  </section>
+
+  <div class="container">
+    {guides.length > 0 && (
+      <section class="fam" id="quick-guides">
+        <div class="fam-head">
+          <div>
+            <h2>Quick guides</h2>
+            <p>A whole track condensed to one page — what each module establishes, the three lessons that carry the most weight, and what the track deliberately leaves out.</p>
+          </div>
+          <span class="mono count">{guides.length}</span>
+        </div>
+        <ul class="rows">
+          {guides.map(({ track, guide }) => (
+            <li>
+              <a href={`/learn/${track.id}/quick-guide`}>
+                <span class="rtitle">{track.name} in {guide.minutes} minutes</span>
+                <span class="rtrack mono">{track.group}</span>
+              </a>
+              <p>{guide.opening}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+    {families.map((f) => f.rows.length > 0 && (
+      <section class="fam" id={f.id}>
+        <div class="fam-head">
+          <div>
+            <h2>{f.name}</h2>
+            <p>{f.blurb}</p>
+          </div>
+          <span class="mono count">{f.rows.length}</span>
+        </div>
+        <ul class="rows">
+          {f.rows.map((r) => (
+            <li>
+              <a href={r.url}>
+                <span class="rtitle">{r.title}</span>
+                <span class="rtrack mono">{r.track}</span>
+              </a>
+              {r.summary && <p>{r.summary}</p>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+
+  <section class="container note">
+    <p>
+      These families grow as the curriculum does. Right now they're deepest in RAG, where the
+      full set was built out first — every other track has its concept lessons and is getting
+      the same treatment. <a href="/learn">Browse the curriculum</a> for the complete picture.
+    </p>
+  </section>
+</Layout>
+
+<style>
+  .head { padding-block: 56px 12px; }
+  .head h1 { font-size: clamp(32px, 5vw, 46px); letter-spacing: -.022em; margin-top: 14px; }
+  .sub { margin-top: 18px; color: var(--muted); max-width: 62ch; font-size: 15.5px; line-height: 1.7; }
+  .gloss { display: block; margin-top: 28px; max-width: 460px; padding: 16px 18px; border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--paper); }
+  .gloss:hover { text-decoration: none; background: var(--bg); }
+  .gloss strong { display: block; margin-top: 7px; font: 600 15.5px/1.35 'Source Serif 4', 'Source Serif 4 Fallback', Georgia, serif; color: var(--text); }
+  .gmore { display: block; margin-top: 8px; font-size: 11.5px; color: var(--accent); }
+
+  .fam { padding-top: 52px; }
+  .fam-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+  .fam-head h2 { font-size: 22px; letter-spacing: -.016em; }
+  .fam-head p { margin-top: 7px; color: var(--muted); font-size: 13.5px; line-height: 1.6; max-width: 62ch; }
+  .count { flex: none; font-size: 11px; color: var(--muted); }
+
+  .rows { list-style: none; padding: 0; margin: 0; }
+  .rows li { padding: 14px 4px; border-bottom: 1px solid var(--rule); }
+  .rows li:hover { background: var(--paper); }
+  .rows a { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+  .rows a:hover { text-decoration: none; }
+  .rtitle { font: 500 15px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  .rows a:hover .rtitle { color: var(--accent); }
+  .rtrack { flex: none; font-size: 11px; color: var(--muted); }
+  .rows p { margin-top: 5px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 78ch; }
+
+  .note { padding-top: 56px; }
+  .note p { color: var(--muted); font-size: 14px; line-height: 1.7; max-width: 66ch; }
+  @media (max-width: 620px) { .rows a { flex-direction: column; gap: 4px; } }
+</style>

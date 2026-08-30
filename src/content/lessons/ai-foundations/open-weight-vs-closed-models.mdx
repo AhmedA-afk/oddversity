@@ -1,0 +1,36 @@
+---
+title: "Open-Weight vs. Closed Models"
+track: "ai-foundations"
+status: live
+summary: "What 'open source AI' really means in 2026, from downloadable weights to API-only access, and why the label is mostly marketing."
+duration: "5 min read"
+---
+
+"Open source AI" is one of the most misused phrases in the field. Almost none of the models people call open source meet the actual open-source definition, so it helps to think in terms of a spectrum instead of a binary.
+
+## The spectrum, not a binary
+
+At one end sit fully closed models: you get an API endpoint and nothing else. Anthropic's Claude models and OpenAI's GPT models work this way — you send a request, a response comes back, and the weights, training data, and training code stay private. This is how most frontier labs operate, because those weights represent the bulk of the cost and competitive advantage.
+
+At the other end are genuinely open-weight models: labs like Meta (Llama), Mistral, Alibaba (Qwen), and DeepSeek publish the actual model weights for anyone to download, run locally, fine-tune, and inspect. You still usually don't get the training data or the full training code, which is why "open-weight" is the more accurate term than "open source" — under the formal open-source definition, you'd need the training data and build recipe too, not just the finished artifact.
+
+In between, there's a lot of nuance: some models are open-weight but license-restricted (no commercial use above a user threshold, no use for training competing models), some are open-weight with a permissive license (Apache 2.0, MIT), and some are "open" in name but ship with usage policies that functionally lock out certain applications.
+
+## Why the distinction matters practically
+
+Access to weights changes what you can actually do:
+
+- **Local and offline deployment.** Open-weight models can run on your own hardware or in your own VPC — no data ever leaves your infrastructure. Closed models require sending data to someone else's servers, which is a dealbreaker for some regulated or sensitive workloads.
+- **Fine-tuning depth.** With closed models you're limited to whatever fine-tuning API the provider exposes (often just supervised fine-tuning on top of the base). With open weights, you can do full fine-tuning, LoRA, quantization, pruning, or merge adapters — see [Full Fine-Tuning vs Parameter-Efficient Fine-Tuning](/learn/fine-tuning/full-fine-tuning-vs-peft) for what that unlocks.
+- **Cost structure.** Closed models bill per token, which scales with usage. Open-weight models shift cost to compute you provision yourself — cheaper at high, steady volume; often more expensive at low or bursty volume once you account for idle GPU time.
+- **Inspectability.** You can't audit what you can't see. Interpretability research on closed models is limited to what the lab publishes; open weights let outside researchers probe internals directly (see [Interpretability: Peering Inside the Black Box](/learn/ai-foundations/interpretability-black-box-problem)).
+
+## What "open" doesn't guarantee
+
+Open weights don't mean you know what the model was trained on — most labs, open or closed, disclose little about training data composition (see [The Data the Model Learned From](/learn/ai-foundations/the-data-the-model-learned-from)). Open weights also don't automatically mean better performance or lower risk: a downloaded model can still hallucinate, still reflect biases baked in during training, and still be repurposed by anyone for anything the license doesn't explicitly forbid — there's no API-side content filtering standing between the model and the user once it's running on their own machine.
+
+## Choosing between them
+
+The practical question isn't "which is more open" but "what does this project actually need." Data residency, fine-tuning depth, and cost-at-scale push toward open-weight. Frontier capability, zero infrastructure burden, and fast iteration push toward closed. Most production systems end up mixing both — see [Choosing a Model](/learn/ai-foundations/choosing-a-model) for how to weigh that decision concretely.
+
+**Related:** [Choosing a Model](/learn/ai-foundations/choosing-a-model), [Foundation Models, Explained](/learn/ai-foundations/foundation-models-explained), [The Data the Model Learned From](/learn/ai-foundations/the-data-the-model-learned-from)

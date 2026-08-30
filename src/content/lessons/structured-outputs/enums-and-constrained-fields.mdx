@@ -1,0 +1,48 @@
+---
+title: "Enums: Locking a Field to a Fixed Set of Values"
+track: "structured-outputs"
+status: live
+summary: "Restricting a field to a fixed set of values so the model can't drift into free text."
+duration: "4 min read"
+---
+
+A JSON Schema type gets you well-formed output. An enum gets you *correct* output — one of a known, finite set of values instead of whatever string the model felt like generating.
+
+## The problem enums solve
+
+Say you're extracting a support ticket's priority. Without constraints, the model might return "high", "High priority", "urgent", or "P1" depending on the prompt, the temperature, or just mood. Every one of those is valid JSON. None of them is safe to switch on in your code. You'd need a normalization layer just to undo the model's creativity.
+
+An enum removes the creativity where you don't want it:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "urgent"]
+    }
+  },
+  "required": ["priority"]
+}
+```
+
+Now "priority" can only ever be one of those four strings. There's no synonym to catch, no casing to normalize, no fifth value to defend against.
+
+## Where enums belong
+
+Reach for an enum whenever a field has a closed set of valid values: status codes, categories, sentiment labels, difficulty tiers, currency codes, yes/no/unknown flags. If you could write the value list on a whiteboard and it wouldn't change next week, it's an enum candidate.
+
+Don't use an enum for anything open-ended — a person's name, a summary, a free-text reason. Forcing those into a fixed set either truncates real information or forces the model to pick the "closest" wrong value, which is worse than free text because it looks authoritative.
+
+A related judgment call: when the closed set is genuinely unstable (new product categories added monthly, say), an enum becomes a maintenance burden. In that case a plain string field with strong prompt guidance, or a lookup validated after the fact, is often the better trade.
+
+## Enums and constrained decoding
+
+With APIs that support real [constrained decoding](/learn/structured-outputs/constrained-decoding-under-the-hood), an enum is enforced at the token level — the model is literally prevented from sampling a token sequence outside your list, so "priority" cannot come back as anything but one of your four strings. Without that guarantee, enums are enforced only by validation after generation, which is why they still pair well with a [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) step: catch the rare miss and either reject or retry rather than silently accepting a value your code doesn't recognize.
+
+## A design tip: give the model an escape hatch
+
+If there's any chance the input doesn't cleanly fit your categories, add an explicit `"unknown"` or `"other"` value to the enum. Without one, a model facing an ambiguous case will often force-fit it into the nearest listed value rather than admit uncertainty — and a wrong-but-confident label is harder to catch downstream than an honest "unknown" you can route to a human.
+
+**Related:** [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Schema Design Choices That Reduce Model Errors](/learn/structured-outputs/schema-design-for-reliability), [Constrained Decoding: How Guaranteed-Valid Output Actually Works](/learn/structured-outputs/constrained-decoding-under-the-hood)

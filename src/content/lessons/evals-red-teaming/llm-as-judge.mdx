@@ -1,0 +1,37 @@
+---
+title: "LLM-as-Judge: Grading Outputs with a Model"
+track: "evals-red-teaming"
+status: live
+summary: "Using a model to score outputs against a rubric at scale, and the biases that make judge scores untrustworthy by default."
+duration: "6 min read"
+---
+
+Once you have more than a handful of eval examples, a human can't read every output every time you change a prompt. LLM-as-judge fixes that by having a second model — often a stronger one — read the output and grade it against a rubric, turning a subjective "does this look right" into a repeatable score.
+
+## How it actually works
+
+You give the judge model three things: the original input, the output to grade, and a rubric describing what a good answer looks like. The judge returns a verdict — a pass/fail, a 1-5 score, or a structured breakdown across a few criteria (correctness, tone, format). The rubric is the whole game here: a vague prompt like "rate this response's quality" produces noisy, inconsistent scores, while a rubric that spells out exactly what to check ("does the answer cite a source for every factual claim? does it stay under 200 words?") produces something closer to a real metric. Treat the judge prompt with the same care as [prompt templates](/learn/prompt-engineering/prompt-templates-and-variables) you'd ship to users — it needs versioning and testing too.
+
+Pairwise comparison is the other common shape: instead of scoring one output in isolation, you show the judge two candidate outputs (old prompt vs. new prompt, model A vs. model B) and ask which is better. Pairwise judgments are generally more reliable than absolute scores, because "which of these two is better" is an easier question than "is this a 7 or an 8."
+
+## The biases you're signing up for
+
+A judge model isn't a neutral referee — it carries systematic biases that will quietly corrupt your scores if you don't account for them.
+
+**Self-preference bias**: a model tends to rate outputs written in its own style more favorably, even when quality is equal. If you use the same model family as both generator and judge, you can end up grading your own homework.
+
+**Position bias**: in pairwise comparisons, judges often favor whichever answer appears first (or second) in the prompt, regardless of content. The fix is mechanical — run each comparison twice with the order swapped and check for agreement, or randomize order across your eval set.
+
+**Verbosity bias**: longer, more detailed-sounding answers tend to score higher even when they aren't more correct. If your rubric doesn't explicitly penalize padding, you'll optimize your system toward writing more, not writing better.
+
+**Format bias**: judges reward answers that look confident and well-structured — bullet points, headers, hedged caveats — independent of whether the content is right.
+
+None of these mean LLM-as-judge is useless; they mean the judge itself needs to be evaluated, not trusted on day one.
+
+## Calibrating a judge before you rely on it
+
+Before you let a judge grade your production evals, check it against ground truth. Take a batch of examples from your [golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) that a human has already labeled, run the judge over them, and measure agreement — where the judge and the human disagree, read the transcripts and figure out whether the rubric is ambiguous or the judge is systematically wrong in one direction. A judge that agrees with human raters roughly as often as two human raters agree with each other is doing its job.
+
+Keep a thin slice of [human evaluation](/learn/evals-red-teaming/human-evaluation-and-annotation) running permanently, even after the judge is calibrated — it's your early warning system for judge drift when you swap models or rubrics change.
+
+**Related:** [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics), [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset), [Designing a Human Review Workflow](/learn/evals-red-teaming/human-evaluation-and-annotation)

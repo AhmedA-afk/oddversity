@@ -1,0 +1,54 @@
+---
+title: "AI agents interview questions"
+topic: "Agents"
+description: "Eight questions about agent loops, tool use, control, and deciding when an agent is the wrong abstraction."
+order: 4
+---
+
+## 1. What is an AI agent?
+
+An AI agent is a system in which a model helps choose actions toward a goal, observes results, and continues through a bounded control loop. The surrounding software supplies state, tools, permissions, and stopping conditions.
+
+A chat response is not automatically an agent. The [agent loop](/learn/agentic-ai/the-agent-loop) and [what is an agent](/learn/agentic-ai/what-is-an-agent) lessons separate the model from the harness around it.
+
+## 2. How is an agent different from a workflow?
+
+A workflow has mostly predetermined steps and transitions. An agent chooses among actions or decides what information to seek at runtime. Many good products combine both: deterministic guardrails around a small amount of model-driven choice.
+
+Choose the least flexible design that meets the need. Predictability, testing, and approvals are easier when the path is explicit.
+
+## 3. What makes a good tool definition?
+
+A good tool has a narrow purpose, explicit inputs and outputs, useful descriptions, clear failure behavior, and a name that matches how a user would describe the action. Its permissions should be smaller than the model's overall capability.
+
+Validate arguments and results outside the model. Oddversity's [tool schema lesson](/learn/tools-function-calling/designing-a-tool-schema) covers the interface details.
+
+## 4. How should an agent stop?
+
+Give it explicit stop conditions: a successful result, an approved final action, a maximum number of turns, a token or cost budget, a timeout, and a repeated-error limit. Return a typed status so callers can distinguish success, refusal, timeout, and partial completion.
+
+An agent that can always keep trying is an incident waiting to happen. Make the budget visible in logs and tests.
+
+## 5. What is human-in-the-loop control?
+
+Human-in-the-loop means a person reviews or approves a defined decision before the system crosses a risk boundary. Ask for review based on the action and its consequences, not merely because a model was involved.
+
+Good approval requests show the proposed action, inputs, expected effect, and an easy way to reject or edit it. The [permission and approval lesson](/learn/harness-design/permission-and-approval-systems) explores the pattern.
+
+## 6. How do you secure an agent with tools?
+
+Use least-privilege credentials, per-tool authorization, input validation, output validation, isolation for risky work, audit logs, rate limits, and approval for irreversible actions. Treat tool results and retrieved content as untrusted input.
+
+Also test indirect prompt injection and confused-deputy paths. OWASP lists excessive agency and prompt injection as distinct risks in its [LLM application guidance](https://owasp.org/www-project-top-10-for-large-language-model-applications/).
+
+## 7. When should you not use an agent?
+
+Do not use one when a deterministic function, query, or short workflow solves the problem with less latency and fewer failure modes. Avoid open-ended autonomy when the action is high impact and the decision can be expressed as a rule.
+
+Use an agent when the task has meaningful uncertainty, changing steps, or natural-language tool selection, and when you can bound and evaluate that uncertainty. See [when not to use an agent](/learn/agentic-ai/when-not-to-use-an-agent).
+
+## 8. How do you debug an agent failure?
+
+Capture a trace of model inputs, selected tools, validated arguments, tool outputs, state transitions, retries, approvals, and final status. Reproduce with the same model and tool versions, then classify the failure as planning, retrieval, tool, permission, state, or synthesis related.
+
+Avoid logging secrets or raw sensitive content by default. A useful trace is structured, redacted, and tied to a test case that can prevent regression.

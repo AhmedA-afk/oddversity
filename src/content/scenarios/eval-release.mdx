@@ -1,0 +1,29 @@
+---
+title: "A release that improves quality but raises cost"
+scenario: "Eval-driven release"
+description: "Decide whether to ship a model and prompt change when quality, latency, and cost move in different directions."
+order: 5
+---
+
+## The situation
+
+The new configuration improves answer quality on a small demo set. It also increases context length and doubles the tail latency. The product team wants to ship before a large customer pilot.
+
+## The first decision
+
+Do not approve from the demo score. Freeze a representative evaluation set and compare the old and new configurations across quality, groundedness, failure severity, latency, retries, and cost. The pilot should be a canary with a rollback path.
+
+## Guided reasoning
+
+1. Lock model, prompt, retrieval, tool, and post-processing versions.
+2. Add long, ambiguous, empty, and adversarial inputs to the evaluation set.
+3. Inspect the worst regressions, not only the average score.
+4. Set an explicit cost and latency budget for the pilot.
+5. Sample production traces and ask reviewers to label failures.
+6. Promote only if the improvement clears the task's threshold without a safety or reliability regression.
+
+An eval should change a release decision. See [building a golden dataset](/learn/evals-red-teaming/building-a-golden-dataset) and [why evals matter](/learn/evals-red-teaming/why-evals-matter).
+
+## What to test first
+
+Test a prompt-injection attempt, a missing citation, a slow provider response, an output validation retry, a high-token request, and a failure that would trigger a customer-visible escalation.

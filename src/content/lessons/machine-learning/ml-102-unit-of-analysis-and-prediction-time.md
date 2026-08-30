@@ -1,0 +1,61 @@
+---
+title: "Unit of analysis and prediction time"
+track: "machine-learning"
+order: 102
+status: live
+summary: "Define one row, one decision, and one lawful prediction timestamp so evaluation matches deployment."
+duration: "22 min read"
+updated: "2026-08-30"
+---
+
+## The short answer
+
+Every row must represent one repeatable decision unit—an account, encounter, transaction, image, or account-day—and every feature must be known at the prediction timestamp `t0`. Define the target over a future horizon `(t0, t0 + h]`. This prevents duplicated evidence, vague labels, and time leakage.
+
+## Why this matters
+
+“Predict readmission” is not a dataset until you say whether a row is a patient, admission, or discharge; when the prediction is made; and how long the outcome window is. Those choices change the model’s user, available signals, and apparent accuracy.
+
+## How it works
+
+Create a data contract:
+
+```text
+unit: customer-week
+t0: Monday 00:00 UTC
+features: events with event_time <= t0
+target: cancellation during the next 28 days
+action: offer retention help on Tuesday
+```
+
+Use event time, not ingestion time, whenever possible. If an entity has many rows, decide whether to aggregate history, model sequences, or use a grouped split. Define a prediction identifier `(entity_id, t0)` so every scored example is traceable.
+
+## Worked examples and variations
+
+1. Credit risk: one row per application at submission; a later underwriting note is unavailable at `t0`.
+2. Maintenance: one row per machine-shift; target is failure in the next shift, not “has ever failed.”
+3. Retail demand: one row per product-store-day; stockout days need a separate treatment because observed sales are censored demand.
+4. Boundary case: an image classifier has a single immutable image per row, so `t0` is trivial; label availability can still lag.
+5. Counterexample: one row per customer with “last 90-day purchases” computed after the target window; aggregation hides future data.
+
+## Two ways to see it
+
+Database thinking treats the unit as a primary key plus a snapshot query. Decision thinking treats it as the moment a person or system must act. A robust design satisfies both descriptions.
+
+## Hands-on
+
+For a candidate task, write three rival units and explain the decision each supports. Intentionally aggregate data through the label date and train a quick baseline. Reset the query to `event_time <= t0`; record how the metric changes and why.
+
+## Checkpoint
+
+- Can two people rebuild the same row from its identifier and `t0`?
+- Is each feature available before the prediction?
+- Does the target occur strictly after `t0`?
+
+## What this does not solve
+
+Correct timing does not ensure the target is meaningful, unbiased, or actionable. It only makes the prediction problem temporally honest.
+
+## Continue, go deeper, apply it
+
+Pair this contract with a target-definition review and dependency-aware data split before fitting any model.

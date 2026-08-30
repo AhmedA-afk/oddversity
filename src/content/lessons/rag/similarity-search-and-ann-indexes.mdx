@@ -1,0 +1,35 @@
+---
+title: "Similarity Search and ANN Indexes"
+track: "rag"
+status: live
+summary: "Skip exact nearest-neighbor search and use HNSW or IVF to find relevant vectors fast at scale."
+duration: "6 min read"
+---
+
+Once you have embeddings, retrieval means finding the vectors closest to your query vector. Doing that exactly gets slow fast — the fix is approximate nearest neighbor (ANN) search.
+
+## Why exact search doesn't scale
+
+The naive approach is brute force: compare your query vector against every stored vector with [cosine similarity](/learn/maths-foundations/cosine-similarity), sort, and take the top results. This is exact and works fine at a few thousand vectors. But it's a linear scan — at ten million vectors, every single query touches all ten million, and latency climbs in lockstep with your corpus size. A chatbot answering in milliseconds can't afford that.
+
+ANN indexes trade a small amount of accuracy for a large amount of speed. Instead of guaranteeing the true nearest neighbors, they return vectors that are *almost certainly* among the nearest, in a fraction of the time. Recall drops slightly, latency drops dramatically, and in practice the gap is small enough that most applications never notice.
+
+## HNSW: navigating a graph of vectors
+
+Hierarchical Navigable Small World (HNSW) is the most widely used ANN algorithm and the default in most vector databases. It builds a multi-layer graph where each vector is a node connected to its nearby neighbors. The top layer is sparse with long-range links; lower layers get progressively denser.
+
+A search starts at the top layer, greedily hops toward the query vector, then drops down a layer and repeats with finer precision — like using a highway system to get across town, then local streets to reach the exact address. This gives HNSW excellent recall and low latency, at the cost of higher memory use (the graph itself takes space) and slower index builds when you're inserting vectors one at a time.
+
+## IVF: partition first, search less
+
+Inverted File Index (IVF) takes a different approach: cluster the vector space into a fixed number of partitions (using something like k-means) ahead of time. Each stored vector is assigned to its nearest cluster centroid. At query time, you find the closest few centroids to your query vector and only search inside those clusters — ignoring the rest of the dataset entirely.
+
+IVF uses less memory than HNSW and builds faster, but recall depends heavily on how many clusters you probe (`nprobe`) — search too few and you miss relevant vectors near a cluster boundary. IVF is often paired with product quantization (IVF-PQ) to compress vectors and shrink the index further, trading some precision for a much smaller memory footprint.
+
+## Choosing between them
+
+For most applications starting out, this choice is made for you by whichever [vector database](/learn/rag/choosing-a-vector-database) you pick — HNSW is the default in Pinecone, Weaviate, and pgvector's default index. Reach for IVF-style indexes when memory is the binding constraint, not query latency: massive corpora on constrained hardware, or when the small recall trade-off is genuinely acceptable for the use case.
+
+Either way, an ANN index only finds vectors that are geometrically close — it says nothing about whether a document is actually relevant to a specific field. That's what [metadata filtering](/learn/rag/metadata-filtering-in-retrieval) and [reranking](/learn/rag/reranking-retrieved-results) are for.
+
+**Related:** [Embeddings and Semantic Similarity](/learn/rag/embeddings-and-semantic-similarity), [Choosing a Vector Database](/learn/rag/choosing-a-vector-database), [Cosine Similarity: Measuring How Alike Two Things Are](/learn/maths-foundations/cosine-similarity)

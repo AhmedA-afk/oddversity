@@ -1,0 +1,49 @@
+---
+title: "SSE vs. WebSockets for Streaming LLM Output"
+track: "genai-app-dev"
+status: live
+summary: "Why almost every LLM product streams tokens over SSE, and the narrow cases where WebSockets actually earn their complexity."
+duration: "6 min read"
+---
+
+Every major provider's streaming API sends tokens over Server-Sent Events, not WebSockets. That's not an accident — it's a direct match between what token streaming needs and what SSE was built for.
+
+## Why direction matters more than "real-time"
+
+Strip away the buzzwords and an LLM response stream is one thing: a server pushing a one-way sequence of chunks to a client that already knows what it asked for. The client sent one request; the server replies with many small messages over time, then closes. That's SSE's entire design brief — it runs over plain HTTP, using a `text/event-stream` response the browser keeps open and parses incrementally.
+
+WebSockets solve a different problem: a persistent, bidirectional, low-latency channel where either side can send at any time — think multiplayer game state or a collaborative cursor. For "generate tokens until done," you're paying for negotiation and infrastructure you never use.
+
+A minimal SSE handler looks like this:
+
+```text
+POST /api/chat
+Response headers:
+  Content-Type: text/event-stream
+  Cache-Control: no-cache
+  Connection: keep-alive
+
+data: {"delta":"Once"}
+
+data: {"delta":" upon"}
+
+data: {"delta":" a time"}
+
+data: [DONE]
+```
+
+The client opens an `EventSource` (or, more commonly now, reads a `fetch` response body as a stream so it can also send a POST body, which native `EventSource` can't do), appends each `delta` to the UI, and closes on `[DONE]`. No handshake upgrade, no custom framing — it rides ordinary HTTP semantics that load balancers, CDNs, and browser devtools already understand.
+
+## What SSE gives up, and why it rarely matters
+
+SSE is one-way and text-only. You can't push binary frames, and the client can't send anything back on the same connection — a mid-stream "stop generating" click goes out as a separate `fetch` call (or an `AbortController` on the original request) rather than a message on the open channel. For chat UIs this is a non-issue: you don't need the model to receive live input while it's generating.
+
+SSE also reconnects less gracefully out of the box. Native `EventSource` auto-retries with a `Last-Event-ID`, but most LLM streaming code hand-rolls the fetch-stream approach for POST support, which means you own reconnection and resumption yourself — see [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui) for the client-side pattern.
+
+## When WebSockets actually win
+
+Reach for WebSockets when the model needs to *receive* a continuous stream while responding — live voice input with interruption ("barge-in"), a multiplayer session where several users' events feed into one generation, or a tool that pushes intermediate state (say, a running agent emitting both tokens and tool-call progress on the same socket where the client can also cancel individual steps). Realtime voice APIs use WebSockets for exactly this reason: audio in and audio/text out need to interleave on one connection.
+
+If your infrastructure already runs WebSockets for presence or collaboration, layering token streams onto the same socket can be a reasonable trade — you inherit the operational cost either way. Otherwise, default to SSE: it's simpler to deploy, proxies and CDNs handle it natively, and it matches the one-way shape of "ask once, receive tokens" that covers nearly every GenAI feature you'll build.
+
+**Related:** [Streaming Responses to the UI](/learn/genai-app-dev/streaming-responses-to-the-ui), [Designing Chat UX That Doesn't Feel Broken](/learn/genai-app-dev/designing-chat-ux), [Latency Budgets for LLM Features](/learn/genai-app-dev/latency-budgets-for-llm-features)

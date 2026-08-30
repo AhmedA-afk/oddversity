@@ -1,0 +1,38 @@
+---
+title: "Write an On-Call Playbook for AI Failures"
+track: "production"
+status: live
+summary: "AI outages rarely look like server crashes - write runbooks for silent quality drops, cost spikes, and stuck agent loops before you're paged."
+duration: "6 min read"
+---
+
+A normal on-call playbook assumes the pager fires because something is down. AI systems fail sideways instead: the API returns 200s while the model quietly gets worse, or a retry loop burns your monthly budget in an hour. You need a playbook built for those shapes of failure, not a copy-pasted infra runbook with "LLM" swapped in.
+
+## Alert on the failure modes that are actually yours
+
+Start from what can go wrong that a normal service monitor won't catch:
+
+- **Silent quality drop** - the provider updates a model behind an alias, or a prompt change regresses on inputs your evals didn't cover. Nothing errors; users just get worse answers. Catch this with the same signals you'd use for [SLOs on latency, cost, and quality](/learn/production/latency-and-cost-slos) - a rolling eval score or a proxy metric like refusal rate or citation rate, not just uptime.
+- **Cost spike** - a retry storm, a runaway agent loop, or a prompt that ballooned in size can 10x spend in minutes. This needs its own threshold, wired up wherever you're already doing [token and cost tracking](/learn/production/token-and-cost-tracking), separate from your latency alerts.
+- **Latency cliff on one provider or region** - upstream model latency moves independently of your own infra, so alert on it directly rather than inferring it from user complaints.
+- **Elevated tool-call or JSON-parse failures** - a schema drift or a flaky downstream tool shows up as retries and malformed output long before it shows up as a 5xx.
+
+Each of these needs a distinct threshold and a distinct page, because they call for different first responses.
+
+## Write the runbook as a decision tree, not a wiki page
+
+A useful runbook answers three questions fast: what's the blast radius, what's the immediate mitigation, and who needs to know. For each alert above, write:
+
+1. **Confirm** - the one dashboard or query that tells you this is real, not a blip (e.g., "check the eval-score panel over the last 30 minutes, not a single data point").
+2. **Contain** - the fastest safe action. Usually this is flipping a [kill switch or feature flag](/learn/production/feature-flags-and-kill-switches) to fall back to a cached response, a smaller model, or a static message - not a code deploy.
+3. **Escalate** - who owns the next step if containment doesn't resolve it (model provider status page, the prompt owner, security if it looks like [prompt injection or abuse](/learn/production/prompt-injection-monitoring)).
+
+Keep each entry short enough to execute at 3am under stress. If a step needs judgment calls that only make sense with full context, it belongs in a design doc, not the runbook.
+
+## Rehearse it before you need it
+
+A playbook nobody has run is a guess. Once a quarter, pick one failure mode and simulate it - trip the cost-spike alert with a synthetic burst, or roll back a prompt change on purpose and watch whether the quality-drop alert fires. This is the same discipline as a game day for regular infra, just aimed at failure modes specific to models: silent degradation, cost runaway, and stuck agent loops.
+
+Every incident you do run through this playbook should feed back into it. Close the loop by writing up what actually happened in a [postmortem](/learn/production/incident-postmortems-for-ai), and update the runbook's thresholds and steps before you file it away.
+
+**Related:** [Set SLOs for Latency, Cost, and Quality](/learn/production/latency-and-cost-slos), [Put a Kill Switch on Every AI Feature](/learn/production/feature-flags-and-kill-switches), [Run a Postmortem After a Model Incident](/learn/production/incident-postmortems-for-ai)

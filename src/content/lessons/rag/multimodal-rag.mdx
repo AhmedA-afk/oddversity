@@ -1,0 +1,27 @@
+---
+title: "Multimodal RAG: Retrieving Over Images and Layout"
+track: "rag"
+status: live
+summary: "Retrieve directly against charts, screenshots, and PDF pages by embedding page images instead of extracted text."
+duration: "6 min read"
+---
+
+A slide deck's real content is a chart with a legend, not the OCR'd fragments next to it. Multimodal RAG skips text extraction entirely and retrieves against what the page actually looks like.
+
+## Why text extraction loses information
+
+Standard RAG runs documents through a parser that turns pages into text, then chunks and embeds that text (see [Chunking Strategies for Documents](/learn/rag/chunking-strategies-for-documents)). For a scanned invoice or a slide with a bar chart, this throws information away before retrieval even starts: table alignment collapses into a word salad, a chart's message lives in its shape and axis labels rather than any string you can pull out, and a screenshot's meaning depends on where things sit on screen, not just what text appears near them. You can improve the parser (see [Parsing PDFs, Tables, and Scanned Documents for RAG](/learn/rag/parsing-documents-for-rag)), but for genuinely visual documents, no amount of better OCR recovers what was never text to begin with.
+
+## Two ways to index images
+
+**Caption-and-embed** runs each image through a vision-language model to produce a text description, then embeds and indexes that caption like any other chunk. It's cheap to build on an existing text-RAG stack and works fine for images where the important content is nameable — "a photo of a warehouse loading dock" retrieves correctly. It fails on charts and dense layouts, because a caption can't hold precise numbers, exact table cell values, or the spatial relationships that make the image meaningful in the first place. Whatever the caption drops is gone for retrieval.
+
+**Native visual embedding** skips captioning and embeds the page image directly with a vision-capable embedding model, so the query and the image share a vector space without a text intermediary. Late-interaction approaches like ColPali extend this further: instead of one vector per page, the page is split into patches, each patch gets its own embedding, and a query token can match whichever patch actually contains the answer — the same multi-vector idea covered in [Multi-Vector and Late-Interaction Retrieval (ColBERT)](/learn/rag/multi-vector-retrieval), applied to pixels instead of text tokens. This is why patch-level visual retrieval finds "the number in the top-right table cell" far more reliably than a single caption ever could.
+
+## Building a page-image index
+
+The practical pipeline for scanned reports and slide decks: render each page as an image (no text extraction step at all), embed every page with a visual embedding model, and store those vectors in your usual index (see [Choosing a Vector Database](/learn/rag/choosing-a-vector-database)). At query time, embed the text query with the same model family and retrieve the top matching page images directly. The generation step then hands the retrieved page images — not extracted text — to a multimodal LLM, which reads the chart or table straight off the pixels.
+
+The tradeoff is storage and compute: page-image indexes run larger than text indexes, and vision embedding models are typically slower than text ones. Reach for this approach when a document's meaning is genuinely visual — financial tables, scientific figures, UI screenshots, scanned forms — and fall back to standard text RAG, or a hybrid where you route by document type, everywhere else.
+
+**Related:** [Multi-Vector and Late-Interaction Retrieval (ColBERT)](/learn/rag/multi-vector-retrieval), [Parsing PDFs, Tables, and Scanned Documents for RAG](/learn/rag/parsing-documents-for-rag), [Choosing a Vector Database](/learn/rag/choosing-a-vector-database)

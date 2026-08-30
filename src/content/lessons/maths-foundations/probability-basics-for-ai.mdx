@@ -1,0 +1,29 @@
+---
+title: "Probability Basics for AI"
+track: "maths-foundations"
+status: live
+summary: "Probability turns uncertainty into numbers between 0 and 1, which is exactly what a model outputs for every possible next token."
+duration: "6 min read"
+---
+
+Every time a language model generates a word, it isn't "choosing" anything — it's producing a probability distribution over every token in its vocabulary and sampling from it. Understanding a handful of probability ideas is the difference between reading a model's output as magic and reading it as math.
+
+## A distribution is just a list of likelihoods that sums to 1
+
+Flip a fair coin: heads has probability 0.5, tails has probability 0.5. Those two numbers are a probability distribution — every outcome gets a number between 0 and 1, and the whole set adds up to 1. A language model does the same thing at every step, except instead of two outcomes it has tens of thousands: one probability per possible next token. If the vocabulary has 50,000 tokens, the model produces 50,000 numbers, and they still sum to 1.
+
+Before those numbers become probabilities, the model actually computes raw scores called logits — unbounded numbers that can be negative or huge. The [softmax function](/learn/maths-foundations/the-softmax-function) is what squashes logits into a proper distribution that obeys the sum-to-1 rule.
+
+## Conditional probability: probability given what came before
+
+The number that matters for text generation isn't "the probability of the word 'bank'" in isolation — it's the probability of "bank" *given* everything already written. That's conditional probability, written `P(bank | "I deposited money in the")`. Change the preceding context and the same word's probability moves a lot: "bank" is far more likely after "deposited money in the" than after "sat by the river". This is literally what a transformer computes at each position — a conditional distribution over the next token given all prior tokens, which is the core idea behind [next-token prediction](/learn/llm-foundations/next-token-prediction).
+
+## Independent vs. correlated events
+
+Two events are independent if knowing one tells you nothing about the other — separate coin flips, for instance. Tokens in language are almost never independent: "New" strongly raises the probability that the next token is "York" rather than, say, "banana". Models exploit exactly this correlation structure, learned from data, to make coherent predictions instead of random ones. This is also why a single low-probability token doesn't necessarily mean a bad model — it might just be the first token of a low-frequency but entirely correct phrase.
+
+## Confidence isn't the same as correctness
+
+A model's probability for its top token is a measure of how concentrated the distribution is, not a guarantee of truth. A sharp, peaked distribution (one token near 1.0, everything else near 0) means the model is confident; a flat distribution spread across many tokens means it's genuinely unsure. You can shape how the model samples from that distribution using [temperature](/learn/maths-foundations/temperature-in-sampling), but temperature changes *how randomly* it samples — it doesn't change whether the underlying probabilities were right. A model can be highly confident and still wrong, which is part of why hallucinations are hard to catch from probabilities alone.
+
+**Related:** [The Softmax Function](/learn/maths-foundations/the-softmax-function), [Temperature: Reshaping a Probability Distribution](/learn/maths-foundations/temperature-in-sampling), [Next-Token Prediction: The One Objective](/learn/llm-foundations/next-token-prediction)

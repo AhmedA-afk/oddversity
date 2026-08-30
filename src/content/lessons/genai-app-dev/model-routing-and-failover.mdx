@@ -1,0 +1,39 @@
+---
+title: "Model Routing and Multi-Provider Failover"
+track: "genai-app-dev"
+status: live
+summary: "Route each request to the cheapest capable model, and fail over to another provider automatically when one goes down."
+duration: "6 min read"
+---
+
+Not every request needs your best model. A support bot classifying "billing question" vs. "technical issue" doesn't need the same model as one drafting a legal summary — and when your primary provider has an outage, your feature shouldn't go down with it. Model routing and failover are two related decisions: which model handles this request, and what happens when the chosen one fails.
+
+## Routing by task complexity
+
+The simplest router is a rule: cheap, fast models for classification, extraction, and short-form tasks; frontier models for open-ended reasoning, long-form generation, or anything customer-facing where quality mistakes are costly. You can start with static rules keyed on task type, then evolve toward a lightweight classifier or even a small model that scores request difficulty and picks a tier.
+
+A common pattern is a three-tier ladder:
+
+```
+tier 1 (cheap/fast): simple classification, short extraction, routing decisions
+tier 2 (mid):        general chat, summarization, most product features
+tier 3 (frontier):   complex reasoning, code generation, high-stakes output
+```
+
+Route down by default and only escalate to tier 3 when tier 1 or 2 output fails a confidence check, or when the task is flagged as high-stakes up front. This is the same idea covered in depth in [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity) — this lesson focuses on the plumbing that makes routing safe to run in production: what happens when the model you routed to isn't reachable.
+
+## Failover across providers
+
+Routing picks a model; failover decides what to do when that model's provider is down, rate-limited, or returning garbage. The building block is a [provider abstraction layer](/learn/genai-app-dev/provider-abstraction-layers) — a thin interface that normalizes chat completion calls across providers so your app code calls one function, not three SDKs.
+
+On top of that abstraction, a failover policy needs three things:
+
+- **Health signals.** Track error rate and latency per provider over a short rolling window (30–60 seconds), not just the last call — a single timeout shouldn't trip failover, but three in a row should.
+- **A fallback order.** For each tier, define a primary and at least one backup from a different provider entirely, not just a different model from the same one — a provider-wide outage takes down every model behind it.
+- **Circuit breaking.** Once a provider trips its error threshold, stop sending it traffic for a cooldown period instead of retrying every request against it (see [Rate Limits and Retry Strategies](/learn/genai-app-dev/rate-limits-and-retry-strategies) for the retry side of this).
+
+## What breaks if you skip this
+
+Two failure modes are easy to miss. First, prompts aren't always portable — a system prompt tuned for one model's instruction-following style can degrade on a fallback model, so test your fallback path with real prompts, not just a health check. Second, output shape can differ: if your primary model returns structured JSON reliably and your fallback doesn't, failing over silently can turn an outage into a stream of malformed responses instead of a clean error. Treat the fallback model as a first-class target you evaluate, not an emergency afterthought.
+
+**Related:** [Building a Provider Abstraction Layer](/learn/genai-app-dev/provider-abstraction-layers), [Fail Over Automatically When a Model Provider Goes Down](/learn/production/multi-provider-failover-and-redundancy), [Route Requests to Cheap or Frontier Models by Difficulty](/learn/production/model-routing-by-task-complexity)

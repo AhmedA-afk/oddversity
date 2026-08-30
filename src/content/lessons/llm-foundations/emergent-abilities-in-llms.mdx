@@ -1,0 +1,28 @@
+---
+title: "Emergent Abilities in LLMs"
+track: "llm-foundations"
+status: live
+summary: "Some capabilities show up suddenly past a scale threshold instead of improving gradually — and why is still contested."
+duration: "5 min read"
+---
+
+Train a language model on more data with more parameters, and most benchmarks improve smoothly — a little better at 1B parameters, a little better at 10B. But a handful of capabilities don't move that way at all. Three-digit multiplication, following multi-step instructions, and structured chain-of-thought reasoning can sit near random-chance performance for model after model, then jump sharply once a model crosses some scale threshold. That jump is what "emergent abilities" refers to.
+
+## The pattern that started the conversation
+
+The term was popularized by a 2022 survey (Wei et al.) that plotted dozens of tasks against training compute or parameter count. Most curves were smooth. A subset weren't: flat near zero, then a steep rise within a narrow band of scale, as if the capability "switched on." Tasks like modular arithmetic and certain instruction-following benchmarks showed this most clearly. It fit a compelling story — that scaling doesn't just make models incrementally better at what they already do, it unlocks qualitatively new behavior, the same way [pretraining](/learn/llm-foundations/pretraining-explained) on next-token prediction alone somehow produces things nobody explicitly trained for.
+
+## Why the "sudden jump" might be a measurement artifact
+
+A 2023 paper (Schaeffer, Miller, and Re) pushed back hard, arguing that many reported emergent jumps are a mirage created by the choice of metric, not a real discontinuity in the model. Take a task scored with exact-match accuracy: if the model needs to get every one of, say, 20 output digits right, its probability of a fully correct answer scales nonlinearly even when its per-digit accuracy is improving perfectly smoothly underneath. Switch the metric to something continuous — per-token cross-entropy, or partial credit per digit — and the same models on the same task often show a smooth curve, no cliff in sight. The finding didn't fully settle the debate, but it did shift the burden of proof: a claimed emergent ability now has to survive being re-measured on a continuous metric before it's taken as evidence of real discontinuity.
+
+## Why it matters if you're building
+
+You don't need to resolve the debate to act on it. Two practical takeaways carry through either way:
+
+- **Don't assume a smaller, cheaper model will "almost" do a hard reasoning task.** If a capability is threshold-like for that task, a model just under the threshold can perform at essentially zero, not "a bit worse" — which matters directly when you're [choosing a model](/learn/ai-foundations/choosing-a-model) for a pipeline step.
+- **Evaluate with the metric your product actually cares about**, but also sanity-check on a continuous one. If your eval only reports pass/fail, you can be blindsided by what looks like a cliff — or miss steady improvement that a coarse metric is hiding.
+
+Emergent abilities are also why capability jumps between model generations can feel unpredictable from the outside: a new model family might leap on one benchmark and barely move on a near-identical one, simply because one task's scoring is threshold-shaped and the other isn't. Reading a model card's benchmark table with that in mind is a different exercise than reading it as a smooth leaderboard.
+
+**Related:** [Pretraining: Learning From the Whole Internet](/learn/llm-foundations/pretraining-explained), [Choosing a Model](/learn/ai-foundations/choosing-a-model), [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss)

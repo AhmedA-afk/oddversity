@@ -1,0 +1,33 @@
+---
+title: "Taming Flaky Evals: Non-Determinism, Caching, and Retries"
+track: "evals-red-teaming"
+status: live
+summary: "Separate real regressions from sampling noise and infra flakiness so your eval score is trustworthy."
+duration: "5 min read"
+---
+
+You rerun the same eval twice, same code, same dataset, and the score moves from 84% to 81%. Before you file a bug or roll back a change, you need to know whether that 3-point drop is a regression or just noise — because most evals have more than one source of flakiness, and they don't look the same.
+
+## Where the noise comes from
+
+There are two distinct failure classes, and they need different fixes.
+
+**Sampling non-determinism.** Even at temperature 0, most providers don't guarantee bit-identical output across calls — floating-point ops on GPUs execute in nondeterministic order under batching, so logits can shift by tiny amounts and occasionally flip a token. At higher temperatures this is expected and larger: the model is genuinely supposed to vary. Either way, a single run's score is a single sample from a distribution, not a fixed number.
+
+**Infra flakiness.** Timeouts, rate-limit backoffs that silently truncate a response, a judge model API hiccup, a grader regex that breaks on a rare output shape, dataset rows that changed between runs. This isn't model randomness — it's your harness failing in ways that look like a score change.
+
+Conflating the two is how teams end up chasing phantom regressions or, worse, ignoring a real one because "the eval is just flaky."
+
+## Fixes for sampling noise
+
+Run each eval item more than once (3–5 samples is a common floor) and report a mean with a confidence interval, not a point estimate — see [confidence intervals and sample size](/learn/evals-red-teaming/statistical-rigor-in-evals) for sizing that properly. Only treat a score change as a regression if the intervals for old and new don't overlap. For deterministic-ish tasks (classification, extraction), pin `temperature: 0` and a fixed seed where the provider supports one — it narrows but doesn't eliminate variance, so still sample more than once for anything near a decision threshold.
+
+## Fixes for infra flakiness
+
+Cache every model call keyed on the exact request payload, so a rerun of an unchanged eval item never hits the network again — this also makes reruns fast and cheap. Retry transient errors (timeouts, 429s, 5xxs) with exponential backoff, but retry *before* scoring, not after: never let a truncated or errored response count as a real answer that scored low. Log the raw response alongside the score so a suspicious result is inspectable, not just a number. And version your dataset and grader together — a "regression" that's actually a changed test case is the most common false alarm.
+
+## Building this into your loop
+
+None of this matters if it's not automatic. Bake caching, retries, and multi-sample scoring into the harness your CI runs, not into a script someone remembers to invoke by hand — see [shipping changes by eval diff](/learn/evals-red-teaming/eval-driven-iteration) for how a stable score feeds that gate. A flaky eval that occasionally blocks a good change trains people to ignore it, which is worse than not having one.
+
+**Related:** [Confidence Intervals and Sample Size for Eval Scores](/learn/evals-red-teaming/statistical-rigor-in-evals), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration), [Promptfoo, Braintrust, and Ragas: Picking an Eval Tool](/learn/evals-red-teaming/eval-tooling-landscape)

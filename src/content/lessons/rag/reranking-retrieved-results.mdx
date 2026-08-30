@@ -1,0 +1,43 @@
+---
+title: "Reranking Retrieved Results"
+track: "rag"
+status: live
+summary: "Use a second-pass reranker to reorder retrieved chunks by relevance before they hit the prompt."
+duration: "6 min read"
+---
+
+Your vector search returns the top 50 chunks in milliseconds, but "fast and roughly relevant" isn't the same as "the 5 chunks that actually answer the question." Reranking adds a slower, smarter second pass that reorders a shortlist before it reaches the model.
+
+## Why retrieval alone isn't enough
+
+Embedding search (see [Similarity Search and ANN Indexes](/learn/rag/similarity-search-and-ann-indexes)) works by comparing a query vector to chunk vectors with cosine similarity — a single number computed independently for each chunk. That's cheap, which is why it can scan millions of vectors, but it's also coarse: it never looks at the query and a chunk together, so it can rank a chunk that merely shares vocabulary above one that actually answers the question.
+
+A reranker fixes this by trading speed for precision. Instead of comparing vectors, it runs a cross-encoder model that takes the query and a candidate chunk *together* as input and outputs a single relevance score. Because it sees both texts at once, it can catch nuance — negation, specificity, whether the chunk answers the question or just mentions the topic — that vector similarity misses.
+
+## The two-stage pattern
+
+Rerankers don't replace retrieval, they sit after it:
+
+1. **Retrieve wide.** Pull the top 20-100 candidates with your vector index (or [hybrid search](/learn/rag/hybrid-search-lexical-and-vector)) — cheap enough to over-fetch.
+2. **Rerank narrow.** Score each candidate against the query with a cross-encoder, then keep only the top 3-8.
+
+This works because cross-encoders don't scale to millions of documents — scoring every chunk in a corpus against every query would be far too slow — but scoring 50 candidates takes tens of milliseconds. You get the coverage of broad retrieval and the precision of a model that actually reads both texts.
+
+```
+query + 50 candidates → reranker → sorted by relevance → top 5 → prompt
+```
+
+## Picking a reranker
+
+Two common paths:
+
+- **Hosted rerank APIs** (Cohere Rerank, Voyage AI, Jina) — send query and candidates, get scores back. No infrastructure to run.
+- **Open-source cross-encoders** (BGE-reranker, mixedbread, ColBERT-style late-interaction models) — self-hosted, useful when data can't leave your network.
+
+Whichever you pick, benchmark it against your own queries with [RAG quality evaluation](/learn/rag/evaluating-rag-quality) — reranker gains vary a lot by domain, and the extra latency (usually 50-300ms) isn't free.
+
+## When to skip it
+
+Reranking adds a network call or model inference on every query, so it's not free complexity. If your top-k from vector search is already precise — small, homogeneous corpus, well-separated topics — a reranker may not move the needle enough to justify the latency. Add it when you notice the right chunk is *in* your retrieved set but not near the top.
+
+**Related:** [Hybrid Search: Lexical and Vector Combined](/learn/rag/hybrid-search-lexical-and-vector), [Similarity Search and ANN Indexes](/learn/rag/similarity-search-and-ann-indexes), [Evaluating RAG Quality](/learn/rag/evaluating-rag-quality)

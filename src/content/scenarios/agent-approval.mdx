@@ -1,0 +1,29 @@
+---
+title: "An agent that can update customer records"
+scenario: "Agent approval loop"
+description: "Bound an agent that can look up information and propose a consequential change."
+order: 3
+---
+
+## The situation
+
+An operations team wants an agent to look up a customer, identify a duplicate account, and propose merging records. The merge is reversible only with manual work and affects billing history.
+
+## The first decision
+
+Split read and write capabilities. Let the model gather evidence and produce a merge proposal, but require a human approval step before the write tool is available. Put deterministic checks on identity, confidence, and account status.
+
+## Guided reasoning
+
+1. Give the read tools narrow scopes and return typed, bounded results.
+2. Ask the model for the candidate records and evidence, not a hidden plan.
+3. Run application checks for tenant, billing state, and duplicate criteria.
+4. Show the reviewer the exact proposed change and expected effect.
+5. Execute the write with an idempotency key and audit event.
+6. Stop after approval, rejection, timeout, or a bounded number of read steps.
+
+This is a good case for a small agent inside a strict harness. The [control loop](/learn/harness-design/the-control-loop) and [when not to use an agent](/learn/agentic-ai/when-not-to-use-an-agent) are useful companion reading.
+
+## What to test first
+
+Test two customers with similar names, a stale lookup, a reviewer rejecting the proposal, a repeated tool result, an expired approval, and a tool error after the write has begun.

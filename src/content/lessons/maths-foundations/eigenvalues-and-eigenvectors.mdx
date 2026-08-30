@@ -1,0 +1,37 @@
+---
+title: "Eigenvalues and Eigenvectors, Intuitively"
+track: "maths-foundations"
+status: live
+summary: "The directions a matrix stretches without rotating, and why that shows up in PCA, stability, and dimensionality reduction."
+duration: "6 min read"
+---
+
+Most vectors get pushed off their line when you multiply them by a matrix — rotated, sheared, twisted into some new direction. A few special vectors don't. They just get longer or shorter, staying on the exact same line. Those are eigenvectors, and the amount they stretch is the eigenvalue.
+
+## The core idea
+
+If a matrix `A` acts on a vector `v` and the result is just `v` scaled by a number, you've found an eigenvector:
+
+```
+A v = λ v
+```
+
+`v` is the eigenvector (a direction), and `λ` (lambda) is the eigenvalue (how much that direction gets stretched or squashed). Every other vector in the space gets rotated by `A` in some way. Eigenvectors are the ones that don't — they're the "grain" of the matrix, the axes it's secretly built around.
+
+A 2D example makes this concrete. Picture a matrix that stretches the x-axis by 3 and leaves the y-axis untouched. Any vector pointing purely along x comes out 3x longer, same direction — eigenvalue 3. Any vector along y comes out unchanged — eigenvalue 1. A vector pointing diagonally, though, gets pulled toward the x-axis, changing both length *and* direction. It's not an eigenvector of this matrix at all.
+
+## Why this matters for AI
+
+Eigenvectors matter because a huge amount of machine learning is repeated matrix multiplication, and eigenvalues tell you what happens when you do that over and over.
+
+**Stability.** In recurrent networks and iterative optimization, a matrix gets applied again and again. If its largest eigenvalue has magnitude greater than 1, repeated application blows values up exponentially; if it's less than 1, values shrink toward zero. This is the mathematical root of exploding and vanishing gradients — the eigenvalues (or more precisely, singular values — see [SVD](/learn/maths-foundations/singular-value-decomposition)) of the weight matrices determine whether signal survives a deep pass through the network.
+
+**PCA and dimensionality reduction.** Principal Component Analysis finds the eigenvectors of a dataset's covariance matrix. The eigenvector with the largest eigenvalue points along the direction of greatest variance in your data — the axis that captures the most "spread." The next eigenvector (orthogonal to the first) captures the next most variance, and so on. Keeping only the top few eigenvectors is how you compress high-dimensional data — like [embeddings](/learn/maths-foundations/the-geometry-of-embeddings) — down to a handful of dimensions you can actually plot or reason about, while throwing away the directions that carried the least information.
+
+**Loss landscapes.** Near a minimum, the curvature of a loss surface is described by the eigenvalues of its Hessian (the matrix of second derivatives). Eigenvalues that are all positive and similar in size mean a nice, round bowl — easy to optimize. Wildly different eigenvalues mean a stretched, narrow valley, which is exactly the shape that makes plain gradient descent zigzag instead of heading straight for the minimum. This connects directly to why optimizers exist that adapt their step size per direction, and to the broader question of what a [loss landscape](/learn/maths-foundations/convexity-and-loss-landscapes) even looks like.
+
+## The one thing to hold onto
+
+Eigenvectors are the directions a transformation treats as pure scaling. Find them, and you've found the natural coordinate system of the matrix — the axes along which its behavior is simplest to describe. That's why they show up wherever something gets transformed repeatedly or measured for spread: stability analysis, compression, and optimization all reduce, at some point, to "what are the eigenvalues here, and how big are they?"
+
+**Related:** [Matrices as Transformations](/learn/maths-foundations/matrices-as-transformations), [SVD: Decomposing a Matrix Into Its Building Blocks](/learn/maths-foundations/singular-value-decomposition), [Convexity and Loss Landscapes](/learn/maths-foundations/convexity-and-loss-landscapes)

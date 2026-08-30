@@ -1,0 +1,45 @@
+---
+title: "MCP Transports: stdio vs. HTTP"
+track: "mcp"
+status: live
+summary: "Choose between stdio and HTTP/SSE transports based on where the server runs and who connects to it."
+duration: "5 min read"
+---
+
+MCP defines what a client and server say to each other, but not how the bytes get there. That's the job of a transport, and MCP ships with two: stdio and Streamable HTTP. Picking the wrong one is the most common reason a working server refuses to connect.
+
+## stdio: same machine, one client
+
+With stdio, the client launches the server as a child process and talks to it over its standard input and output streams — one JSON-RPC message per line in, one line out. There's no network, no port, no auth handshake. The client owns the server's lifecycle: when the client exits, the server dies with it.
+
+This is the default for local tools: a server that reads files on your disk, shells out to `git`, or wraps a CLI you already have installed. Claude Desktop and Claude Code both launch MCP servers this way, which is why a typical config just names a command:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]
+    }
+  }
+}
+```
+
+The catch: stdio only works when the client can spawn a process next to itself. It can't reach a server running on another machine, and it can't be shared across multiple clients — each client that wants the tool starts its own copy.
+
+## Streamable HTTP: remote, shared, many clients
+
+Streamable HTTP is the transport for servers that live somewhere else — a company's internal API, a SaaS product exposing MCP to its users, a server you want ten teammates hitting at once. The client sends JSON-RPC requests as HTTP POSTs to a single endpoint; the server can respond directly, or upgrade the response into a server-sent-events stream when it needs to push multiple messages back (progress updates, nested requests to the client, or several results over time).
+
+Because it's just HTTP, this transport gets you everything HTTP already has: load balancers, standard logging, and most importantly [OAuth-based access control](/learn/mcp/mcp-auth-fundamentals) — something stdio has no concept of, since a locally-spawned process is implicitly trusted by whoever launched it. It replaced an earlier plain-SSE transport, and if you're evaluating a server built before that switch, check which one it actually speaks.
+
+## How to choose
+
+Ask where the server runs and who else needs it:
+
+- **Local-only, single user** → stdio. Simpler to build, nothing to deploy, no auth to design.
+- **Remote, shared, or third-party** → Streamable HTTP, with real auth in front of it.
+
+Many servers support both, picking the transport based on how they're launched. When you're [writing your first server](/learn/mcp/first-mcp-server), start with stdio — it's the fastest path to something that works — and only move to HTTP once you actually need remote or multi-client access. When something in either direction won't connect, transport mismatch is the first thing to check; see [debugging common MCP failures](/learn/mcp/debugging-common-mcp-failures).
+
+**Related:** [MCP Architecture: Hosts, Clients, Servers](/learn/mcp/mcp-architecture-hosts-clients-servers), [Connecting a Client to an MCP Server](/learn/mcp/connecting-a-client-to-an-mcp-server), [MCP Auth Fundamentals](/learn/mcp/mcp-auth-fundamentals)

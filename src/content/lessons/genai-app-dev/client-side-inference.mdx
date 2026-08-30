@@ -1,0 +1,57 @@
+---
+title: "Client-Side LLM Inference in the Browser"
+track: "genai-app-dev"
+status: live
+summary: "Run a small model inside the browser tab with WebGPU or WASM for privacy, offline use, or zero-latency features."
+duration: "5 min read"
+---
+
+Most GenAI features send a request to a server and wait. Client-side inference skips that trip entirely: the model runs inside the user's browser tab, on their own GPU or CPU, and nothing but the page load ever touches the network.
+
+## Why run inference in the browser at all
+
+The pitch isn't "cheaper than the API" — for anything beyond a small model, it usually isn't, once you count the download and the device's own compute cost. The pitch is what a server round-trip can never give you:
+
+- **Privacy by construction.** A resume screener, a medical-intake form, or a draft email never leaves the device. There's no server log to leak and no data-retention policy to write.
+- **Offline capability.** A field app, a kiosk, or a flaky-connection environment keeps working with zero backend.
+- **Zero network latency.** Autocomplete, spell-fixing, and other sub-100ms interactions can't tolerate a round trip; local inference is the only way to hit that budget.
+- **Zero marginal cost.** Once the model is cached, running it a million times costs you nothing — the user's hardware pays.
+
+The tradeoff is real: you're limited to small models (roughly 1B–8B parameters, usually quantized), the first load can be a multi-hundred-megabyte download, and quality sits below what a frontier API model gives you. This is a tool for a narrow slice of features, not a replacement for your API calls — see [Anatomy of a GenAI Feature](/learn/genai-app-dev/anatomy-of-a-genai-feature) for where inference choice fits in the bigger picture.
+
+## The two runtimes: WebGPU and WASM
+
+Two browser APIs make this possible, and they solve different problems.
+
+**WebGPU** exposes the device's actual GPU to JavaScript, letting the browser run the same kind of parallel matrix math a native inference engine would run on CUDA or Metal. This is the fast path — for a model that fits on-device, WebGPU inference is dramatically faster than WASM because matrix multiplies are exactly what GPUs are built for. It's supported in current Chrome, Edge, and Firefox on most platforms, with Safari support arriving more recently — you should feature-detect it (`"gpu" in navigator`) rather than assume it.
+
+**WebAssembly (WASM)**, usually with SIMD instructions enabled, is the fallback: it runs the model on the CPU, compiled from C++ or Rust down to a portable binary the browser can execute near-native speed. It works everywhere — no GPU required, no driver quirks — but it's meaningfully slower for anything past a tiny model. Production libraries pick WebGPU when available and silently fall back to WASM, so users on older hardware still get a working (if slower) experience.
+
+## The libraries that make this practical
+
+You are not hand-rolling a transformer forward pass in JavaScript. Three libraries cover almost everyone:
+
+- **Transformers.js** (Hugging Face) — runs ONNX-exported models through WebGPU or WASM, with an API that mirrors the Python `transformers` library. Best for smaller, task-specific models (embeddings, classification, small generation).
+- **WebLLM** (MLC) — purpose-built for chat-style LLM inference in the browser, running quantized models via WebGPU with a familiar OpenAI-style chat API.
+- **ONNX Runtime Web** — the lower-level runtime both of the above can sit on; reach for it directly when you need fine control over execution providers or a model outside the usual chat/embedding shape.
+
+All three cache the downloaded model weights (in IndexedDB or the browser cache), so the multi-hundred-megabyte cost is paid once — after that, page loads are instant and the model runs fully offline.
+
+## A minimal load-and-run
+
+```javascript
+import { pipeline } from "@huggingface/transformers";
+
+// Downloads once, caches, then runs entirely in-browser
+const classifier = await pipeline(
+  "sentiment-analysis",
+  "Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+  { device: "webgpu" } // falls back to "wasm" automatically if unsupported
+);
+
+const result = await classifier("This lesson finally made it click.");
+```
+
+Wrap the load in a loading state — that first download is the whole UX cost of this pattern, and it's worth showing progress rather than a frozen screen.
+
+**Related:** [Anatomy of a GenAI Feature](/learn/genai-app-dev/anatomy-of-a-genai-feature), [Setting Latency Budgets for LLM Features](/learn/genai-app-dev/latency-budgets-for-llm-features), [Model Routing and Multi-Provider Failover](/learn/genai-app-dev/model-routing-and-failover)

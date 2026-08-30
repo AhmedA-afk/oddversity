@@ -1,0 +1,43 @@
+---
+title: "Running Agents Headless from a Terminal"
+track: "harness-design"
+status: live
+summary: "Run agents non-interactively from a terminal or CI, with no chat UI and no human approving each step."
+duration: "5 min read"
+---
+
+Most agent demos live in a chat window: you type, the model thinks, you approve a tool call. Headless mode strips that away. You run one command, the agent works through a task on its own, and it exits with a result you can log, diff, or fail a build on.
+
+## What "headless" actually changes
+
+In an interactive session, the [control loop](/learn/harness-design/the-control-loop) pauses at each risky step and waits for a human to click allow. Headless mode can't do that — there's no terminal attached to a keyboard, just stdin/stdout and an exit code. So three things have to move earlier, into configuration:
+
+- **Permissions.** Every tool call the agent might make has to already be classified allow, ask, or deny before the run starts, because "ask" has nobody to ask. See [permission and approval systems](/learn/harness-design/permission-and-approval-systems) — in headless mode, "ask" effectively collapses into "deny."
+- **Prompting.** The full task has to be specified up front: goal, constraints, done-criteria. There's no follow-up turn to clarify.
+- **Output.** A human reads a chat transcript; a script reads stdout. Most headless CLIs support a `--output-format json` (or similar) flag so the caller gets structured, parseable results instead of prose.
+
+## A minimal headless invocation
+
+Tools like Claude Code, and most agent CLIs modeled after it, support a non-interactive flag that runs one prompt to completion and exits:
+
+```bash
+claude -p "Fix the failing test in payment_test.go and open a PR" \
+  --output-format json \
+  --permission-mode acceptEdits
+```
+
+No chat window opens. The process reads the prompt, runs its [tool-calling loop](/learn/harness-design/tool-routing-and-registries) until it decides the task is done or it hits a limit, and returns. Whatever called it — a shell script, a CI job, a cron trigger — gets a JSON blob or an exit code back, the same way it would from any other command-line tool.
+
+## Where this shows up
+
+Headless agents are the backbone of CI-integrated AI: a GitHub Action that asks an agent to triage a new issue, a pre-commit hook that runs a docs-consistency check, a nightly job that walks a codebase looking for dead code. None of these have a person watching. They need:
+
+1. A **deny-floor** that can't be argued away by anything in the prompt — see [deny-floors and policy layers](/learn/harness-design/deny-floors-and-policy-layers) — since there's no human backstop if the agent misreads its own instructions.
+2. **Sandboxing** around whatever it executes, so a bad tool call can't reach past the job's own workspace — see [sandboxing tool execution in a harness](/learn/harness-design/subprocess-isolation-and-sandboxing).
+3. **Logging** thorough enough to reconstruct what happened after the fact, because nobody watched it happen live — see [observability and logging](/learn/harness-design/observability-and-logging).
+
+## The trade you're making
+
+Interactive mode trades speed for safety: a human in the loop catches mistakes before they land, at the cost of attention and latency. Headless mode inverts that — it's fast and scales to hundreds of runs, but every mistake ships unless your policy layer catches it first. The rule of thumb: only take a workflow headless once you'd trust the same permission configuration to run unattended on a machine you actually care about.
+
+**Related:** [Allow/Ask/Deny: Designing Approval Gates](/learn/harness-design/permission-and-approval-systems), [Deny-Floors: Rules No Prompt Can Override](/learn/harness-design/deny-floors-and-policy-layers), [Sandboxing Tool Execution in a Harness](/learn/harness-design/subprocess-isolation-and-sandboxing)

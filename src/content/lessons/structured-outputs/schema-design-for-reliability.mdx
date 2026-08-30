@@ -1,0 +1,33 @@
+---
+title: "Schema Design Choices That Reduce Model Errors"
+track: "structured-outputs"
+status: live
+summary: "Field names, descriptions, and required-vs-optional choices that measurably cut model errors."
+duration: "6 min read"
+---
+
+A schema that validates isn't the same as a schema that's easy for a model to fill in correctly. Two schemas can describe the same data and produce wildly different error rates, because the model reads your field names and descriptions as instructions, not just as a shape to match.
+
+## Name fields for the model, not the database
+
+`amt`, `flag`, `val_2` mean nothing to a model that has never seen your codebase. It has to guess, and guesses are where errors creep in. Prefer `total_amount_usd` over `amt`, `is_refunded` over `flag`. A boolean named `status` is especially bad — the model doesn't know if `true` means active, complete, or approved. Name it so the value is unambiguous without reading a comment: `is_active`, not `status`.
+
+Every non-obvious field should carry a `description`. "The customer's ISO 4217 currency code, e.g. USD" prevents a dozen wrong guesses that "currency" alone invites. Descriptions are cheap tokens that buy real accuracy — this is the same lever covered in [Writing Tool Descriptions Models Actually Follow](/learn/tools-function-calling/writing-tool-descriptions-models-follow), because a JSON Schema field description and a tool parameter description do the same job.
+
+## Make invalid states unrepresentable
+
+If a field can only be one of five values, use an [enum](/learn/structured-outputs/enums-and-constrained-fields), not a free-text string with "must be one of..." in the description. An enum is enforced by the decoder; a string constraint is enforced by hope. The same logic applies to optional fields — every field you mark `required` is a field the model must produce a value for, even when it should say "I don't know." If a field is genuinely sometimes absent, make it optional and nullable, and describe when it's expected to be missing. Don't make everything required "to be safe" — that pressures the model into inventing plausible-looking values for fields it has no basis for, which is a structural way to induce hallucination.
+
+Flat is more reliable than nested when you have a choice. A deeply nested object with optional sub-objects gives the model more places to place a value incorrectly than a flatter schema with clear field names — see [Nested Objects and Arrays in Output Schemas](/learn/structured-outputs/nested-and-array-schemas) for where nesting is actually worth it.
+
+## Order and defaults still matter
+
+Field order in your schema tends to become the order the model fills fields in, especially with providers that don't use full constrained decoding. Put fields that depend on earlier reasoning after the fields that inform them — for example, ask for a `category` enum before a free-text `justification`, or ask the model to extract raw values before it computes a derived one. This is a small, cheap trick: it effectively gives the model a chance to "think" through simpler fields before harder ones, similar in spirit to [Chain-of-Thought](/learn/prompt-engineering/chain-of-thought-prompting) but expressed through field order instead of prose.
+
+Avoid schemas with ambiguous "any of these shapes" branches (`oneOf`/`anyOf` across very different object shapes) unless you actually need them — they multiply the ways output can be technically valid JSON but wrong. When you do need a union, give each branch a discriminant field (like `type: "email"` vs `type: "phone"`) so the model's job is a clean classification instead of an open-ended guess.
+
+## What this doesn't fix
+
+Good schema design reduces errors; it doesn't eliminate them. A model can still return a syntactically valid, schema-conforming object with a wrong value — a plausible-looking but incorrect number or category. That's a job for [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair) and for testing against known failure patterns, covered in [Structured Output Failure Modes and How to Spot Them](/learn/structured-outputs/structured-output-failure-modes).
+
+**Related:** [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Enums: Locking a Field to a Fixed Set of Values](/learn/structured-outputs/enums-and-constrained-fields), [Structured Output Failure Modes and How to Spot Them](/learn/structured-outputs/structured-output-failure-modes)

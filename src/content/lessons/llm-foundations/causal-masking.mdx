@@ -1,0 +1,37 @@
+---
+title: "Causal Masking: Why LLMs Can't Peek Ahead"
+track: "llm-foundations"
+status: live
+summary: "The triangular mask that blocks a token from attending to the future, and why it makes generation autoregressive."
+duration: "5 min read"
+---
+
+Self-attention lets every token look at every other token in the sequence. That's a problem if you're training a model to predict the next word — a token could just "cheat" by attending to the answer sitting right after it. Causal masking is the fix: a simple rule that blocks each position from seeing anything ahead of it.
+
+## The mask itself
+
+Attention scores are computed as a matrix: every query position against every key position. Before that matrix is turned into weights with softmax, causal masking sets every entry above the diagonal to negative infinity. Position 3 can attend to positions 1, 2, and 3, but never 4 or 5.
+
+```
+attend to →   1     2     3     4
+position 1 [ 0.0  -inf  -inf  -inf ]
+position 2 [ 0.4   0.6  -inf  -inf ]
+position 3 [ 0.2   0.3   0.5  -inf ]
+position 4 [ 0.1   0.2   0.3   0.4 ]
+```
+
+After softmax, `-inf` becomes exactly zero probability — those future tokens contribute nothing to the output at that position. This lower-triangular pattern is why people call it a "triangular mask." It's applied identically in every attention layer, at every head, throughout the network — see [Multi-Head Attention](/learn/llm-foundations/multi-head-attention) for how heads combine.
+
+## Why this is what makes generation autoregressive
+
+Pretraining trains on the objective in [Next-Token Prediction](/learn/llm-foundations/next-token-prediction): given tokens 1 through n, predict token n+1. Without the mask, the model computing a prediction for position 3 could attend directly to position 4 — the very answer it's supposed to predict — and training loss would collapse to near zero while the model learned nothing useful. Causal masking guarantees the loss at every position is an honest test of prediction from the past alone.
+
+That constraint is also exactly what makes text generation autoregressive at inference time. Because a trained causal model was never taught to use future context, it doesn't need it: at each step it looks only at what's already been generated and emits the next token, one at a time, left to right. This is the same reason streaming responses feel natural — the model was never doing anything other than reading left-to-right internally.
+
+## Not the only option
+
+Causal masking is a design choice, not a law of attention. BERT-style encoder models use full, unmasked (bidirectional) attention, since they're trained to fill in masked words using context from both sides — great for understanding text, useless for generating it token by token. Modern LLMs like GPT and Claude are decoder-only and use causal masking throughout, because the product is generation.
+
+One subtlety worth knowing: masking doesn't need extra layers or a separate mechanism to become "smart" — it's a static, fixed pattern added to attention scores before softmax. All the real intelligence still comes from [The Attention Mechanism](/learn/llm-foundations/attention-mechanism-explained) deciding, among the *allowed* positions, which ones actually matter.
+
+**Related:** [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [Next-Token Prediction: The One Objective](/learn/llm-foundations/next-token-prediction), [Multi-Head Attention](/learn/llm-foundations/multi-head-attention)

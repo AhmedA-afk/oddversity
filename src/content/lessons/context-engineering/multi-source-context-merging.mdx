@@ -1,0 +1,47 @@
+---
+title: "Merging Context from Multiple Tools Without Contradictions"
+track: "context-engineering"
+status: live
+summary: "How to combine retrievals from several tools into one context without duplicates, contradictions, or confusing the model."
+duration: "5 min read"
+---
+
+A support agent calls a knowledge-base search, a ticket-history lookup, and a live API all in the same turn. Each returns its own version of "the current plan." If two of them disagree, or say the same thing in different words, the model has to guess which one is real — and it often guesses wrong.
+
+## Why merging is harder than it looks
+
+Single-source retrieval has one problem: relevance. Multi-source retrieval has three more:
+
+- **Duplication.** The KB article and the ticket note both describe the refund policy. Now the model reads it twice, burns tokens, and may treat the repetition as reinforced confidence.
+- **Contradiction.** The KB says "refunds within 30 days," a stale cached API response says 14. Nothing in the raw context tells the model which one is current.
+- **Format mismatch.** JSON from one tool, prose from another, markdown from a third — stitched together with no signal of provenance or trust level.
+
+None of these are things the model can resolve on its own from raw text. They have to be resolved before the text reaches the window.
+
+## Deduplicate and rank by trust, not by tool
+
+Don't just concatenate results in call order. Before injecting anything:
+
+1. **Dedupe near-identical passages.** Cheap similarity checks (or even hashing normalized text) catch most exact and near-exact repeats before you pay tokens for them.
+2. **Establish a source hierarchy.** Live API data usually outranks cached search results; a signed contract outranks a support macro. Decide this per-domain, ahead of time — not per-query.
+3. **Attach provenance to every chunk.** Tag each piece of merged context with where it came from and when it was fetched, so the model (and you, debugging later) can tell a live balance from a three-day-old cache entry.
+
+## Surface conflicts instead of hiding them
+
+The tempting move is to silently drop the "losing" source. That's a mistake when the conflict itself is informative — a price mismatch between two systems might be the actual bug the user is asking about. Better pattern: keep both, but label them explicitly.
+
+```
+[live-api, fetched 2s ago]: refund window = 14 days
+[kb-article, indexed 40 days ago]: refund window = 30 days
+Note: sources disagree — prefer live-api unless told otherwise.
+```
+
+This is a specific case of [structuring injected context](/learn/context-engineering/structured-context-injection) so the model can use it — labels do the disambiguation work that prose can't.
+
+## Merge at the pipeline level, not the prompt level
+
+If you're asking the model itself to "reconcile any contradictions you see" in an unlabeled blob, you're pushing a data-engineering problem into inference, where it's expensive and unreliable. Do the ranking, deduplication, and conflict-labeling in code before the request goes out — this is also where [token budgeting](/learn/context-engineering/token-budgeting-strategies) decisions belong, since deduped, ranked context is what makes it possible to cut low-value results before the window fills.
+
+The result should read less like a transcript of tool calls and more like a single briefing document: one voice, sources attributed, conflicts flagged, redundancy gone.
+
+**Related:** [Structuring Injected Context So the Model Can Actually Use It](/learn/context-engineering/structured-context-injection), [Relevance Filtering: Deciding What Doesn't Make the Cut](/learn/context-engineering/relevance-filtering), [Retrieval vs Stuffing: Fetch Just-in-Time or Load It All](/learn/context-engineering/retrieval-vs-context-stuffing)

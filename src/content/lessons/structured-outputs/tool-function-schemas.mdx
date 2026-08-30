@@ -1,0 +1,51 @@
+---
+title: "Tool Schemas as a Structured-Extraction Mechanism"
+track: "structured-outputs"
+status: live
+summary: "Define a tool the model never calls, purely to force a schema-shaped answer out of it."
+duration: "5 min read"
+---
+
+Most APIs that support tool calling will also let you use a tool definition where you never actually run the tool. You describe a function's parameters as a JSON Schema, the model "calls" it, and you read the arguments back as your structured data. No JSON mode required, no code execution involved — the schema does the work.
+
+## Why borrow the tool-calling path
+
+Before dedicated structured-output modes existed, tool calling was often the most reliable way to get schema-shaped data from a model, because providers trained it heavily to fill in argument objects correctly. That training advantage is still real: a model that's used to populating `location: string` and `unit: "celsius" | "fahrenheit"` for a weather tool applies the same discipline to a tool called `extract_invoice` whose arguments are exactly the fields you want extracted.
+
+The trick is naming the tool for what it captures, not what it does. `extract_invoice`, `save_review_summary`, `record_classification` — these read like an extraction contract, and models tend to fill their argument schemas more faithfully than they follow the same shape asked for in prose.
+
+## What it looks like in practice
+
+```python
+tools = [{
+    "name": "extract_invoice",
+    "description": "Extract structured invoice fields from the text.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "vendor": {"type": "string"},
+            "total_cents": {"type": "integer"},
+            "line_items": {
+                "type": "array",
+                "items": {"type": "object", "properties": {
+                    "description": {"type": "string"},
+                    "amount_cents": {"type": "integer"}
+                }}
+            }
+        },
+        "required": ["vendor", "total_cents"]
+    }
+}]
+```
+
+You send this alongside the document text, force the model toward that one tool (see [tool choice](/learn/tools-function-calling/tool-choice-and-forcing-tool-use)), and instead of executing anything, you pull the arguments straight out of the response and validate them like any other JSON payload.
+
+## When this beats a dedicated structured-output mode
+
+If a provider offers a real structured-output or JSON-mode feature (see [JSON mode](/learn/structured-outputs/json-mode-basics) and [JSON Schema for outputs](/learn/structured-outputs/json-schema-for-outputs)), prefer it — it's built for this and usually gives you stronger validity guarantees. Reach for the tool-schema trick when you're on an older model, an API that lacks a structured-output mode, or a codebase that already has tool-calling plumbing you'd rather reuse than build a second code path. It's also handy when you want the model to pick between several distinct "shapes" of output — define one tool per shape and let tool choice act as a router.
+
+## The catch
+
+A tool schema returned this way still isn't guaranteed valid against your full schema unless the provider applies constrained decoding to tool arguments specifically — some do, many don't. Treat the output the same way you'd treat any other structured claim: validate it, and have a repair path ready (see [validation and auto-repair](/learn/structured-outputs/validation-and-auto-repair)) for the cases where a required field goes missing or a type doesn't match.
+
+**Related:** [Tool Choice and Forcing Tool Use](/learn/tools-function-calling/tool-choice-and-forcing-tool-use), [JSON Schema: Specifying Your Exact Data Contract](/learn/structured-outputs/json-schema-for-outputs), [Validation and Auto-Repair: Catching and Fixing Bad Output](/learn/structured-outputs/validation-and-auto-repair)

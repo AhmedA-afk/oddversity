@@ -1,0 +1,42 @@
+---
+title: "Streaming Tokens and Tool Events"
+track: "harness-design"
+status: live
+summary: "Stream tokens and tool-call events to your UI as they happen instead of blocking on a full completion."
+duration: "5 min read"
+---
+
+If your harness waits for a full response before showing anything, a ten-second tool-heavy turn feels broken even when it's working perfectly. Streaming turns that dead silence into a live feed of what the model is doing right now.
+
+## Why block-until-done fails users
+
+A non-streaming call returns one blob after the model finishes generating everything — reasoning, tool calls, final text. For a simple question that might be a second. For an agent that reads three files, runs a shell command, and writes a summary, it can be thirty seconds of a spinner with zero feedback. Users can't tell a slow-but-working agent from a hung one, so they refresh, retry, or give up. Streaming fixes this not by making the model faster, but by surfacing partial progress the instant it exists.
+
+## What actually streams
+
+Most providers expose a streaming API over Server-Sent Events or chunked HTTP, emitting a sequence of typed events rather than one payload. A typical stream looks like:
+
+```
+event: message_start
+event: content_block_delta   { text: "Let" }
+event: content_block_delta   { text: " me" }
+event: content_block_delta   { text: " check" }
+event: content_block_start   { type: "tool_use", name: "read_file" }
+event: content_block_delta   { partial_json: "{\"path\":" }
+event: content_block_stop
+event: message_delta         { stop_reason: "tool_use" }
+```
+
+Two different things are flowing through the same channel: token deltas for prose, and tool-call events as the model decides what to invoke and streams its arguments incrementally. A harness has to handle both. Token deltas get appended to a chat bubble as they arrive. Tool-call events are trickier — the arguments often arrive as a partial JSON string that isn't valid JSON until the block closes, so you buffer the fragments and only parse once you see the stop event, while still showing the user a "calling read_file..." indicator the moment the tool name and start event show up.
+
+## Wiring it into the control loop
+
+In the [control loop](/learn/harness-design/the-control-loop), streaming changes where you make decisions. Instead of getting a complete assistant turn back and then deciding whether to route a tool call, you're consuming events incrementally: text deltas go straight to the UI or a log line, and only once a tool-call block fully closes do you hand its parsed arguments to [tool routing](/learn/harness-design/tool-routing-and-registries). This means your event loop needs a small state machine per content block — accumulate deltas, detect the stop event, then act — rather than a single "response received" callback.
+
+## Streaming across a multi-turn agent
+
+A single user request in an agentic harness often produces many streamed segments: assistant text, a tool call, a tool result, more assistant text, another tool call. Each of those can stream independently, so the UI needs to render a sequence of events, not just one message. This is also where [observability and logging](/learn/harness-design/observability-and-logging) earns its keep — persist every streamed event as it arrives so a crash mid-stream still leaves a reconstructable trace, instead of losing the whole turn because the final "done" event never came.
+
+The payoff isn't just perceived speed. Streaming gives users an early-abort point — they can see the model heading in the wrong direction and cancel before it burns the full token budget on a bad answer.
+
+**Related:** [Building the Control Loop](/learn/harness-design/the-control-loop), [Routing Tool Calls to Real Code](/learn/harness-design/tool-routing-and-registries), [Logging Every Step for Debuggability](/learn/harness-design/observability-and-logging)

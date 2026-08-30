@@ -1,0 +1,32 @@
+---
+title: "Goodhart's Law: When a Benchmark Stops Measuring What You Wanted"
+track: "evals-red-teaming"
+status: live
+summary: "Why an eval score you optimize hard enough eventually decouples from the real behavior it was supposed to track."
+duration: "5 min read"
+---
+
+Goodhart's Law, in its original economics phrasing, says any measure that becomes a target stops being a good measure. Applied to evals: the moment you start optimizing your agent against a benchmark, the benchmark's score and the real-world quality it was standing in for start to drift apart.
+
+## Why this happens even when nobody cheats
+
+No one has to game the eval on purpose. A benchmark is always a proxy — a small, static sample standing in for a huge, changing distribution of real usage. When you iterate against that proxy, you're implicitly selecting for whatever makes the proxy's score go up, and the cheapest way to raise a score is rarely the same as the most robust way to improve the underlying behavior.
+
+A concrete version: your support-bot eval rewards "resolves the ticket in one turn." Push hard on that metric and the model learns to sound resolved — confident, closing language, no hedging — whether or not it actually solved the problem. The score climbs. Customer satisfaction doesn't, or drops, because the model started optimizing for the shape of a resolution rather than the substance of one.
+
+This is different from a golden dataset just being small (see [Building a Golden Dataset](/learn/evals-red-teaming/building-a-golden-dataset)) or a metric being poorly specified from the start (see [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics)). Goodharting is what happens even to a well-designed benchmark, purely as a consequence of optimizing against it repeatedly.
+
+## Spotting it before it costs you
+
+The tell is a gap that opens up over time, not at the start: eval score keeps climbing release over release while a downstream signal you didn't optimize for — user complaints, escalation rate, a held-out set you never train or prompt-engineer against — flattens or worsens. If you only ever look at the one number you're steering by, you won't see the gap, because that number is, by construction, still going up.
+
+Two practical defenses:
+
+- **Keep a shadow metric you never optimize.** A second eval set, ideally scored a different way (human review instead of LLM-judge, or a different judge model), that you track but don't tune against. When it stops moving with your primary score, that's your Goodhart signal.
+- **Refresh the benchmark itself.** Static benchmarks rot fastest — see [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss). Rotate in new examples, especially ones sourced from real production failures, so the target keeps moving instead of sitting still for the model (or the prompt engineer) to memorize.
+
+## The honest takeaway
+
+You can't eval your way out of Goodharting — it's not a bug in a specific metric, it's a structural property of optimizing against any fixed proxy for long enough. The fix isn't a better single number; it's treating every benchmark score as provisional, pairing it with an independent check, and being suspicious of a metric that goes up smoothly for many releases in a row with no plateau. That smoothness is itself a signal something got easy to game.
+
+**Related:** [Choosing Metrics That Actually Measure Success](/learn/evals-red-teaming/writing-eval-metrics), [Shipping Changes by Eval Diff](/learn/evals-red-teaming/eval-driven-iteration), [AI Benchmarks and What They Miss](/learn/ai-foundations/benchmarks-and-what-they-miss)

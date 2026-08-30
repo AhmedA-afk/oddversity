@@ -1,0 +1,35 @@
+---
+title: "Human-in-the-Loop Review Queues"
+track: "genai-app-dev"
+status: live
+summary: "Add an approval step where a person checks AI output before it reaches production or a user."
+duration: "6 min read"
+---
+
+Not every AI output should ship the moment the model finishes generating it. A review queue is the pattern that puts a person between the model and the consequence — an inbox of pending items a human approves, edits, or rejects before anything downstream happens.
+
+## When you actually need one
+
+Streaming a chat reply to the user who typed the prompt doesn't need review — they're the reviewer, in real time. A review queue earns its cost when the output affects someone *other* than the person who triggered it, or when a mistake is expensive: an auto-generated support reply going out under your company's name, a summary posted to a shared channel, a classification that changes someone's account status, generated marketing copy going live. The tell is asymmetry — the AI is fast and cheap, but a bad output is slow and costly to undo. If undoing is cheap (a Slack message you can delete), skip the queue and let it ship, then look at [escalation design for uncertain answers](/learn/hallucinations/escalation-design-for-uncertain-answers) instead of gating everything.
+
+## The core shape
+
+A review queue is really just a state machine sitting between generation and delivery:
+
+```
+generated -> pending_review -> approved -> delivered
+                            -> edited -> approved -> delivered
+                            -> rejected -> (regenerate | discard)
+```
+
+The generation step writes a row with status `pending_review` instead of sending the output anywhere. A reviewer UI lists those rows, shows the model's input alongside its output, and gives three actions: approve as-is, edit then approve, or reject with a reason. Only the approve/edit-approve paths write to the "delivered" table or fire the webhook that actually reaches the end user. Store the original generation, the edited version (if any), the reviewer's identity, and the reason on rejection — that log becomes your eval dataset later, and reviewer edits are the highest-signal feedback you'll ever get on where the prompt is actually going wrong.
+
+## Routing volume, not everything, to a human
+
+Full human review of every output doesn't scale, and it isn't necessary. Use the model's own confidence or a cheap classifier to route: high-confidence, low-stakes items auto-deliver; everything else queues. A common split is by risk tier — content going to a large audience or an external customer always queues, low-visibility internal drafts auto-deliver. You can tighten or loosen the threshold over time as you build trust in a given output type, which is the same idea covered in [model routing and multi-provider failover](/learn/genai-app-dev/model-routing-and-failover) applied to a routing decision about *people* instead of models.
+
+## Don't let the queue become a bottleneck
+
+Two failure modes kill review queues in practice. The first is queue rot: nobody owns clearing it, so pending items age past being useful (a summarized news digest approved three days late is worthless) — put a TTL on stale items and auto-discard or auto-regenerate rather than delivering something outdated. The second is reviewer fatigue: if 95% of items get rubber-stamped "approve" with no real scrutiny, the human checkpoint is theater. Watch your approve/edit/reject ratio over time — if edits and rejections trend toward zero, that's a signal to raise the auto-delivery threshold and stop wasting a person's attention, not proof the model is flawless. Feed reviewer decisions back into your eval suite the way you would for [building a golden dataset](/learn/evals-red-teaming/building-a-golden-dataset), and periodically re-audit "auto-approved" batches to make sure the threshold is still right.
+
+**Related:** [Background Jobs for Long-Running AI Tasks](/learn/genai-app-dev/background-jobs-for-long-running-ai-tasks), [Escalation Design: Handing Off to a Human When Confidence Drops](/learn/hallucinations/escalation-design-for-uncertain-answers), [Build an Escalation Queue for Low-Confidence Output](/learn/production/human-escalation-queues-for-low-confidence-output)

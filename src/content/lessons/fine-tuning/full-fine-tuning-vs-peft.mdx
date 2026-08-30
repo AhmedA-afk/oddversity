@@ -1,0 +1,31 @@
+---
+title: "Full Fine-Tuning vs Parameter-Efficient Fine-Tuning"
+track: "fine-tuning"
+status: live
+summary: "Full fine-tuning updates every weight; PEFT trains a tiny slice and gets you 90% of the way for a fraction of the cost."
+duration: "6 min read"
+---
+
+Full fine-tuning takes a pretrained model and updates every one of its weights on your data. Parameter-efficient fine-tuning (PEFT) freezes almost all of those weights and trains only a small set of new or selected parameters instead. Both change model behavior — they just spend resources very differently to get there.
+
+## What full fine-tuning actually costs
+
+Updating every weight means every weight needs a gradient, and every weight needs an optimizer state alongside it. With Adam, that's roughly two extra copies of the model's parameters just for optimizer moments, on top of the weights and gradients themselves. For a 7-billion-parameter model, that adds up to well over 100GB of memory before you've loaded a single training example, which is why full fine-tuning of anything beyond small models usually means multiple high-end GPUs, careful sharding, and real infrastructure work.
+
+You also get catastrophic forgetting risk at full strength: nudge every weight far enough toward your narrow task and the model can lose general capabilities it had before, a failure mode covered in more depth in [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting).
+
+## What PEFT changes about the trade-off
+
+PEFT methods leave the base model frozen and train a small add-on instead. The dominant approach, LoRA, injects a pair of low-rank matrices into each targeted layer — often just the attention projections — and trains only those, sometimes under 1% of the total parameter count. QLoRA pushes this further by keeping the frozen base model in 4-bit precision while the LoRA matrices train in higher precision, which is what makes fine-tuning a 7B+ model feasible on a single consumer GPU. The mechanics of both are covered in [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning).
+
+Because the base weights never move, PEFT is also naturally resistant to catastrophic forgetting — the model's general knowledge stays intact by construction, not by careful tuning. And because the trained artifact is just the small adapter, you can swap task-specific adapters in and out of the same base model at serve time, which [Merge and Version LoRA Adapters](/learn/fine-tuning/merging-and-versioning-adapters) walks through.
+
+## Where full fine-tuning still wins
+
+PEFT's ceiling is real. If your task requires the model to absorb a large volume of genuinely new knowledge or behavior — not just a style or format shift — a low-rank adapter with a few million trainable parameters may not have enough capacity to represent that change, and full fine-tuning (or continued pretraining) closes the gap. Teams doing large-scale domain adaptation, or building a foundation model derivative meant to replace the base model outright, still reach for full fine-tuning. It's also simpler at inference time: there's no adapter to load or merge, just one set of weights.
+
+## The practical default
+
+For the overwhelming majority of practitioner use cases — teaching a model a response format, a tone, a narrow domain vocabulary, or a specific tool-use pattern — PEFT gets you most of the quality of full fine-tuning at a small fraction of the compute, memory, and cost. Start there. Reach for full fine-tuning only when you've confirmed PEFT's capacity is the actual bottleneck, not the first thing you reach for by default. If you haven't yet confirmed fine-tuning is the right move at all, back up to [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag) before picking a method.
+
+**Related:** [Fine-Tune with LoRA and QLoRA](/learn/fine-tuning/lora-and-qlora-fine-tuning), [Diagnose Catastrophic Forgetting and Overfitting](/learn/fine-tuning/catastrophic-forgetting-and-overfitting), [Decide: Fine-Tune, Prompt, or RAG?](/learn/fine-tuning/fine-tune-vs-prompt-vs-rag)

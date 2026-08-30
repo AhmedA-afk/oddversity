@@ -1,0 +1,22 @@
+---
+title: "Agents need a harness, not just a prompt"
+description: "The application controls that turn a tool-using model into a system you can operate."
+published: "2026-08-29"
+tags: ["Agents", "Security", "Production"]
+---
+
+An agent is often described as a model with tools. That is the visible part. The dependable part is the harness around the model: state, permissions, validation, budgets, approvals, and observability.
+
+## Authority should be earned per action
+
+Give each tool the smallest permission it needs. Check the user, tenant, resource, and requested operation on the server. Treat retrieved text and tool results as untrusted input. A system prompt can describe a rule; it cannot enforce a permission.
+
+## The loop needs an edge
+
+Every run needs a maximum turn count, timeout, cost limit, and repeated-error policy. It also needs typed end states so a caller knows whether work completed, was refused, timed out, or stopped after a partial result.
+
+## Observability is part of the product
+
+Record configuration versions, tool calls, validated arguments, retrieval IDs, retries, approvals, and final status. Redact secrets and sensitive payloads. When a user reports a failure, you should be able to tell whether the cause was planning, retrieval, a tool, a permission check, or state.
+
+The [agent loop lesson](/learn/agentic-ai/the-agent-loop) and [agent approval scenario](/scenarios/agent-approval) make a good pair. The core idea is modest: let the model choose within a system that remains in charge.

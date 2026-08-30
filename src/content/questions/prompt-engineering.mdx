@@ -1,0 +1,54 @@
+---
+title: "Prompt engineering interview questions"
+topic: "Prompt engineering"
+description: "Eight practical questions about writing prompts that are testable, legible, and resilient to real inputs."
+order: 2
+---
+
+## 1. What makes a prompt good?
+
+A good prompt makes the task, relevant context, constraints, and expected output clear enough that two engineers can test it consistently. It avoids relying on an unstated persona or on the model guessing what success means.
+
+The prompt is only one part of the system. Pair it with representative examples, output validation, and an evaluation set. Start with [answer-first prompting](/learn/prompt-engineering/answer-first-prompting).
+
+## 2. What belongs in a system prompt?
+
+Stable application rules belong in a system prompt: the assistant's job, durable constraints, safety boundaries, and output contract. User requests and user-provided material should remain separate so that data is not accidentally treated as authority.
+
+System messages are not a security boundary by themselves. Enforce permissions, tool access, and sensitive-data controls in application code. See [system prompts versus user prompts](/learn/prompt-engineering/system-vs-user-prompts).
+
+## 3. When should you use few-shot examples?
+
+Use examples when the desired behavior is difficult to express as a rule: a classification boundary, a formatting convention, or a tone with subtle constraints. Each example should be correct, diverse enough to show the boundary, and close to the task distribution.
+
+Examples consume context and can create accidental bias. Compare zero-shot and few-shot versions on the same evaluation set rather than adding examples by intuition. See [few-shot prompting](/learn/prompt-engineering/few-shot-prompting).
+
+## 4. Why are delimiters useful?
+
+Delimiters make the boundary between instructions and untrusted content visible to both the reader and the model. Labels such as “document” or “customer message” also clarify how a piece of text should be treated.
+
+Delimiters reduce confusion but do not sanitize malicious content or grant trustworthy status. Parse and authorize data outside the model as well. See [delimiters and formatting](/learn/prompt-engineering/delimiters-and-formatting).
+
+## 5. Should you ask a model to show its chain of thought?
+
+Usually ask for a concise answer, assumptions, evidence, or a short verification summary instead of demanding private step-by-step reasoning. This produces an auditable artifact without making hidden reasoning the product contract.
+
+For hard tasks, decomposition, tool use, and checking often help more than a longer explanation request. The [prompting lesson](/learn/prompt-engineering/chain-of-thought-prompting) explains the trade-off.
+
+## 6. How do you make a prompt robust to prompt injection?
+
+Assume any retrieved document, web page, or user field can contain instructions aimed at the model. Keep untrusted text clearly labeled, restrict tools by least privilege, require approval for consequential actions, and validate outputs before they reach a sink.
+
+There is no single “anti-injection phrase” that solves this. Use layered controls and test attack paths. The [OWASP LLM guidance](https://owasp.org/www-project-top-10-for-large-language-model-applications/) treats prompt injection as a first-class application risk.
+
+## 7. How would you evaluate a prompt change?
+
+Freeze a representative dataset, define task-specific success criteria, run the old and new prompts on the same inputs, and inspect both aggregate metrics and important failures. Include adversarial, ambiguous, long, and empty inputs where they occur in production.
+
+Track prompt version, model version, retrieval configuration, and cost. A prompt change without those controls is hard to attribute and harder to roll back.
+
+## 8. How do you get reliable structured output?
+
+Give the model a precise schema, use the provider's structured-output feature where available, validate the result with a real parser, and retry or repair only when the error is safe to correct. Treat validation failure as an observable outcome, not as a silent string substitution.
+
+Keep business rules outside the schema when they need authoritative enforcement. Oddversity's [structured outputs track](/learn/structured-outputs) covers schema design and auto-repair.

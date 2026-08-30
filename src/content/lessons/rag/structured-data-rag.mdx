@@ -1,0 +1,41 @@
+---
+title: "RAG Over Structured Data: Tables, SQL, and Spreadsheets"
+track: "rag"
+status: live
+summary: "Retrieves from rows and schemas by generating queries instead of embedding cells as prose."
+duration: "6 min read"
+---
+
+Embedding a spreadsheet row the way you'd embed a paragraph almost always fails. "Row 4,812: acct_id=88231, region=EMEA, revenue=140200" has no semantic meaning to compare against — it's a fact, not a passage. The fix isn't better chunking. It's a different retrieval strategy entirely: let the model write a query.
+
+## Why prose retrieval breaks on tables
+
+Standard RAG assumes similarity between a question and a passage predicts relevance. That holds for text. It falls apart for structured data for two reasons. First, the signal that answers "what was Q3 revenue in EMEA over $100k" lives in a filter and an aggregate, not in wording similarity — no chunk of embedded cells captures a `SUM()` or a `WHERE`. Second, tables are relational: the answer often needs a join across sheets or a group-by that no single row, however well embedded, contains on its own.
+
+You can flatten a table into sentences ("The revenue for account 88231 in EMEA was $140,200") and embed those, but this only works for small, single-table lookups. It doesn't scale to aggregation, filtering across thousands of rows, or multi-table joins — and you pay to re-embed the whole table every time the data changes.
+
+## Text-to-SQL as retrieval
+
+The pattern that actually works: treat the schema, not the data, as what gets put in context. Give the model table names, column names, types, and a few sample rows or a data dictionary. Have it generate a SQL query (or a pandas/dataframe expression) against the real database. Execute that query. Feed the *result* — usually a handful of rows — back to the model as the retrieved context for the final answer.
+
+```
+User: What was our EMEA revenue in Q3?
+Model: SELECT SUM(revenue) FROM sales
+       WHERE region='EMEA' AND quarter='Q3'
+Execute → 1 row: { total: 4231000 }
+Model (final answer): EMEA revenue in Q3 was $4.23M.
+```
+
+This is retrieval in the same sense a vector search is retrieval — it narrows a large corpus down to the few facts the answer needs — but the mechanism is query generation over a schema instead of nearest-neighbor search over embeddings. It composes naturally with tool calling: the SQL generation step is just a tool call the model makes, and the executed result comes back as a tool result.
+
+## Where this breaks and how to guard it
+
+Text-to-SQL is reliable for simple filters and aggregates and gets shakier fast with ambiguous column names, implicit joins, or business logic baked into naming conventions ("active" meaning `status_code = 3`). Three things matter in practice:
+
+- **Give the model a semantic layer, not raw DDL.** A short data dictionary that says what each column means and lists valid enum values cuts wrong-column and wrong-filter errors far more than dumping `CREATE TABLE` statements.
+- **Validate before executing.** Run the generated query through a linter or a dry-run/EXPLAIN pass, and only ever generate SELECT statements against a read-only replica or role — never let this pattern get write access.
+- **Show your work.** Return the generated query alongside the answer so a user can catch a wrong `WHERE` clause instead of trusting a confidently wrong number.
+
+For spreadsheets without a real database behind them, load the sheet into an in-memory dataframe engine (DuckDB over a CSV/Parquet file works well) and apply the same pattern — the model still writes SQL, it just runs against a file instead of a warehouse.
+
+**Related:** [Metadata Filtering in Retrieval](/learn/rag/metadata-filtering-in-retrieval), [Agentic RAG: Iterative, Multi-Hop Retrieval](/learn/rag/agentic-rag), [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling)

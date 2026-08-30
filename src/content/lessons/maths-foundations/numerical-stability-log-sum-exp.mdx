@@ -1,0 +1,44 @@
+---
+title: "Numerical Stability and the Log-Sum-Exp Trick"
+track: "maths-foundations"
+status: live
+summary: "Why naive softmax and cross-entropy overflow in 32-bit floats, and the shift-by-max trick every framework uses to prevent it."
+duration: "5 min read"
+---
+
+Take the logits from any transformer's output layer — say a value of 90 — and hand them to a naive softmax. `exp(90)` is already past what a 32-bit float can hold, and the whole computation returns `NaN`. Every production softmax and cross-entropy implementation exists to dodge this.
+
+## Where the overflow comes from
+
+Softmax turns a vector of logits into probabilities:
+
+```
+softmax(x_i) = exp(x_i) / sum_j exp(x_j)
+```
+
+`exp` grows explosively. A float32 tops out around `3.4e38`, and `exp(89)` already exceeds that — so any logit above roughly 89 overflows to `inf` on the way in. Once one term is `inf`, the sum is `inf`, and `inf / inf` is `NaN`. Modern LLM logits routinely swing into the tens or hundreds before scaling, so this is not an edge case — it happens on real forward passes if nothing corrects for it.
+
+There's a smaller, quieter failure too: if every logit is very negative, `exp(x_i)` rounds down to `0.0` for all of them, the denominator becomes `0`, and you divide by zero instead of overflowing.
+
+## The trick: subtract the max first
+
+Softmax has a property naive implementations waste: it's invariant to adding a constant to every input. Subtract `max(x)` from each logit before exponentiating, and the output is mathematically identical:
+
+```
+m = max(x)
+softmax(x_i) = exp(x_i - m) / sum_j exp(x_j - m)
+```
+
+Now the largest shifted value is exactly `0`, so `exp(0) = 1` — no overflow — and every other term is `exp(negative number)`, which safely underflows toward `0` instead of exploding toward infinity. This is the log-sum-exp (LSE) trick, and the same shift generalizes to computing `log(sum(exp(x)))` directly:
+
+```
+LSE(x) = m + log(sum_j exp(x_j - m))
+```
+
+That matters because cross-entropy loss is defined in terms of `log(softmax(x))`, and naively computing softmax then taking its log wastes precision and can still divide by zero. Working in log-space with the shifted values — as `log_softmax` does — keeps the whole loss computation numerically clean in one pass instead of two lossy ones.
+
+## Where you'll actually meet this
+
+You rarely write this trick yourself — PyTorch's `F.softmax`, `F.log_softmax`, and `F.cross_entropy` all shift by the max internally, as does every major framework. But it's worth knowing because it explains real symptoms: a loss that silently turns to `NaN` mid-training, a hand-rolled softmax in a notebook that works on toy logits and breaks on real model outputs, or a custom attention implementation that needs the same treatment before its own softmax over attention scores. The rule of thumb: any time you exponentiate raw model outputs before normalizing, shift by the max first, or use the log-space version.
+
+**Related:** [The Softmax Function](/learn/maths-foundations/the-softmax-function), [Entropy and Cross-Entropy: Measuring Surprise](/learn/maths-foundations/entropy-and-cross-entropy), [Logarithms for Machine Learning](/learn/maths-foundations/logarithms-for-ml)

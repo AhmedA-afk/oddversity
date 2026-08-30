@@ -1,0 +1,47 @@
+---
+title: "Zero-Shot vs Few-Shot: When Examples Earn Their Tokens"
+track: "prompt-engineering"
+status: live
+summary: "Deciding when a clear instruction is enough and when examples are worth the extra tokens."
+duration: "5 min read"
+---
+
+Zero-shot means you describe the task and let the model figure out the output on its own. Few-shot means you show it two or three worked examples first. The question isn't which one is "better" — it's which one your task actually needs.
+
+## What each one looks like
+
+A zero-shot prompt is just an instruction:
+
+```
+Classify the sentiment of this review as positive, negative, or neutral.
+
+Review: "Shipping took forever but the product itself is great."
+```
+
+A few-shot prompt adds examples before the real input:
+
+```
+Review: "Waste of money, broke in a week." -> negative
+Review: "Does exactly what it says." -> positive
+Review: "Shipping took forever but the product itself is great." ->
+```
+
+Same task, same model, different amount of demonstration. The few-shot version isn't teaching the model sentiment analysis from scratch — modern models already know that. It's showing the model your specific format, edge cases, and boundaries.
+
+## When zero-shot is enough
+
+Reach for zero-shot first. It's cheaper, faster to iterate on, and for tasks the model has clearly seen a lot of during training — summarizing, translating, explaining code, answering general questions — a well-written instruction usually gets you most of the way there. If your task is common and your desired output format is standard, examples are often just spending tokens to say something the instruction already said.
+
+Start zero-shot, look at what the model actually produces, and only add examples in response to a concrete failure you observed — not preemptively.
+
+## When examples earn their tokens
+
+Few-shot pays off when the task has a convention that isn't obvious from a description alone: a specific output format, a boundary case you keep wanting handled a certain way, a house style, or a category scheme with fuzzy edges (is "the app crashed once" negative or neutral?). One example that resolves that ambiguity is worth more than a paragraph of instructions trying to describe it in words. This is why few-shot examples work well alongside [delimiters](/learn/prompt-engineering/delimiters-and-formatting) — they mark clearly where the demonstration ends and the real input begins.
+
+The cost is real: each example consumes context, and unrepresentative examples can actively mislead the model — it will pattern-match to the specifics of your examples (length, phrasing, edge case selection) even when that wasn't your intent. Two or three well-chosen examples usually beat ten mediocre ones.
+
+## The decision in practice
+
+Default to zero-shot with a clear, specific instruction. Move to [few-shot prompting](/learn/prompt-engineering/few-shot-prompting) when you can point to a specific ambiguity or formatting quirk that instructions alone aren't resolving, and pick examples that actually cover the disagreement — not just easy cases. If you're still getting inconsistent results after a couple of good examples, the problem is often not the shot count but the task itself needing to be broken down — see [task decomposition](/learn/prompt-engineering/task-decomposition).
+
+**Related:** [Few-Shot Prompting](/learn/prompt-engineering/few-shot-prompting), [Delimiters: Fencing Off Instructions from Content](/learn/prompt-engineering/delimiters-and-formatting), [Decomposition](/learn/prompt-engineering/task-decomposition)

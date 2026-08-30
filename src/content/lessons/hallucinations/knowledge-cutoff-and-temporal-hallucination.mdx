@@ -1,0 +1,37 @@
+---
+title: "Knowledge Cutoff and Temporal Hallucination"
+track: "hallucinations"
+status: live
+summary: "Why a model answers confidently about events after its training data ends, and how to catch it before it ships."
+duration: "5 min read"
+---
+
+Ask a model who won an election that happened after its training data was collected, and it won't say "I don't know" — it will often guess, and guess fluently. That's temporal hallucination: a model treats the edge of its training data as the edge of the world, and fills the gap with the most statistically plausible continuation instead of an admission of ignorance.
+
+## Why the model doesn't know it's out of date
+
+A model has no built-in sense of "now." Its training data has a cutoff date, but nothing in the weights marks that boundary the way a stamp marks an expiration date. When you ask about something recent, the model isn't retrieving a fact and finding it missing — it's predicting the next most likely tokens given a prompt that looks like a question with an answer. If the training corpus contained lots of confident, structured answers to "who is the CEO of X" or "what's the latest version of Y," the model produces that same shape of answer even when the specific fact postdates its knowledge. The failure isn't a missing lookup; it's a confident completion built on stale priors.
+
+This gets worse the more a topic changes over time: software version numbers, leadership changes, prices, sports outcomes, active legal cases, and anything phrased as "the latest" or "the current." Static facts (the boiling point of water, the year a historical treaty was signed) don't have this problem — dynamic facts do.
+
+## Spotting it before it ships
+
+A few reliable triggers to watch for in prompts and outputs:
+
+- **Superlatives and recency words** — "latest," "current," "most recent," "as of today." These are the highest-risk phrasing in any prompt.
+- **Anything with a natural refresh cycle** — model releases, pricing tiers, org charts, election results, sports standings, API changes.
+- **Confident specificity with no hedge** — a model that states a version number or a date with no qualifier, when the true answer requires knowing "today," is a strong signal it's extrapolating rather than recalling.
+
+The cheapest test: ask the model directly what its knowledge cutoff is, and ask it to flag when a question falls near or past that line. Well-tuned models will do this reasonably well, but don't rely on self-report alone — it's a hint, not a guarantee, since the model's sense of its own cutoff can itself be imprecise.
+
+## Fixing it
+
+There's no way to prompt a static model into knowing facts it never saw. The fix is architectural, not rhetorical:
+
+- **Ground it** — give the model current information in context (search results, a fetched page, a database row) rather than asking it to recall. See [grounding with source documents](/learn/hallucinations/grounding-with-source-documents) and [RAG as hallucination mitigation](/learn/hallucinations/retrieval-augmented-mitigation).
+- **Instruct it to defer** — explicitly tell the system prompt to say "I don't know, my knowledge has a cutoff" for time-sensitive questions instead of guessing. See [teaching a model to say "I don't know"](/learn/hallucinations/teaching-models-to-say-i-dont-know).
+- **Route to tools** — for anything genuinely time-sensitive, wire up a web search or API tool call rather than trusting parametric memory at all.
+
+Knowledge cutoff isn't a bug you patch with a better prompt — it's a structural limit of how the model was built. Treat every recency-flavored question as a signal to fetch, not to recall.
+
+**Related:** [Grounding: Constraining Answers to Supplied Sources](/learn/hallucinations/grounding-with-source-documents), [RAG as Hallucination Mitigation](/learn/hallucinations/retrieval-augmented-mitigation), [Teaching a Model to Say 'I Don't Know'](/learn/hallucinations/teaching-models-to-say-i-dont-know)

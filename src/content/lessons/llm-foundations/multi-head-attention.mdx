@@ -1,0 +1,39 @@
+---
+title: "Multi-Head Attention: Why One Attention Pattern Isn't Enough"
+track: "llm-foundations"
+status: live
+summary: "Why transformers split attention into parallel heads instead of computing one big attention pattern per layer."
+duration: "6 min read"
+---
+
+A single attention operation produces one weighted average per token — one answer to "what should I look at." A sentence usually needs several answers at once: which word does this pronoun refer to, which word does this verb agree with, which word sets the topic. Multi-head attention runs several smaller attention operations in parallel, each free to specialize in a different kind of relationship, then combines the results.
+
+## What a single head can and can't do
+
+Recall from [the attention mechanism](/learn/llm-foundations/attention-mechanism-explained) that attention turns each token's query vector and every token's key vector into a set of weights, then mixes value vectors by those weights. That's one weighting scheme per layer, computed over the full embedding dimension.
+
+The problem: a single softmax over one query-key comparison can only express one notion of "relevant." If "it" needs to attend strongly to its antecedent noun three words back, and simultaneously the verb needs to attend to its subject, a single head has to compromise — blend both signals into one weighted average, which blurs both.
+
+## Splitting into heads
+
+Multi-head attention fixes this by not doing attention in the full embedding space at all. If the model dimension is 4096 and it uses 32 heads, each head gets its own slice — a 128-dimensional projection of the queries, keys, and values, built with its own learned weight matrices. Each head then runs full attention independently, in that smaller subspace.
+
+```
+input embedding (dim 4096)
+  → head 1: project to dim 128, attend, produce dim 128 output
+  → head 2: project to dim 128, attend, produce dim 128 output
+  ...
+  → head 32: project to dim 128, attend, produce dim 128 output
+  → concatenate all 32 outputs back to dim 4096
+  → one more learned linear layer mixes them together
+```
+
+Because each head has its own projection weights, gradient descent is free to push different heads toward different jobs. In trained transformers, researchers have found heads that consistently track syntactic dependencies, heads that attend to the previous token, heads that track long-range coreference, and plenty that resist any clean human label. Nobody assigns heads their jobs — specialization is an emergent side effect of having separate parameter subspaces competing to reduce the same loss.
+
+## Why not just use one wide head
+
+You could imagine skipping the split and running one attention operation over the full 4096 dimensions. The catch is that a single softmax still yields one weighting per query, no matter how wide the vectors are — width doesn't buy you a second, independent pattern. Splitting into subspaces before the softmax is what buys multiplicity. It also comes essentially free: the total compute is close to one wide head, since each head does less work over a smaller dimension, and everything after the split runs in parallel on a GPU.
+
+This is also why serving multi-head attention efficiently at inference time is its own engineering problem — every head needs its own cached keys and values per token, which is a large share of what the [KV cache](/learn/llm-foundations/the-kv-cache) has to store, and why variants like [grouped-query attention](/learn/llm-foundations/grouped-query-attention) exist to cut that cost by sharing keys and values across groups of heads.
+
+**Related:** [The Attention Mechanism, Explained](/learn/llm-foundations/attention-mechanism-explained), [The Transformer Architecture](/learn/llm-foundations/the-transformer-architecture), [Grouped-Query and Multi-Query Attention](/learn/llm-foundations/grouped-query-attention)

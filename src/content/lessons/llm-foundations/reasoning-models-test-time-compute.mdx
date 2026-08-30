@@ -1,0 +1,29 @@
+---
+title: "Reasoning Models and Test-Time Compute"
+track: "llm-foundations"
+status: live
+summary: "Why 'thinking' models spend extra compute at inference time, and how that became a new axis for improving answers."
+duration: "6 min read"
+---
+
+Ask a standard chat model a hard math or logic problem and it answers in one forward pass, token by token, with no chance to backtrack. Ask a reasoning model the same question and it first generates a long chain of intermediate tokens — trying an approach, checking it, discarding it, trying another — before committing to a final answer. That extra generation is test-time compute: spending more inference cycles per query to get a better answer, instead of spending more compute once during training.
+
+## Two different knobs
+
+Model capability has historically come from one knob: make the model bigger, train it on more data, and pretraining [scaling laws](/learn/ai-foundations/scaling-laws) say performance improves predictably. That knob is fixed once training ends — every query pays the same forward-pass cost regardless of difficulty.
+
+Test-time compute is a second, independent knob. The model's weights stay the same, but how much it "thinks" before answering varies per query. A simple factual question might use a short chain of reasoning; a multi-step proof or a tricky debugging task might use thousands of tokens of intermediate reasoning. Because it's spent per-query rather than baked into the weights, you can trade latency and cost for accuracy at inference time — something a bigger model alone can't offer.
+
+## What's actually happening under the hood
+
+Reasoning models are typically trained with reinforcement learning on verifiable tasks — math, code, logic puzzles with checkable answers — so the model learns which reasoning strategies actually lead to correct results, rather than just imitating plausible-looking reasoning text. The output includes an extended chain of thought: exploring a path, noticing an error ("wait, that's wrong because..."), backtracking, and retrying, before producing a final answer. This is distinct from prompting a regular model to "think step by step" (see [chain-of-thought prompting](/learn/prompt-engineering/chain-of-thought-prompting)) — that elicits reasoning-shaped text from a model that was never trained to use it productively. A true reasoning model has learned, through training, that spending more tokens on exploration before committing actually raises its odds of being right.
+
+Some systems expose a dial for this: you can request more or less reasoning effort, trading latency and token cost against answer quality on harder problems. See [extended thinking and reasoning effort](/learn/prompt-engineering/extended-thinking-and-reasoning-effort) for how that control actually works.
+
+## Where it helps — and where it doesn't
+
+Test-time compute pays off on tasks with a real search space: competition math, multi-step code generation, planning problems, anything where the first idea often isn't the right one and verifying an intermediate step is possible. It buys much less on tasks that are more about retrieval or style than multi-step derivation — a factual lookup or a rewrite doesn't get better from more "thinking," it just gets slower and more expensive. Treat reasoning mode as a tool you reach for when a problem has the shape of a puzzle, not a default you leave on for everything.
+
+The practical upshot: model choice is no longer just "which model," it's "which model, and how much compute do I let it spend per query." That's a cost and latency decision as much as a capability one, and it's the same tradeoff behind [model routing by task complexity](/learn/production/model-routing-by-task-complexity) in production systems.
+
+**Related:** [Model Families: Base, Instruct, Chat, Reasoning](/learn/llm-foundations/model-families-and-variants), [Extended Thinking: Controlling How Much a Model Reasons Before Answering](/learn/prompt-engineering/extended-thinking-and-reasoning-effort), [Chain-of-Thought: Getting the Model to Show Its Work](/learn/prompt-engineering/chain-of-thought-prompting)

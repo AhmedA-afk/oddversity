@@ -1,0 +1,41 @@
+---
+title: "Code Execution as a Tool"
+track: "tools-function-calling"
+status: live
+summary: "Give the model a code interpreter instead of dozens of narrow functions, and let it write the glue code itself."
+duration: "6 min read"
+---
+
+Instead of defining `get_weather`, `get_stock_price`, and forty other narrow functions, you give the model one tool: a sandboxed code interpreter. It writes a short script, runs it, and reads the result — the same way a human would rather click through forty menu items.
+
+## Why this beats a wall of single-purpose tools
+
+Every extra tool in a schema costs prompt tokens and adds a chance the model picks the wrong one. Worse, some tasks are inherently combinatorial: "sum column C where column A matches this regex and column B is in the top decile" isn't one function call, it's a small program. You could design a `filter_and_aggregate` tool with a dozen parameters to cover every case, but you'll never cover all of them, and the schema becomes unreadable.
+
+Code execution sidesteps this. The model already knows how to write a for-loop, a pandas filter, or a regex — that's just it doing what it does best. So instead of anticipating every combination up front, you expose one general-purpose capability: `execute_python(code)` (or JS, or a shell), running in a sandbox with the libraries and data the task needs. The model composes the specific operation itself, in a language it was trained on far more heavily than any bespoke tool schema.
+
+This is sometimes called the CodeAct pattern: actions are code, not JSON arguments. It also composes naturally with other tools — a script can call an API, transform the response, and call another API, all inside one execution instead of three separate round-trips through the model.
+
+## What you still need to design
+
+The tool call itself gets simpler, but you haven't eliminated the hard parts — you've moved them.
+
+**Sandboxing is now non-negotiable.** You're running model-generated code, not model-generated arguments to code you wrote. Treat it like [untrusted user input](/learn/tools-function-calling/sandboxing-tool-execution): no filesystem access outside a scratch directory, no network unless explicitly allowlisted, resource and time limits, and no shared process with anything sensitive.
+
+**Result size matters more, not less.** A script can print megabytes of output through one tool call. Cap stdout, truncate before it goes back into context, and let the model request more detail on a second call rather than dumping everything at once.
+
+**Errors come back as tracebacks, not clean error codes.** A `KeyError` or `ModuleNotFoundError` needs to make sense to the model on the next turn — return the traceback, not just "execution failed," so it can actually fix its own code.
+
+```python
+# a single tool call replaces several narrow ones
+import pandas as pd
+df = pd.read_csv("orders.csv")
+top = df[df["region"] == "west"].nlargest(5, "revenue")
+print(top[["customer", "revenue"]].to_string(index=False))
+```
+
+## When narrow tools still win
+
+Code execution isn't a universal upgrade. If a task is a single well-defined action — "send this email," "create this calendar event" — a purpose-built function is faster, cheaper, and easier to gate with an [approval step](/learn/tools-function-calling/approval-gates-for-sensitive-tools) than a general code sandbox. Reach for code execution when the *shape* of the task varies (data wrangling, multi-step transforms, gluing several APIs together), and keep discrete, auditable actions as discrete tools.
+
+**Related:** [Sandboxing Tool Execution](/learn/tools-function-calling/sandboxing-tool-execution), [Executing Tool Calls Safely](/learn/tools-function-calling/executing-tool-calls-safely), [Chaining Tool Calls into a DAG Workflow](/learn/tools-function-calling/chaining-tools-into-workflows)

@@ -1,0 +1,37 @@
+---
+title: "Giving Agents Tools"
+track: "agentic-ai"
+status: live
+summary: "How an agent calls a function, reads the result, and folds it back into its next decision."
+duration: "5 min read"
+---
+
+An LLM by itself can only produce text. A tool is what lets it check today's weather, query a database, or send an email — the bridge between "the model thinks" and "the model does."
+
+## What a Tool Actually Is
+
+A tool is a function the model can ask to have run. You describe it with a name, a plain-language description, and a schema for its inputs — usually JSON Schema. For example, a `get_weather` tool might take a `city` string. The model never runs this function itself; it only outputs a structured request to call it. Your code is the one that executes it and hands the result back.
+
+That handoff is the whole pattern:
+
+1. You send the model a prompt plus the list of available tools.
+2. The model decides a tool would help, and outputs a call: name plus arguments.
+3. Your code runs the real function with those arguments.
+4. You send the result back to the model as a new message.
+5. The model reads that result and either calls another tool or writes a final answer.
+
+This is the mechanism that turns a plain prompt into the beginning of an [agent loop](/learn/agentic-ai/the-agent-loop) — sense the result, think about what it means, act again if needed.
+
+## Why the Description Matters More Than the Code
+
+The model picks a tool based only on its name, description, and parameter schema — it cannot see your implementation. A vague description like "gets data" leads to wrong or missed calls. A good one states exactly when to use the tool and what each parameter means, the same way you'd brief a new teammate who can't read your source. This is its own skill, covered in depth under tool schema design.
+
+## Parsing the Result Back In
+
+Once your code runs the tool, the raw output — a JSON blob, an API response, a stack trace — has to go back into the conversation in a form the model can use. Dumping an enormous unfiltered payload wastes context and can bury the one field that mattered. Trim it to what's relevant, and if the call failed, say so plainly ("city not found") rather than passing through a raw exception. The model treats tool output as just more context, so noisy or ambiguous results produce noisy next steps.
+
+## One Tool Call Is Not an Agent
+
+Calling a single tool and returning its output is a workflow, not agentic behavior. What makes it agentic is the model deciding, on its own, whether to call a tool at all, which one, and whether the result means it should call another before answering. A calculator plugin that always fires on math questions is a fixed workflow; a system that reads a user's request and chooses among a weather tool, a search tool, and a calculator — chaining them as needed — is exercising real [tool use](/learn/agentic-ai/tool-use-basics) inside a loop. That distinction is also why not every feature needs an agent at all.
+
+**Related:** [The Agent Loop: Sense, Think, Act](/learn/agentic-ai/the-agent-loop), [What Is Tool Calling](/learn/tools-function-calling/what-is-tool-calling), [Designing a Tool Schema](/learn/tools-function-calling/designing-a-tool-schema)

@@ -1,0 +1,29 @@
+---
+title: "Foundation Models, Explained"
+track: "ai-foundations"
+status: live
+summary: "Train once on broad data, adapt to many tasks — the shift that turned one model into a hundred products."
+duration: "5 min read"
+---
+
+Before 2018 or so, if you wanted a model to do sentiment analysis, you built a sentiment model. Wanted translation? A separate translation model, trained from scratch, on labeled data specific to that job. A foundation model breaks that pattern: train one very large model once, on broad, mostly unlabeled data, then adapt it — with a prompt, a bit of fine-tuning, or nothing at all — to dozens of tasks nobody explicitly trained it for.
+
+## What "foundation" actually means
+
+The term comes from a 2021 Stanford paper, and it's literal: the model is a foundation you build on, not the finished thing. GPT-4, Claude, and Gemini are foundation models. A customer-support bot built on top of one, a code-review tool, a document summarizer — those are applications built *on* the foundation, not new foundation models themselves.
+
+The defining trait is breadth of training paired with breadth of use. The model isn't trained to do one job; it's trained to compress a huge chunk of how language, code, and reasoning work, via [self-supervised learning](/learn/ai-foundations/self-supervised-learning) on data that mostly didn't need human labels. What falls out is a general-purpose capability that adapts to jobs the original training never targeted.
+
+## Why this replaced the old approach
+
+The old way — one labeled dataset, one model, one task — worked, but it was expensive per task and each model started from zero. Foundation models flip the economics: the expensive part (massive [training](/learn/ai-foundations/training-vs-inference) run) happens once, and adaptation is cheap by comparison. A team building a legal-document classifier doesn't collect millions of labeled contracts and train a network from scratch anymore. They start from a foundation model that already has a working model of language and law-adjacent text, then nudge it with a prompt or a small fine-tuning set.
+
+This is also why the same underlying model can power a chatbot, a coding assistant, and an [agent](/learn/ai-foundations/ai-agents-vs-chatbots) that books your flights. The foundation didn't change — only what sits on top of it did.
+
+## The tradeoff nobody skips
+
+Generality isn't free. A foundation model trained on broad internet-scale data inherits the biases, gaps, and errors in that data, and its broad competence is *shallow* in places a narrow model trained for exactly one job might not be. It can also confidently produce wrong answers in domains it wasn't well covered on — see [what LLMs can and cannot do](/learn/ai-foundations/what-llms-can-and-cannot-do) for the honest version of that boundary. And "foundation" describes training scope, not model size — some foundation models are small enough to run on a laptop; size and generality are related but not the same axis.
+
+The practical upshot: when you pick a model for a task, you're not choosing between "a good model" and "a bad model" — you're choosing how much of the foundation's general capability transfers to your specific problem, and how much adaptation (prompting, retrieval, fine-tuning) you'll need to close the gap.
+
+**Related:** [How LLMs Work](/learn/ai-foundations/how-llms-work), [Self-Supervised Learning: Training Without Labels](/learn/ai-foundations/self-supervised-learning), [Choosing a Model](/learn/ai-foundations/choosing-a-model)

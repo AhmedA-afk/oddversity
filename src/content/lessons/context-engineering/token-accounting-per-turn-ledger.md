@@ -56,10 +56,10 @@ def turn_cost(billed_in: int, cached: int, tokens_out: int) -> float:
 |---|---|---|---|---|---|---|
 | 1 | 1,200 | 1,209 | 9 | 0 | 180 | $0.0063 |
 | 2 | 1,450 | 1,461 | 11 | 900 | 210 | $0.0051 |
-| 3 | 1,700 | 1,712 | 12 | 1,150 | 195 | $0.0049 |
+| 3 | 1,700 | 1,712 | 12 | 1,150 | 195 | $0.0050 |
 | 4 | 4,100 | 4,113 | 13 | 1,150 | 260 | $0.0131 |
 | 5 | 6,300 | 6,314 | 14 | 1,150 | 205 | $0.0189 |
-| 6 | 8,500 | 8,515 | 15 | 1,150 | 190 | $0.0252 |
+| 6 | 8,500 | 8,515 | 15 | 1,150 | 190 | $0.0253 |
 
 > **Why this step?** Laid out turn by turn instead of as a running total, two patterns become visible that a single "session cost: $0.074" figure would hide completely.
 
@@ -67,7 +67,7 @@ def turn_cost(billed_in: int, cached: int, tokens_out: int) -> float:
 
 The `diff` column is boring on purpose — it grows by roughly one or two tokens per turn as the message count grows, consistent with small per-message formatting overhead. That's the reconciliation working correctly: your local count and the provider's billed count agree closely, so you can trust both.
 
-The `cached` column is the actual finding. It climbs from 0 to 1,150 as the system prompt and tool definitions become a stable, reusable prefix (see [Cache-Aware Context Design](/learn/context-engineering/cache-aware-context-design)) — and then it goes flat at 1,150 for turns 4, 5, and 6, even as `billed_in` nearly *doubles* each turn. Nothing new is ever getting cached past turn 3. Meanwhile `tokens_out` — the actual length of Aria's answer — stays roughly flat around 190–260 tokens the whole time. Cost is climbing roughly 5x from turn 3 to turn 6 for an answer that isn't getting any longer or more thorough. That decoupling — cost rising while output value doesn't — is the signal a total-cost dashboard erases by only showing you the sum.
+The `cached` column is the actual finding. It climbs from 0 to 1,150 as the system prompt and tool definitions become a stable, reusable prefix (see [Cache-Aware Context Design](/learn/context-engineering/cache-aware-context-design)) — and then it goes flat at 1,150 for turns 4, 5, and 6, even as `billed_in` keeps climbing steeply each turn. Nothing new is ever getting cached past turn 3. Meanwhile `tokens_out` — the actual length of Aria's answer — stays roughly flat around 190–260 tokens the whole time. Cost is climbing roughly 5x from turn 3 to turn 6 for an answer that isn't getting any longer or more thorough. That decoupling — cost rising while output value doesn't — is the signal a total-cost dashboard erases by only showing you the sum.
 
 ## Where it breaks (+fix)
 

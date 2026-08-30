@@ -15,7 +15,8 @@
     "icons": "python3 scripts/generate-icons.py",
     "assets": "npm run fonts && npm run icons && npm run og",
     "check:links": "node scripts/check-links.mjs",
-    "prelaunch": "npm run og && npm run build && npm run check:links"
+    "prelaunch": "npm run og && npm run build && npm run check:links",
+    "illustrations": "python3 scripts/generate-illustrations.py"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.2.3",

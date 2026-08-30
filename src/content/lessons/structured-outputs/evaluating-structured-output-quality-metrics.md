@@ -13,13 +13,13 @@ duration: "7 min read"
 In order of how much they tell you, and how cheap they are to compute:
 
 - **Valid-rate** — of everything the model returned, what fraction parses as syntactically valid JSON at all. The cheapest check: a `try: json.loads(...) except`.
-- **Schema-conformance rate** — of what's valid JSON, what fraction also matches your schema's types, required fields, and enum constraints. A [Pydantic or Zod](/learn/structured-outputs/pydantic-zod-schema-patterns) `.validate()` call, pass or fail.
+- **Schema-conformance rate** — of what's valid JSON, what fraction also matches your schema's types, required fields, and enum constraints. A Pydantic or Zod `.validate()` call, pass or fail.
 - **Field-level accuracy** — for each field, of the records where the schema conforms, what fraction have the *correct value*, scored against a labeled gold answer. This needs a gold dataset; the first two don't.
 - **Full-object exact-match** — of everything, what fraction have *every field* correct simultaneously. The strictest metric, and the only one that answers "can I trust this record with zero review."
 
 ## The mental model
 
-Picture four nested rings, each one strictly inside the last. Valid-rate is the outermost ring — nearly everything modern constrained decoding produces lands inside it, which is exactly why it's the least informative: a 99% valid-rate is now closer to a baseline expectation than an achievement. Schema-conformance narrows the ring to records that also have the right shape. Field-level accuracy is inside that again — a schema-conformant record can still have any number of individually wrong field values. Full-object exact-match is the innermost ring: the only records that live there got every single field right, at once.
+Picture four nested rings, each one strictly inside the last. Valid-rate is the outermost ring — nearly everything modern constrained decoding produces lands inside it, which is exactly why it's the least informative: a very high valid-rate is now closer to a baseline expectation than an achievement. Schema-conformance narrows the ring to records that also have the right shape. Field-level accuracy is inside that again — a schema-conformant record can still have any number of individually wrong field values. Full-object exact-match is the innermost ring: the only records that live there got every single field right, at once.
 
 A pipeline reports numbers from outside in and only the innermost ring tells you what you can actually automate without review.
 
@@ -62,4 +62,4 @@ This ordering matters most at the moment someone asks "can we skip human review 
 
 [Curating a Gold Dataset](/learn/structured-outputs/building-a-gold-dataset) covers where the labels for the inner two metrics come from, and [Building an Eval Harness](/learn/structured-outputs/building-an-extraction-eval-harness) wires all four into one runnable report.
 
-**Related:** [Evaluating Structured Output](/learn/structured-outputs/evaluating-structured-output-quality), [Building an Eval Harness](/learn/structured-outputs/building-an-extraction-eval-harness), [Curating a Gold Dataset](/learn/structured-outputs/building-a-gold-dataset), [Structured Output Failure Modes](/learn/structured-outputs/structured-output-failure-modes)
+**Related:** [Evaluating Structured Output](/learn/structured-outputs/evaluating-structured-output-quality), [Building an Eval Harness](/learn/structured-outputs/building-an-extraction-eval-harness), [Curating a Gold Dataset](/learn/structured-outputs/building-a-gold-dataset), [The Cross-Provider Landscape](/learn/structured-outputs/cross-provider-landscape)

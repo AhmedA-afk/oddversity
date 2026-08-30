@@ -117,7 +117,7 @@ def run_agent(loader: JITLoader, task: str, doc_ids_the_model_wants: list[str]) 
 ## Run it
 
 ```python
-loader = JITLoader(CORPUS, hydrate_budget=150)
+loader = JITLoader(CORPUS, hydrate_budget=400)
 
 result = run_agent(
     loader,
@@ -126,7 +126,7 @@ result = run_agent(
 )
 
 print(result["fetched"])                  # ['d3', 'd2']
-print(result["hydration_tokens_spent"])   # sum of d3 + d2's estimated tokens, well under 150
+print(result["hydration_tokens_spent"])   # sum of d3 + d2's estimated hydration tokens, within the 400 budget
 ```
 
 Compare against loading everything eagerly:

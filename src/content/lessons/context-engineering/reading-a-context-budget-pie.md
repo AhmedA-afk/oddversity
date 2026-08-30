@@ -65,6 +65,6 @@ The obvious trap after this exercise: over-correct, and cut the resolved sub-thr
 - A single "% full" number hides which slices are actually large — always break it down before acting.
 - The biggest slice isn't automatically the hardest problem: a clean duplicate is a free fix, while a mixed history slice needs to be split into pieces before you can decide anything.
 - Trim, summarize, and externalize solve different problems — picking the wrong one for a given piece either loses information you needed or keeps cost you didn't.
-- After applying fixes, this payload drops from 80,000 to roughly 30,300 tokens — the duplicate gone, the resolved sub-thread reduced to a line, the durable fact moved out of the replay path entirely — well under half its starting size, with nothing load-bearing lost.
+- After applying fixes, this payload drops from 80,000 to roughly 34,800 tokens — the duplicate gone, the resolved sub-thread reduced to a line, the durable fact moved out of the replay path entirely — well under half its starting size, with nothing load-bearing lost.
 
 **Related:** [Token Budgeting Strategies](/learn/context-engineering/token-budgeting-strategies) · [Tool Output Deduplication](/learn/context-engineering/tool-output-deduplication) · [Summarization for Compaction](/learn/context-engineering/summarization-for-compaction) · [Context Observability and Token Accounting](/learn/context-engineering/context-observability-and-token-accounting)

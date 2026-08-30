@@ -64,7 +64,7 @@ Everything strict-mode-specific — the `additionalProperties` flag, the forced 
 
 ## Where it shows up
 
-This pattern earns its cost the first time you need to run the same extraction against two providers for a genuine reason, not a hypothetical one: an eval that compares accuracy across models (see [Building an Eval Harness](/learn/structured-outputs/building-an-extraction-eval-harness)), a cost-based routing decision that falls back to a cheaper provider under load, or a regulatory requirement to avoid a single vendor for a given workload. Without the adapter boundary, each of these becomes a multi-file refactor; with it, it's a config value.
+This pattern earns its cost the first time you need to run the same extraction against two providers for a genuine reason, not a hypothetical one: an eval that compares accuracy across models, a cost-based routing decision that falls back to a cheaper provider under load, or a regulatory requirement to avoid a single vendor for a given workload. Without the adapter boundary, each of these becomes a multi-file refactor; with it, it's a config value.
 
 ## Watch out for (what leaks through anyway)
 

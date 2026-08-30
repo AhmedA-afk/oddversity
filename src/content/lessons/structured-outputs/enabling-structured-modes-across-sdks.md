@@ -2,7 +2,7 @@
 title: "Turning On Structured Modes in Code"
 track: "structured-outputs"
 status: live
-summary: "The exact calls that turn on structured output across three surfaces — Anthropic tool use, OpenAI response_format, and a self-hosted grammar — and what each hands back."
+summary: "The exact calls that turn on structured output across three surfaces — Anthropic tool use, OpenAI response_format, and a self-hosted grammar."
 duration: "8 min read"
 ---
 

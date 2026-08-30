@@ -66,7 +66,7 @@ def filter_pipeline(candidates, task_type, min_score=0.6, max_keep=6):
     return passed[:max_keep]
 ```
 
-On the same ten-chunk example from [What to Include vs. What to Cut](/learn/context-engineering/what-to-include-vs-what-to-cut): a naive top-8 by similarity alone would have kept both the direct refund-policy chunk and its near-duplicate FAQ restatement, plus the warranty-terms chunk (topically adjacent but not task-appropriate for a refund-window question) and the careers-page noise chunk that a strict threshold would have rejected outright. Running threshold → task rules → redundancy in sequence drops the careers snippet at step one, the warranty chunk at step two, and the FAQ duplicate at step three — leaving a materially smaller, cleaner set than similarity rank alone would have produced.
+On the same ten-chunk example from [What to Include vs. What to Cut](/learn/context-engineering/what-to-include-vs-what-to-cut): similarity rank alone would have kept both the direct refund-policy chunk and its near-duplicate FAQ restatement, plus the warranty-terms chunk (topically adjacent but not task-appropriate for a refund-window question) and a low-scoring off-topic snippet that a strict threshold would reject outright. Running threshold → task rules → redundancy in sequence drops the off-topic snippet at step one, the warranty chunk at step two (on-topic but wrong task), and the FAQ duplicate at step three — leaving a materially smaller, cleaner set than similarity rank alone would have produced.
 
 ## The cost of getting this wrong
 

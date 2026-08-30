@@ -72,7 +72,7 @@ def run_eval(extract_fn, gold_set: list[dict], schema) -> list[dict]:
     return results
 ```
 
-> **Why this step?** `extract_fn` is deliberately just a callable — plug in an adapter from [A Provider Adapter](/learn/structured-outputs/provider-adapter-implementation), a repair-wrapped version from [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), or a completely different pipeline. The harness doesn't care how the JSON was produced, only whether it's correct.
+> **Why this step?** `extract_fn` is deliberately just a callable — plug in an adapter from [A Provider Adapter](/learn/structured-outputs/provider-adapter-implementation), a repair-wrapped version, or a completely different pipeline. The harness doesn't care how the JSON was produced, only whether it's correct.
 
 ### Step 3 — roll up into a report
 
@@ -129,7 +129,7 @@ Both structural metrics are perfect, but `priority` is wrong on one of five reco
 ## Harden it
 
 - **Run each record more than once and report variance, not a single pass.** Sampling temperature means the same input can score differently on two runs; a harness that reports one number per item without noting run-to-run spread will look noisier or steadier than it really is when you compare two model versions. This matters directly for [Regression-Testing Structured Output in CI](/learn/structured-outputs/regression-testing-schemas-and-prompts), where a single flaky run can look like a regression.
-- **Keep the harness's own parsing forgiving of nothing.** Don't let `score_record` silently strip whitespace or fix trailing commas before scoring valid-rate — that's exactly the metric meant to catch that failure, and repairing it inside the scorer hides the number you're trying to measure. Repair belongs in the pipeline under test, from [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair), not in the eval that grades it.
+- **Keep the harness's own parsing forgiving of nothing.** Don't let `score_record` silently strip whitespace or fix trailing commas before scoring valid-rate — that's exactly the metric meant to catch that failure, and repairing it inside the scorer hides the number you're trying to measure. Repair belongs in the pipeline under test, not in the eval that grades it.
 - **Log the full input/output/expected triple for every failing record**, not just the aggregate score — this is what [parsing and validating API responses](/learn/python-data-apis/parsing-and-validating-api-responses) recommends generally, and it's the difference between "priority is at 80%" and knowing *which* ticket got miscategorized and why.
 
 ## Extend it

@@ -42,7 +42,7 @@ total_tokens = sum(c["tokens"] for c in selected)  # 2,065
 
 Fixed-k doesn't know about the budget at all — it hands back all 10 regardless of what they cost, and something downstream has to deal with the overage: either truncate mid-chunk (breaking sentences, sometimes losing the actual answer if it was in the cut-off half), or reject the batch and retry with a smaller k chosen by guesswork.
 
-> **Why this fails here:** truncating at 1,200 tokens straight through the ranked list cuts partway into chunk 6 (150 tokens, cumulative 1,335) — right after including chunks 1 through 5 in full (1,285 tokens) but with only 85 tokens of chunk 6's 150 surviving. Chunks 7 through 10, including chunk 9's relatively cheap 130-token excerpt at rank 9, never make it in at all, cut not because they were low-value but because of where they sat in an unbroken list.
+> **Why this fails here:** truncating at 1,200 tokens straight through the ranked list cuts partway into chunk 6 (150 tokens, cumulative 1,335) — right after including chunks 1 through 5 in full (1,185 tokens) but with only 15 tokens of chunk 6's 150 surviving. Chunks 7 through 10, including chunk 9's relatively cheap 130-token excerpt at rank 9, never make it in at all, cut not because they were low-value but because of where they sat in an unbroken list.
 
 ### Dynamic-fill-to-budget: walk the ranked list, skip what doesn't fit, keep checking
 

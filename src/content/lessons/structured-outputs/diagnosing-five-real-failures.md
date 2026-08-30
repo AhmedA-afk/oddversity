@@ -37,7 +37,7 @@ Five real captured responses broke it five different ways. Each one below is dia
 {"name": "Dana Osei", "age": 34, "status": "open", "email": "dana@example.com", "tags": ["billing", "urg
 ```
 
-`json.loads` raises `Expecting ',' delimiter: line 1 column 103 (char 102)` — and that column number sits at the very last character of the string, not somewhere in the middle. That's the tell for truncation specifically: a parse error pointing at the tail means the model simply ran out of room, not that it wrote something wrong partway through.
+`json.loads` raises an `Unterminated string` error pointing near the end of the buffer, not somewhere in the middle. That's the tell for truncation specifically: a parse error pointing at the tail means the model simply ran out of room, not that it wrote something wrong partway through.
 
 **Fix:** this is a syntactic failure. Run it through a tolerant repair pass that closes the open string and array (see [Repairing Partial and Streamed JSON](/learn/structured-outputs/incremental-json-repair-explained)), or better, raise `max_tokens` so it doesn't happen again. A repair pass here recovers `tags: ["billing", "urg"]` — note the last tag is likely incomplete too, so treat it as provisional and consider dropping it rather than trusting `"urg"` as a real value.
 

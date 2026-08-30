@@ -60,12 +60,12 @@ Run each labeled segment through an actual tokenizer — not a word count — us
 
 | Segment | Tokens | % of total |
 |---|---:|---:|
-| System prompt | 640 | 6.2% |
-| Tool definitions (6 tools) | 2,180 | 21.0% |
-| Conversation history (11 turns, incl. duplicate JSON) | 6,300 | 60.6% |
-| Current message | 130 | 1.2% |
-| Scratchpad / carried notes | 190 | 1.8% |
-| **Total** | **10,400** | **100%** |
+| System prompt | 640 | 6.8% |
+| Tool definitions (6 tools) | 2,180 | 23.1% |
+| Conversation history (11 turns, incl. duplicate JSON) | 6,300 | 66.7% |
+| Current message | 130 | 1.4% |
+| Scratchpad / carried notes | 190 | 2.0% |
+| **Total** | **9,440** | **100%** |
 
 > **Why this step?** Percentages, not raw counts, are what reveal a skewed split. 6,300 tokens sounds like "the conversation" until you see it's 60% of the entire payload for a question that's one sentence long.
 

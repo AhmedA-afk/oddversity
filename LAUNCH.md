@@ -93,6 +93,8 @@ than rendered blank.
 ## 6. Content pass before the door opens
 
 - [ ] Re-run `npm run og` so newly added tracks, guides and posts have cards.
+- [ ] `npm run illustrations` if any role page was added; review every image
+      against `docs/visual-system.md` before shipping.
 - [ ] `npm run prelaunch` — regenerates cards, builds, and fails on dead links.
 - [ ] Spot-check that no lesson summary is truncated mid-sentence; they are the
       meta descriptions.

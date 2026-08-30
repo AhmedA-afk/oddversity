@@ -57,7 +57,7 @@ HARD_TRIGGER = 0.85 * HISTORY_CAP  # 3,825 — fire compaction now
 
 At turn 19, the hard-trigger flag isn't decoration — it's the signal that hands off to compaction. [Summarization for Compaction](/learn/context-engineering/summarization-for-compaction) compresses the oldest turns into a summary, and history drops from 3,895 to 1,600 tokens: a real reset, not a truncation. Growth resumes from that lower baseline at the same ~205 tokens/turn, which is exactly why the table is climbing again by turn 30 — a healthy history segment looks like a sawtooth, not a flat line or a monotonic climb (the same signature called out in [Context Observability](/learn/context-engineering/context-observability-and-token-accounting)).
 
-Contrast this with what happens if nobody wires the hard trigger to anything: the same growth rate, left unmanaged, reaches the *actual* 4,500 cap at turn 22 — five turns after this dashboard's soft warning and three after its hard trigger. That failure is worth seeing in full, which is the subject of [Budgeting for a Conversation That Grows](/learn/context-engineering/budgeting-for-multi-turn-growth).
+Contrast this with what happens if nobody wires the hard trigger to anything: the same growth rate, left unmanaged, reaches the *actual* 4,500 cap at turn 22 — six turns after this dashboard's soft warning and three after its hard trigger. That failure is worth seeing in full, which is the subject of [Budgeting for a Conversation That Grows](/learn/context-engineering/budgeting-for-multi-turn-growth).
 
 ## Where it breaks (+fix)
 

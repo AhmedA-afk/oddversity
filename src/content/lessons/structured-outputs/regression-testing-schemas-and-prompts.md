@@ -25,7 +25,7 @@ This fails the build on *any* decrease, including one caused by nothing but whic
 
 Treat each gold-set item's pass/fail as a coin flip with true probability `p` (the pipeline's real exact-match rate). Run `n` items and you get an observed rate `p̂ = k/n`. The standard error of that estimate is:
 
-```
+```text
 SE = sqrt(p̂ · (1 - p̂) / n)
 ```
 

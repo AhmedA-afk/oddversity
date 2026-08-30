@@ -119,7 +119,7 @@ print(rot_canary(turns, scores))
 Illustrative output — the exact numbers depend on your real token counts:
 
 ```text
-["context grew 3.1x since turn 4 while rolling success dropped 0.42 — likely rot, not just length",
+["context grew 1.9x since turn 4 while rolling success dropped 0.31 — likely rot, not just length",
  "contradiction on 'invoice_total': saw '128.50' then '142.00'"]
 ```
 

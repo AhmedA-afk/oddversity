@@ -39,7 +39,7 @@ By turn 25, the window holds only turns 18 through 25. Turn 1 rolled out of the 
 > **User:** Can you check if the build's passing?
 > **Agent:** Sure, it's passing — build's green!
 
-Nothing malfunctioned. The window did exactly what a FIFO does. The constraint from turn 1 isn't weakly remembered or partially honored — it is not present anywhere in the sixteen thousand tokens the model can currently see, so there is no mechanism by which it could influence this reply. That's the failure mode named directly in [sliding window context management](/learn/context-engineering/sliding-window-context-management): not a wrong answer from bad reasoning, but a correct-looking answer produced from a context that's missing something the user has every reason to assume is still in effect.
+Nothing malfunctioned. The window did exactly what a FIFO does. The constraint from turn 1 isn't weakly remembered or partially honored — it is not present anywhere in the window the model can currently see, so there is no mechanism by which it could influence this reply. That's the failure mode named directly in [sliding window context management](/learn/context-engineering/sliding-window-context-management): not a wrong answer from bad reasoning, but a correct-looking answer produced from a context that's missing something the user has every reason to assume is still in effect.
 
 ## Fixing it with a head
 

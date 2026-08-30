@@ -6217,12 +6217,77 @@ const unsortedTracks: Track[] = [
     "n": "11",
     "name": "Structured Outputs",
     "group": "Working with Models",
-    "meta": "22 lessons",
+    "meta": "122 lessons",
     "summary": "Getting models to return machine-parseable, schema-valid data instead of free text.",
     "nodes": [
       {
+        "title": "The Whole Game of Structured Output",
+        "slug": "the-whole-game-of-structured-output",
+        "status": "live"
+      },
+      {
         "title": "Why Structured Output: Free Text vs Machine-Parseable Data",
         "slug": "why-structured-output",
+        "status": "live"
+      },
+      {
+        "title": "Three Layers of Reliability",
+        "slug": "what-reliable-structure-really-means",
+        "status": "live"
+      },
+      {
+        "title": "Why Parsing Prose Always Breaks",
+        "slug": "strings-are-not-data-intuition",
+        "status": "live"
+      },
+      {
+        "title": "The Schema as a Contract",
+        "slug": "the-contract-between-model-and-code",
+        "status": "live"
+      },
+      {
+        "title": "From Prose to Parsed, Step by Step",
+        "slug": "from-prose-to-parsed-worked-example",
+        "status": "live"
+      },
+      {
+        "title": "Four Roads to Structured Output",
+        "slug": "three-ways-to-get-json-overview",
+        "status": "live"
+      },
+      {
+        "title": "Where Structured Output Shows Up in a System",
+        "slug": "where-structured-output-fits-in-a-system",
+        "status": "live"
+      },
+      {
+        "title": "The Beginner Traps",
+        "slug": "structured-output-early-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "What One Bad Field Costs Downstream",
+        "slug": "cost-of-getting-it-wrong-intuition",
+        "status": "live"
+      },
+      {
+        "title": "Thinking in a Reliability Budget",
+        "slug": "reliability-budget-thinking",
+        "status": "live"
+      },
+      {
+        "title": "One Task, Four Mechanisms",
+        "slug": "same-task-four-ways-mini-tour",
+        "status": "live"
+      },
+      {
+        "title": "Why Models Emit Broken JSON",
+        "slug": "why-models-emit-invalid-json",
+        "status": "live"
+      },
+      {
+        "title": "Foundations Checkpoint",
+        "slug": "foundations-quiz",
         "status": "live"
       },
       {
@@ -6233,6 +6298,86 @@ const unsortedTracks: Track[] = [
       {
         "title": "JSON Schema: Specifying Your Exact Data Contract",
         "slug": "json-schema-for-outputs",
+        "status": "live"
+      },
+      {
+        "title": "The JSON Schema Subset That Matters",
+        "slug": "json-schema-essentials-for-outputs",
+        "status": "live"
+      },
+      {
+        "title": "Pydantic Models for Extraction",
+        "slug": "pydantic-models-for-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Zod Schemas for Extraction",
+        "slug": "zod-schemas-for-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Pydantic and Zod Side by Side",
+        "slug": "pydantic-and-zod-side-by-side",
+        "status": "live"
+      },
+      {
+        "title": "Modeling Nested Objects and Arrays",
+        "slug": "designing-nested-and-array-fields",
+        "status": "live"
+      },
+      {
+        "title": "Modeling an Invoice with Line Items",
+        "slug": "invoice-line-items-nested-example",
+        "status": "live"
+      },
+      {
+        "title": "Optional, Nullable, Default, Missing",
+        "slug": "optional-nullable-and-defaults",
+        "status": "live"
+      },
+      {
+        "title": "The Optional-vs-Nullable Bugs",
+        "slug": "optional-vs-nullable-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Enums, Literals, and Bounded Fields",
+        "slug": "enums-and-constrained-value-fields",
+        "status": "live"
+      },
+      {
+        "title": "A Status Enum with a Safe Fallback",
+        "slug": "status-enum-worked-example",
+        "status": "live"
+      },
+      {
+        "title": "Discriminated Unions for Heterogeneous Items",
+        "slug": "discriminated-unions-for-variants",
+        "status": "live"
+      },
+      {
+        "title": "An Event Stream as a Discriminated Union",
+        "slug": "event-log-discriminated-union-example",
+        "status": "live"
+      },
+      {
+        "title": "Field Descriptions Are Inline Prompts",
+        "slug": "field-descriptions-as-prompts",
+        "status": "live"
+      },
+      {
+        "title": "Schema-Shape Antipatterns",
+        "slug": "schema-shape-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Field Design Decision Table",
+        "slug": "field-design-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Schema Languages Checkpoint",
+        "slug": "schema-design-quiz",
         "status": "live"
       },
       {
@@ -6261,13 +6406,228 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "Four Properties of a Reliable Schema",
+        "slug": "what-makes-a-schema-reliable",
+        "status": "live"
+      },
+      {
+        "title": "Make the Right Answer the Easy Path",
+        "slug": "shape-the-easy-path-intuition",
+        "status": "live"
+      },
+      {
+        "title": "Refactoring a Fragile Schema",
+        "slug": "refactoring-a-fragile-schema-example",
+        "status": "live"
+      },
+      {
+        "title": "When to Flatten and When to Nest",
+        "slug": "flat-vs-nested-tradeoffs",
+        "status": "live"
+      },
+      {
+        "title": "Field Names and Order Change Behavior",
+        "slug": "naming-and-ordering-fields",
+        "status": "live"
+      },
+      {
+        "title": "Evidence Before Label",
+        "slug": "reasoning-field-ordering-example",
+        "status": "live"
+      },
+      {
+        "title": "Letting the Model Say 'I Don't Know'",
+        "slug": "representing-uncertainty-in-schemas",
+        "status": "live"
+      },
+      {
+        "title": "A Not-Found Sentinel That Stops Hallucination",
+        "slug": "not-found-sentinel-example",
+        "status": "live"
+      },
+      {
+        "title": "Versioning a Schema Without Breaking Consumers",
+        "slug": "schema-versioning-basics",
+        "status": "live"
+      },
+      {
+        "title": "Migrating v1 to v2 in Code",
+        "slug": "migrating-a-schema-version",
+        "status": "live"
+      },
+      {
+        "title": "Complexity vs Accuracy, and When to Split",
+        "slug": "schema-complexity-vs-model-accuracy",
+        "status": "live"
+      },
+      {
+        "title": "Reliability-Design Mistakes",
+        "slug": "reliability-design-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Pre-Ship Schema Checklist",
+        "slug": "reliable-schema-checklist",
+        "status": "live"
+      },
+      {
+        "title": "Reliable Schemas Checkpoint",
+        "slug": "reliability-design-quiz",
+        "status": "live"
+      },
+      {
         "title": "Constrained Decoding: How Guaranteed-Valid Output Actually Works",
         "slug": "constrained-decoding-under-the-hood",
         "status": "live"
       },
       {
+        "title": "What JSON Mode Does and Doesn't Promise",
+        "slug": "json-mode-what-it-guarantees",
+        "status": "live"
+      },
+      {
+        "title": "How Constrained Decoding Masks Tokens",
+        "slug": "constrained-decoding-mechanics-deep-dive",
+        "status": "live"
+      },
+      {
+        "title": "Asking Nicely vs a Physical Rail",
+        "slug": "guardrails-vs-guidance-intuition",
+        "status": "live"
+      },
+      {
+        "title": "Compiling a Schema into a Constraint",
+        "slug": "schema-constrained-decoding-explained",
+        "status": "live"
+      },
+      {
+        "title": "Grammars Beyond JSON",
+        "slug": "grammar-constrained-beyond-json",
+        "status": "live"
+      },
+      {
+        "title": "Writing a GBNF Grammar by Hand",
+        "slug": "gbnf-grammar-worked-example",
+        "status": "live"
+      },
+      {
+        "title": "Turning On Structured Modes in Code",
+        "slug": "enabling-structured-modes-across-sdks",
+        "status": "live"
+      },
+      {
+        "title": "The Cost of Constraints",
+        "slug": "what-constraints-cost-you",
+        "status": "live"
+      },
+      {
+        "title": "When Tight Constraints Hurt Reasoning",
+        "slug": "constraints-and-model-quality-interaction",
+        "status": "live"
+      },
+      {
+        "title": "Separating Reasoning from Structuring",
+        "slug": "thinking-then-structuring-pattern",
+        "status": "live"
+      },
+      {
+        "title": "Reason Freely, Then Emit Strictly",
+        "slug": "reason-then-emit-worked-example",
+        "status": "live"
+      },
+      {
+        "title": "Picking the Wrong Mechanism",
+        "slug": "mechanism-selection-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Decoding Mechanisms Cheatsheet",
+        "slug": "decoding-mechanisms-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Mechanisms Checkpoint",
+        "slug": "mechanisms-quiz",
+        "status": "live"
+      },
+      {
         "title": "Validation and Auto-Repair: Catching and Fixing Bad Output",
         "slug": "validation-and-auto-repair",
+        "status": "live"
+      },
+      {
+        "title": "Always Validate at the Boundary",
+        "slug": "the-validation-layer",
+        "status": "live"
+      },
+      {
+        "title": "Validate, Then Branch",
+        "slug": "validate-then-branch-pipeline",
+        "status": "live"
+      },
+      {
+        "title": "A Taxonomy of Structured-Output Failures",
+        "slug": "failure-modes-taxonomy",
+        "status": "live"
+      },
+      {
+        "title": "Diagnosing Five Real Broken Outputs",
+        "slug": "diagnosing-five-real-failures",
+        "status": "live"
+      },
+      {
+        "title": "The Repair Ladder",
+        "slug": "auto-repair-strategies",
+        "status": "live"
+      },
+      {
+        "title": "A Bounded Repair Loop",
+        "slug": "repair-loop-implementation",
+        "status": "live"
+      },
+      {
+        "title": "Repairing Partial and Streamed JSON",
+        "slug": "incremental-json-repair-explained",
+        "status": "live"
+      },
+      {
+        "title": "Building a Tolerant Incremental Parser",
+        "slug": "incremental-parser-walkthrough",
+        "status": "live"
+      },
+      {
+        "title": "Consuming Structured Output as It Streams",
+        "slug": "streaming-structured-output-model",
+        "status": "live"
+      },
+      {
+        "title": "Rendering Results as They Stream",
+        "slug": "streaming-progress-ui-example",
+        "status": "live"
+      },
+      {
+        "title": "The Partial-Parse State Machine",
+        "slug": "partial-parse-state-machine-deep-dive",
+        "status": "live"
+      },
+      {
+        "title": "Repair-Loop Mistakes",
+        "slug": "repair-loop-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "When to Reject Instead of Repair",
+        "slug": "when-not-to-repair",
+        "status": "live"
+      },
+      {
+        "title": "Failure-to-Repair Cheatsheet",
+        "slug": "failure-and-repair-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Runtime Checkpoint",
+        "slug": "runtime-quiz",
         "status": "live"
       },
       {
@@ -6316,6 +6676,71 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "The Cross-Provider Landscape",
+        "slug": "cross-provider-landscape",
+        "status": "live"
+      },
+      {
+        "title": "One Schema, Three Providers",
+        "slug": "same-schema-three-providers-example",
+        "status": "live"
+      },
+      {
+        "title": "Keeping Schema Code Provider-Agnostic",
+        "slug": "writing-portable-schema-code",
+        "status": "live"
+      },
+      {
+        "title": "A Provider Adapter",
+        "slug": "provider-adapter-implementation",
+        "status": "live"
+      },
+      {
+        "title": "Metrics for Structured-Output Quality",
+        "slug": "evaluating-structured-output-quality-metrics",
+        "status": "live"
+      },
+      {
+        "title": "Building an Eval Harness",
+        "slug": "building-an-extraction-eval-harness",
+        "status": "live"
+      },
+      {
+        "title": "Curating a Gold Dataset",
+        "slug": "building-a-gold-dataset",
+        "status": "live"
+      },
+      {
+        "title": "A Field-Level Scorecard",
+        "slug": "field-level-scorecard-example",
+        "status": "live"
+      },
+      {
+        "title": "Regression-Testing Structured Output in CI",
+        "slug": "regression-testing-schemas-and-prompts",
+        "status": "live"
+      },
+      {
+        "title": "Monitoring in Production",
+        "slug": "monitoring-structured-output-in-production",
+        "status": "live"
+      },
+      {
+        "title": "Evaluation and Portability Mistakes",
+        "slug": "eval-and-provider-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Portability and Eval Cheatsheet",
+        "slug": "cross-provider-and-eval-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Portability and Evaluation Checkpoint",
+        "slug": "capstone-and-eval-quiz",
+        "status": "live"
+      },
+      {
         "title": "Grammar-Constrained Generation Beyond JSON",
         "slug": "grammar-constrained-generation",
         "status": "live"
@@ -6326,8 +6751,83 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "Extraction Is Schema-Filling",
+        "slug": "extraction-as-a-structured-output-problem",
+        "status": "live"
+      },
+      {
+        "title": "A Receipt Image to a Typed Object",
+        "slug": "receipt-image-to-schema-example",
+        "status": "live"
+      },
+      {
+        "title": "Strategies for Long Documents",
+        "slug": "long-document-extraction-strategies",
+        "status": "live"
+      },
+      {
+        "title": "Chunk, Extract, Merge",
+        "slug": "chunk-and-merge-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Extracting Clauses from a 40-Page Contract",
+        "slug": "contract-clause-extraction-example",
+        "status": "live"
+      },
+      {
+        "title": "Tool Calling as an Extraction Mechanism",
+        "slug": "tool-and-function-schemas-for-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Forcing a Tool Call to Extract",
+        "slug": "function-calling-extraction-implementation",
+        "status": "live"
+      },
+      {
+        "title": "Extracting Tables Reliably",
+        "slug": "multi-field-tables-from-documents",
+        "status": "live"
+      },
+      {
+        "title": "Transactions from a Bank Statement",
+        "slug": "bank-statement-transactions-example",
+        "status": "live"
+      },
+      {
+        "title": "Grounding Extractions in the Source",
+        "slug": "grounding-and-citations-in-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Extraction Mistakes",
+        "slug": "extraction-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Confidence and Review Routing",
+        "slug": "extraction-confidence-and-review-routing",
+        "status": "live"
+      },
+      {
+        "title": "Extraction Pipeline Cheatsheet",
+        "slug": "extraction-pipeline-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Extraction Checkpoint",
+        "slug": "extraction-quiz",
+        "status": "live"
+      },
+      {
         "title": "Long-Document Structured Extraction: One Schema Instance from Many Passes",
         "slug": "long-document-structured-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Capstone: A Production Extraction Service",
+        "slug": "build-a-production-extraction-service",
         "status": "live"
       }
     ]
@@ -6337,9 +6837,14 @@ const unsortedTracks: Track[] = [
     "n": "12",
     "name": "Hallucinations & Reliability",
     "group": "Working with Models",
-    "meta": "24 lessons",
+    "meta": "132 lessons",
     "summary": "Understanding why models fabricate, and the concrete techniques to ground, verify, and contain it.",
     "nodes": [
+      {
+        "title": "The Whole Game: From Fabrication to Trustworthy Systems",
+        "slug": "reliability-whole-game",
+        "status": "live"
+      },
       {
         "title": "What a Hallucination Actually Is",
         "slug": "what-is-a-hallucination",
@@ -6348,6 +6853,76 @@ const unsortedTracks: Track[] = [
       {
         "title": "Why Models Hallucinate: The Mechanics Behind Confident Wrong Answers",
         "slug": "why-models-hallucinate",
+        "status": "live"
+      },
+      {
+        "title": "Intuition: A Fluent Guess With No 'I'm Unsure' Signal",
+        "slug": "hallucination-as-confident-guessing",
+        "status": "live"
+      },
+      {
+        "title": "How Next-Token Prediction Produces Fabrication",
+        "slug": "next-token-mechanics-of-fabrication",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Why the Training Objective Rewards Guessing Over Abstention",
+        "slug": "training-objective-rewards-guessing",
+        "status": "live"
+      },
+      {
+        "title": "Hallucination, Error, Bug, and Bias: Drawing the Lines",
+        "slug": "hallucination-vs-error-vs-bug",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Dissecting One Real Hallucination",
+        "slug": "anatomy-of-a-hallucination",
+        "status": "live"
+      },
+      {
+        "title": "Parametric vs. Contextual Knowledge",
+        "slug": "parametric-vs-contextual-knowledge",
+        "status": "live"
+      },
+      {
+        "title": "Intuition: The Model Cannot Feel the Boundary of Its Knowledge",
+        "slug": "no-ground-truth-signal",
+        "status": "live"
+      },
+      {
+        "title": "Variants: Hallucination in Text, Code, Vision, and Structured Output",
+        "slug": "hallucination-across-modalities",
+        "status": "live"
+      },
+      {
+        "title": "Common Myths: 'Bigger Models Don't Hallucinate' and Other Errors",
+        "slug": "myths-about-hallucination",
+        "status": "live"
+      },
+      {
+        "title": "When 'Making Things Up' Is Actually the Goal",
+        "slug": "when-hallucination-is-desirable",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Is Hallucination Fixable in Principle?",
+        "slug": "is-hallucination-fixable",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Scoring a Prompt for Hallucination Risk",
+        "slug": "risk-factor-walkthrough",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: Foundations Vocabulary and Root Causes",
+        "slug": "foundations-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Foundations of Hallucination",
+        "slug": "foundations-quiz",
         "status": "live"
       },
       {
@@ -6371,6 +6946,91 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "The Mitigation Landscape: Ground, Constrain, Prompt, Abstain",
+        "slug": "mitigation-strategy-landscape",
+        "status": "live"
+      },
+      {
+        "title": "Grounding: Anchoring Answers to Evidence",
+        "slug": "grounding-fundamentals",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: A RAG Grounding Pipeline",
+        "slug": "rag-grounding-pipeline-impl",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Why RAG Still Hallucinates",
+        "slug": "why-rag-still-hallucinates",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Corrective and Self-RAG",
+        "slug": "corrective-rag-pattern-impl",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Forcing Every Claim to Cite Its Source",
+        "slug": "enforcing-citations-impl",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Verifying That Citations Actually Support Claims",
+        "slug": "citation-verification-loop",
+        "status": "live"
+      },
+      {
+        "title": "Constrained Generation: Shrinking the Space to Fabricate In",
+        "slug": "constrained-generation-concept",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Schema-Constrained and Grammar-Constrained Output",
+        "slug": "structured-output-decoding-impl",
+        "status": "live"
+      },
+      {
+        "title": "Prompting Patterns That Lower Hallucination",
+        "slug": "prompting-patterns-to-reduce-fabrication",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Grounding Recipes in the System Prompt",
+        "slug": "system-prompt-grounding-recipes",
+        "status": "live"
+      },
+      {
+        "title": "Context Engineering: Giving the Model the Right Evidence",
+        "slug": "context-engineering-for-grounding",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: The Coverage-Faithfulness-Abstention Triangle",
+        "slug": "mitigation-tradeoffs-deep-dive",
+        "status": "live"
+      },
+      {
+        "title": "Common Mistakes: Mitigations That Backfire",
+        "slug": "mitigation-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Variants: Choosing Mitigations by Task",
+        "slug": "mitigation-by-task-type",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: The Mitigation Stack",
+        "slug": "mitigation-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Reducing Hallucination",
+        "slug": "mitigation-quiz",
+        "status": "live"
+      },
+      {
         "title": "Citations: Making Every Claim Traceable to a Source",
         "slug": "citations-and-attribution",
         "status": "live"
@@ -6386,8 +7046,163 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "The Detection Landscape: What We Can and Can't Observe",
+        "slug": "detection-landscape-overview",
+        "status": "live"
+      },
+      {
+        "title": "Black-Box vs. White-Box Detection",
+        "slug": "black-box-vs-white-box-detection",
+        "status": "live"
+      },
+      {
+        "title": "Intuition: If It Keeps Changing Its Story, Distrust It",
+        "slug": "consistency-implies-reliability",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: A Self-Consistency Hallucination Detector",
+        "slug": "self-consistency-detector-impl",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Self-Verification and Chain-of-Verification",
+        "slug": "self-verification-chain-impl",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: When Self-Verification Rubber-Stamps a Lie",
+        "slug": "self-verification-when-it-fails",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Cross-Checking Across Multiple Models",
+        "slug": "ensemble-cross-check-impl",
+        "status": "live"
+      },
+      {
+        "title": "LLM-as-Judge for Faithfulness and Factuality",
+        "slug": "llm-as-judge-for-faithfulness",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: NLI Entailment as a Grounding Check",
+        "slug": "nli-entailment-grounding-check-impl",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: ChainPoll-Style Ensemble Judging",
+        "slug": "chainpoll-detector-impl",
+        "status": "live"
+      },
+      {
+        "title": "Retrieval-Based Fact Checking as Detection",
+        "slug": "retrieval-based-factuality-check",
+        "status": "live"
+      },
+      {
+        "title": "Common Mistakes: When Detectors Give False Comfort",
+        "slug": "detection-false-comfort",
+        "status": "live"
+      },
+      {
+        "title": "Comparison: Choosing a Detection Method",
+        "slug": "detection-methods-compared",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Detect-Then-Regenerate vs. Prevent-at-Source",
+        "slug": "detecting-vs-preventing",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: Detection Methods and When to Use Them",
+        "slug": "detection-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Detecting Hallucination",
+        "slug": "detection-quiz",
+        "status": "live"
+      },
+      {
         "title": "Confidence Signals: What Model Certainty Actually Reflects",
         "slug": "confidence-and-uncertainty-signals",
+        "status": "live"
+      },
+      {
+        "title": "Confidence, Uncertainty, and Calibration: Three Different Things",
+        "slug": "confidence-uncertainty-calibration-defs",
+        "status": "live"
+      },
+      {
+        "title": "Intuition: Fluency Is Not Confidence",
+        "slug": "why-fluent-text-feels-confident",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Deriving Confidence from Token Logprobs",
+        "slug": "token-logprob-confidence-impl",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Semantic Entropy, Uncertainty Over Meanings",
+        "slug": "semantic-entropy-uncertainty-deep-dive",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Semantic Entropy with Meaning Clustering",
+        "slug": "semantic-entropy-clustering-impl",
+        "status": "live"
+      },
+      {
+        "title": "Verbalized vs. Elicited Confidence",
+        "slug": "verbalized-vs-elicited-confidence",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Calibration Error and Reliability Diagrams",
+        "slug": "calibration-error-reliability-diagrams",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Measuring and Plotting Calibration",
+        "slug": "measuring-plotting-calibration-impl",
+        "status": "live"
+      },
+      {
+        "title": "Why Instruction-Tuning and RLHF Degrade Calibration",
+        "slug": "why-rlhf-hurts-calibration",
+        "status": "live"
+      },
+      {
+        "title": "Abstention as a First-Class Behavior",
+        "slug": "abstention-as-a-skill",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Eliciting Abstention Without Retraining",
+        "slug": "teaching-abstention-via-prompting-impl",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Routing by Uncertainty Score",
+        "slug": "uncertainty-in-practice-triage",
+        "status": "live"
+      },
+      {
+        "title": "Common Mistakes: Confidence Antipatterns",
+        "slug": "confidence-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: Confidence Signals and Calibration",
+        "slug": "uncertainty-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Uncertainty and Calibration",
+        "slug": "uncertainty-quiz",
         "status": "live"
       },
       {
@@ -6401,8 +7216,148 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "Reliability Architecture: Wiring the Pieces Together",
+        "slug": "reliability-architecture-overview",
+        "status": "live"
+      },
+      {
+        "title": "A Taxonomy of Guardrails",
+        "slug": "guardrails-taxonomy",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Input and Output Guardrails",
+        "slug": "input-output-guardrail-impl",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: An Automated Fact-Checking Pipeline",
+        "slug": "fact-checking-pipeline-impl",
+        "status": "live"
+      },
+      {
+        "title": "Escalation and Human-in-the-Loop Design",
+        "slug": "escalation-human-in-the-loop",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Confidence-Gated Escalation",
+        "slug": "confidence-gated-escalation-impl",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: A High-Stakes Medical/Legal Deployment",
+        "slug": "high-stakes-case-study",
+        "status": "live"
+      },
+      {
+        "title": "The UX of Uncertainty: Showing Sources and Hedges",
+        "slug": "ux-of-uncertainty",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Latency, Cost, and Reliability Tradeoffs",
+        "slug": "latency-cost-reliability-tradeoffs",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Monitoring Hallucination in Production",
+        "slug": "monitoring-hallucination-in-prod",
+        "status": "live"
+      },
+      {
+        "title": "Incident Response When a Hallucination Ships",
+        "slug": "incident-response-for-hallucination",
+        "status": "live"
+      },
+      {
+        "title": "Common Mistakes: Production Reliability Antipatterns",
+        "slug": "production-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: Production Reliability Checklist",
+        "slug": "production-reliability-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Production Handling",
+        "slug": "production-quiz",
+        "status": "live"
+      },
+      {
         "title": "Measuring Hallucination Rate Instead of Spot-Checking",
         "slug": "hallucination-evaluation-and-benchmarks",
+        "status": "live"
+      },
+      {
+        "title": "What to Measure: Factuality, Faithfulness, and Abstention Metrics",
+        "slug": "what-to-measure-metrics",
+        "status": "live"
+      },
+      {
+        "title": "Denominators Matter: Defining Hallucination Rate Precisely",
+        "slug": "hallucination-rate-denominators",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: A Tour of Hallucination Benchmarks",
+        "slug": "hallucination-benchmarks-tour",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: FActScore-Style Atomic-Fact Evaluation",
+        "slug": "factscore-eval-impl",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: An LLM-as-Judge Evaluation Harness",
+        "slug": "llm-judge-eval-harness-impl",
+        "status": "live"
+      },
+      {
+        "title": "Faithfulness Metrics for RAG Systems",
+        "slug": "rag-faithfulness-metrics",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: Automated RAG Faithfulness Scoring",
+        "slug": "ragas-faithfulness-impl",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Building a Golden Hallucination Eval Set",
+        "slug": "building-golden-eval-set",
+        "status": "live"
+      },
+      {
+        "title": "Human Evaluation and Annotation Protocols",
+        "slug": "human-annotation-protocols",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Evaluating the Detector Itself",
+        "slug": "evaluating-your-detector",
+        "status": "live"
+      },
+      {
+        "title": "Common Mistakes: Evaluation Pitfalls and Benchmark Gaming",
+        "slug": "evaluation-pitfalls",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Hallucination Regression Testing in CI",
+        "slug": "tracking-hallucination-in-ci",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: Measuring Hallucination",
+        "slug": "evaluation-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Measuring Hallucination Rate",
+        "slug": "evaluation-quiz",
         "status": "live"
       },
       {
@@ -6413,6 +7368,86 @@ const unsortedTracks: Track[] = [
       {
         "title": "Citation Hallucination: Fabricated Sources That Look Completely Real",
         "slug": "citation-hallucination",
+        "status": "live"
+      },
+      {
+        "title": "The Master Axis: Factual vs. Faithfulness Hallucination",
+        "slug": "factual-vs-faithfulness-distinction",
+        "status": "live"
+      },
+      {
+        "title": "Intrinsic vs. Extrinsic Hallucination",
+        "slug": "intrinsic-vs-extrinsic-hallucination",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: One Wrong Answer, Different Diagnoses",
+        "slug": "same-output-two-failure-modes",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: Why Fabricated Citations Look So Real",
+        "slug": "fabricated-citations-deep-dive",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Hallucinated APIs and Slopsquatting",
+        "slug": "code-hallucination-walkthrough",
+        "status": "live"
+      },
+      {
+        "title": "Implementation: A Guard Against Hallucinated Packages",
+        "slug": "detecting-package-slop-impl",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Fabricated Tool Names and Arguments",
+        "slug": "tool-call-argument-fabrication",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: Knowledge-Cutoff and Temporal Fabrication",
+        "slug": "temporal-hallucination-cases",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: When a Summary Betrays Its Source",
+        "slug": "summarization-unfaithfulness",
+        "status": "live"
+      },
+      {
+        "title": "Deep Dive: How Errors Compound Across Reasoning Hops",
+        "slug": "multi-hop-compounding-deep-dive",
+        "status": "live"
+      },
+      {
+        "title": "Sycophancy: Fabrication Driven by Agreement",
+        "slug": "sycophancy-as-a-mode",
+        "status": "live"
+      },
+      {
+        "title": "Worked Example: False Premises and Leading Questions",
+        "slug": "leading-prompt-fabrication",
+        "status": "live"
+      },
+      {
+        "title": "Variants: Hallucination Signatures in Medicine, Law, and Finance",
+        "slug": "domain-specific-hallucination-variants",
+        "status": "live"
+      },
+      {
+        "title": "Common Mistakes: Mislabeling the Type Leads to the Wrong Fix",
+        "slug": "misclassifying-hallucination-types",
+        "status": "live"
+      },
+      {
+        "title": "Cheatsheet: A Decision Tree for Classifying Any Hallucination",
+        "slug": "taxonomy-decision-tree",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Classifying Hallucination Types",
+        "slug": "taxonomy-quiz",
         "status": "live"
       },
       {
@@ -6458,6 +7493,11 @@ const unsortedTracks: Track[] = [
       {
         "title": "Ensemble Cross-Checking: Catching Hallucinations Through Disagreement",
         "slug": "ensemble-cross-checking",
+        "status": "live"
+      },
+      {
+        "title": "Capstone: Build a Reliability-Hardened QA System",
+        "slug": "capstone-trustworthy-qa-system",
         "status": "live"
       }
     ]

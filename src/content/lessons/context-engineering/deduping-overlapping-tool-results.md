@@ -127,7 +127,7 @@ for i, page in enumerate([page1, page2, page3], start=1):
 print(len(final))  # 100 - every unique id present exactly once
 ```
 
-Naive concatenation would have injected 150 rows for 100 unique records — 50 rows of pure repeat. At roughly 12 tokens per compact row, that's about 1,800 tokens of the total 1,800-row-equivalent cost that bought no new information: a 33% reduction in tokens spent on this tool's output, with zero coverage lost, since every one of the 100 unique ids still made it into `final`.
+Naive concatenation would have injected 150 rows for 100 unique records — 50 rows of pure repeat. At roughly 12 tokens per compact row, that's about 600 tokens — the 50 duplicate rows — out of the 1,800-token total that bought no new information: a 33% reduction in tokens spent on this tool's output, with zero coverage lost, since every one of the 100 unique ids still made it into `final`.
 
 The same registry, run against a free-text case — a file read at lines 1-100, then re-read minutes later at lines 1-100 unchanged — collapses the second read to a one-line pointer instead of paying for another 100 lines of identical content, exactly as [Tool Output Deduplication](/learn/context-engineering/tool-output-deduplication-deep) describes for the exact-match case.
 

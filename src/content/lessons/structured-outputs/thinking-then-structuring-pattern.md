@@ -2,7 +2,7 @@
 title: "Separating Reasoning from Structuring"
 track: "structured-outputs"
 status: live
-summary: "Splitting a task into an unconstrained reasoning pass and a constrained structuring pass protects both halves at once — quality on one side, validity on the other."
+summary: "Splitting a task into an unconstrained reasoning pass and a constrained structuring pass protects quality on one side and validity on the other."
 duration: "6 min read"
 ---
 

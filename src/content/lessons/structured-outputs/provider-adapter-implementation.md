@@ -138,7 +138,7 @@ Same schema, same document, same call shape at the site that matters — only th
 ## Extend it
 
 - Add a third adapter for an OSS engine using [grammar-constrained generation](/learn/structured-outputs/grammar-constrained-generation) — its `request` compiles the schema into a grammar instead of sending it as a parameter, which is a good test of whether your interface genuinely doesn't assume "schema" means "JSON Schema over HTTP."
-- Build a routing layer above `extract` that picks an adapter by cost or by fallback order, using this same interface, so a primary-provider outage falls through to a secondary without any caller-visible change — the pattern [Structured Output Failure Modes](/learn/structured-outputs/structured-output-failure-modes) assumes exists.
-- Feed `extract` straight into the harness from [Building an Eval Harness](/learn/structured-outputs/building-an-extraction-eval-harness) and run the same gold set through both adapters to compare field accuracy, not just whether each one validates.
+- Build a routing layer above `extract` that picks an adapter by cost or by fallback order, using this same interface, so a primary-provider outage falls through to a secondary without any caller-visible change.
+- Feed `extract` straight into an eval harness and run the same gold set through both adapters to compare field accuracy, not just whether each one validates.
 
 **Related:** [Writing Portable Schema Code](/learn/structured-outputs/writing-portable-schema-code), [Pydantic and Zod: Deriving Schemas from Code](/learn/structured-outputs/pydantic-zod-schema-patterns), [Tool Schemas as a Structured-Extraction Mechanism](/learn/structured-outputs/tool-function-schemas), [Validation and Auto-Repair](/learn/structured-outputs/validation-and-auto-repair)

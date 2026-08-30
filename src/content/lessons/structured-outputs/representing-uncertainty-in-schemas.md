@@ -1,5 +1,5 @@
 ---
-title: "Letting the Model Say 'I Don't Know'"
+title: "Letting the Model Say 'I Don't Know"
 track: "structured-outputs"
 status: live
 summary: "Confidence scores, nullable-for-unknown, and not-found sentinels — the three tools for giving absence a legal, honest shape."

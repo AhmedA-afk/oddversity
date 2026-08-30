@@ -19,7 +19,7 @@ pip install anthropic
 export ANTHROPIC_API_KEY=your-key-here
 ```
 
-The token count for a piece of text is **model-specific** — different model families tokenize differently, so a count is only meaningful paired with the model it's for. Don't reach for a generic tokenizer library here: something like `tiktoken` is OpenAI's tokenizer, and it undercounts Claude tokens by roughly 15-20% on typical English text, and by more on code or non-English input. For a real count against a Claude model, use the API's own counting endpoint.
+The token count for a piece of text is **model-specific** — different model families tokenize differently, so a count is only meaningful paired with the model it's for. Don't reach for a generic tokenizer library here: something like `tiktoken` is OpenAI's tokenizer, and it can undercount Claude tokens noticeably on typical English text, and by more on code or non-English input. For a real count against a Claude model, use the API's own counting endpoint.
 
 ## Build it
 
@@ -92,12 +92,12 @@ The shape of what comes out (illustrative numbers, from a payload similar to the
 
 ```text
 Segment                         Real  Naive est.     Error  % of total
-system_prompt                    640         610       -5%        6.2%
-tool_definitions                2180        1740      -20%       21.0%
-conversation_history            6300        5980       -5%       60.6%
-invoice_json                     540         710      +31%        5.2%
-current_message                  130         128        -2%        1.2%
-TOTAL                          10400
+system_prompt                    640         610       -5%        6.5%
+tool_definitions                2180        1740      -20%       22.3%
+conversation_history            6300        5980       -5%       64.4%
+invoice_json                     540         710      +31%        5.5%
+current_message                  130         128        -2%        1.3%
+TOTAL                           9790
 ```
 
 Two things worth noticing. First, the naive estimate is close on plain-prose segments (system prompt, current message) and badly wrong on the structured ones: `tool_definitions` — dense JSON schema with lots of punctuation and few common words — comes in 20% smaller in reality than the character count predicted, while `invoice_json` overshoots the other direction because of how its specific field names and short numeric values happen to tile. Second, the percentages — the thing you actually act on — barely move between the naive and real columns for the biggest segment. That's the case for measuring exactly: sometimes the rough estimate would have led you to the same conclusion, and you don't find out which case you're in until you count for real.

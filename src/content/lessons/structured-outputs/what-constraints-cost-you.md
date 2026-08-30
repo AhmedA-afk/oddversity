@@ -2,7 +2,7 @@
 title: "The Cost of Constraints"
 track: "structured-outputs"
 status: live
-summary: "Constrained decoding isn't free: a compile step, a per-token masking tax, and sometimes a smaller usable output space. Here's where each cost actually comes from."
+summary: "Constrained decoding isn't free: a compile step, a per-token masking tax, and a smaller usable output space. Here's where each cost comes from."
 duration: "6 min read"
 ---
 

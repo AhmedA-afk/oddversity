@@ -20,7 +20,7 @@ Segments are assembled in whatever order the code happens to build them — typi
 
 **When it wins:** never, as a deliberate choice — it's the default you get by not building a budget, not a strategy anyone picks on purpose. It "wins" only in the sense that it requires zero engineering effort up front.
 
-**Failure mode:** in this scenario, system, tools, history, and retrieval get assembled in full (12,900 tokens), leaving only 12,000 − 12,900 = a negative number for the reply — meaning the request itself is already over cap before generation starts. Depending on the provider, this either errors outright or silently reduces the effective reply space to whatever's left, producing a truncated answer on exactly the turn that needed the most room to be thorough.
+**Failure mode:** in this scenario, system, tools, history, and retrieval get assembled in full (11,900 tokens), leaving only 12,000 − 11,900 = 100 tokens for the reply — nowhere near enough for a substantive answer, so the request is effectively over budget before generation even starts. Depending on the provider, this either errors outright or silently reduces the effective reply space to whatever's left, producing a truncated answer on exactly the turn that needed the most room to be thorough.
 
 **Relative cost:** lowest to build, highest to operate — every overflow becomes an incident instead of a handled case.
 

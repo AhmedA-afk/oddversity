@@ -2,7 +2,7 @@
 title: "Writing a GBNF Grammar by Hand"
 track: "structured-outputs"
 status: live
-summary: "Build a GBNF grammar for a plain-text contact record, trace what it blocks right after a literal keyword, and see where a rigid grammar forces its own kind of failure."
+summary: "Build a GBNF grammar for a contact record, trace what it blocks after a literal keyword, and see where a rigid grammar forces its own failure."
 duration: "8 min read"
 ---
 

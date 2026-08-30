@@ -120,7 +120,7 @@ def normalize(provider: str, response) -> dict:
 
 The `oss_engine` branch's brace-slicing is a patch, not a fix — it recovers from a missing hard constraint after the fact. The real fix, covered in [Grammar-Constrained Generation](/learn/structured-outputs/grammar-constrained-generation), is to compile the schema into an actual grammar so the engine can't emit the trailing `Note:` line in the first place. Slicing braces is what you do while you don't yet have that, not a permanent substitute for it.
 
-Field accuracy is a separate fix entirely: the invented `escalation_note` passes validation and needs the field-level scoring from [Building an Eval Harness](/learn/structured-outputs/building-an-extraction-eval-harness) to even get noticed, then a tighter field description — see [A Field-Level Scorecard](/learn/structured-outputs/field-level-scorecard-example) — to actually fix.
+Field accuracy is a separate fix entirely: the invented `escalation_note` passes validation and needs field-level scoring to even get noticed, then a tighter field description to actually fix.
 
 ## Takeaways
 

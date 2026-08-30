@@ -1,0 +1,17 @@
+Flat vector illustration, editorial technical style, on a plain off-white paper
+background (#FBFAF8). Filled shapes in deep ink indigo (#3B54A3) with a single
+warm brass accent (#A8741C). Absolutely no other colours.
+
+Hard constraints:
+- No text, no letters, no numbers, no labels, no captions anywhere in the image.
+- No people, no faces, no hands, no figures.
+- No gradients, no shadows, no 3D, no perspective, no texture, no glow, no
+  photorealism.
+- Light background with dark shapes drawn on it. Do not fill the background
+  dark.
+- Generous empty margin around the subject; the shapes should occupy roughly the
+  middle two thirds of the frame.
+- Simple geometric forms only. Nothing intricate or ornamental.
+- Square composition, 1024 x 1024.
+
+Subject:

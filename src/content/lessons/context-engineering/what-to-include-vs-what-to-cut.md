@@ -47,7 +47,7 @@ Say a user asks "what's your refund window for damaged items?" and retrieval ret
 
 Ranked by similarity alone, a naive top-3 keeps chunks 1, 4, and 2 — and chunk 4 is a bloated near-duplicate of chunk 1 that adds 340 tokens for almost no new information (this is exactly the redundancy problem covered in [Relevance Filtering in Depth](/learn/context-engineering/relevance-filtering-in-depth)). Ranked by value-per-token, chunk 4 drops out and chunk 8 — short, on-topic, cheap — earns a spot instead. The survivors: chunk 1 (the direct answer), chunk 2 (the general policy it overrides), and chunk 8 (where to send the item). That's 210 tokens total instead of the 510 tokens a similarity-only top-3 would have spent, and none of it is a redundant restatement.
 
-Illustrate the payoff with simple arithmetic: if the model's answer quality tracks how much of its attention lands on genuinely relevant tokens, then packing 510 tokens with one near-duplicate chunk means roughly a third of that budget is dead weight, while the 210-token cut version is close to 100% signal. That's the entire case for cutting — it's not really about token savings, it's that every token you don't cut is competing for the same attention as the ones you kept.
+Illustrate the payoff with simple arithmetic: if the model's answer quality tracks how much of its attention lands on genuinely relevant tokens, then packing 510 tokens with one near-duplicate chunk means roughly two-thirds of that budget is dead weight, while the 170-token cut version is close to 100% signal. That's the entire case for cutting — it's not really about token savings, it's that every token you don't cut is competing for the same attention as the ones you kept.
 
 ## Where it shows up
 

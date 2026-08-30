@@ -1,0 +1,71 @@
+{
+  "$comment": "Illustration inventory. Rules: docs/visual-system.md. Every prompt inherits scripts/images/preamble.txt — do not restate the palette or the flat-vector constraints here, only the subject.",
+  "images": [
+    {
+      "id": "role-developer",
+      "target": "/roles/developer",
+      "alt": "Abstract illustration: nested rectangular panels layered front to back, one edge picked out in brass.",
+      "subject": "Three or four rectangular panels layered front-to-back with even offsets, like stacked cards seen straight on. Indigo fills, one panel edge picked out in brass. Suggests layers of a system built on top of each other."
+    },
+    {
+      "id": "role-ml-engineer",
+      "target": "/roles/ml-engineer",
+      "alt": "Abstract illustration: concentric contour rings tightening toward a single point, the innermost ring in brass.",
+      "subject": "Concentric irregular contour rings nested inside one another and tightening toward a single small point, like the contour lines of a valley on a map. Indigo rings, the innermost ring and the point in brass."
+    },
+    {
+      "id": "role-data-scientist",
+      "target": "/roles/data-scientist",
+      "alt": "Abstract illustration: a loose cluster of small indigo dots with one brass dot sitting apart from the group.",
+      "subject": "A loose scattered cluster of about twenty small filled circles grouped toward the centre, with exactly one circle sitting clearly apart from the group. Indigo circles, the single separated circle in brass."
+    },
+    {
+      "id": "role-product-manager",
+      "target": "/roles/product-manager",
+      "alt": "Abstract illustration: a row of upright cards with one lifted clear of the others in brass.",
+      "subject": "A row of five upright rounded rectangles of equal size standing side by side, with one card lifted noticeably higher than the rest. Indigo cards, the raised card in brass."
+    },
+    {
+      "id": "role-founder",
+      "target": "/roles/founder",
+      "alt": "Abstract illustration: a small brass square at the base of a growing stack of indigo blocks.",
+      "subject": "A stack of rectangular blocks built upward in a stepped arrangement, widest at the base and narrowing as it rises. Indigo blocks, the single small block at the very base in brass."
+    },
+    {
+      "id": "role-ceo",
+      "target": "/roles/ceo",
+      "alt": "Abstract illustration: a wide horizontal band crossed by evenly spaced vertical markers, one in brass.",
+      "subject": "A single wide horizontal band running across the composition, crossed by seven evenly spaced short vertical markers standing on it, like a long horizon with waypoints. Indigo band and markers, one marker in brass."
+    },
+    {
+      "id": "role-designer",
+      "target": "/roles/designer",
+      "alt": "Abstract illustration: a regular grid of squares with one square rotated deliberately off-grid in brass.",
+      "subject": "A regular four-by-four grid of evenly spaced small squares, with exactly one square rotated about thirty degrees out of alignment with the rest. Indigo squares, the rotated square in brass."
+    },
+    {
+      "id": "role-content-creator",
+      "target": "/roles/content-creator",
+      "alt": "Abstract illustration: one solid block fanning outward into several smaller blocks, the outermost in brass.",
+      "subject": "One large rectangle on the left fanning outward to the right into five smaller rectangles arranged in a spread, like one thing becoming many. Indigo shapes, the outermost small rectangle in brass."
+    },
+    {
+      "id": "role-marketer",
+      "target": "/roles/marketer",
+      "alt": "Abstract illustration: concentric rings expanding outward from a small centre, the outermost ring in brass.",
+      "subject": "Four concentric circular rings expanding outward from a small solid dot at the centre, evenly spaced, like a signal spreading. Indigo rings and dot, the outermost ring in brass."
+    },
+    {
+      "id": "role-security-engineer",
+      "target": "/roles/security-engineer",
+      "alt": "Abstract illustration: a closed rectangular perimeter with a single deliberate gap picked out in brass.",
+      "subject": "A large rectangular perimeter outline drawn as a single continuous boundary, with exactly one clear gap left open in one side. Indigo boundary, the two edges either side of the gap in brass."
+    },
+    {
+      "id": "role-student",
+      "target": "/roles/student",
+      "alt": "Abstract illustration: evenly spaced horizontal rungs ascending like a ladder, the lowest rung in brass.",
+      "subject": "Six evenly spaced horizontal bars stacked vertically and ascending in a staircase, each bar slightly offset to the right of the one below. Indigo bars, the lowest bar in brass."
+    }
+  ]
+}

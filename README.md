@@ -24,7 +24,26 @@ npm run fonts      # re-download webfonts and recompute fallback metrics
 npm run icons      # favicon, apple-touch-icon, PWA icons
 npm run og         # per-page social cards
 npm run assets     # all three
+
+npm run illustrations   # role-page art via Antigravity (see below)
 ```
+
+## Images
+
+Two production paths, and the split is a rule rather than a preference —
+[`docs/visual-system.md`](./docs/visual-system.md) has the reasoning:
+
+- **Diagrams** are hand-authored inline SVG. They assert facts, so they must be
+  exact, theme-aware and incapable of inventing content.
+- **Illustrations** are generated through Antigravity and confined to
+  `/roles/*`. They evoke, never assert: no text, no numbers, no people.
+
+Generated images are quantised onto the seven brand colours before shipping, so
+the palette is exact by construction even though the model cannot hit a hex
+value. Composition is not guaranteed — review every image.
+
+The hard rules an agent must follow are in [`AGENTS.md`](./AGENTS.md), which
+Antigravity reads from the workspace root.
 
 **Re-run `npm run og` after adding a track, guide or article** so the new page
 gets its own social card. Anything missing falls back to the generic card.

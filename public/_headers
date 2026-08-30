@@ -1,3 +1,7 @@
+# Cloudflare Pages / Netlify convention. Vercel ignores this file — the
+# active configuration for the current deploy target is vercel.json at the
+# repo root. Keep the two in step if you ever move hosts.
+
 # Response headers for Cloudflare Pages / Netlify.
 # Static content site: no accounts, no cookies, no server-side state.
 

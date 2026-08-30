@@ -1,0 +1,81 @@
+---
+title: "Worked Example: One Wrong Answer, Different Diagnoses"
+track: "hallucinations"
+status: live
+summary: "The same wrong answer to the same question can be a factual, faithfulness, or intrinsic error depending only on what the model saw."
+duration: "6 min read"
+---
+
+import SameOutputThreeCauses from '../../../components/diagrams/SameOutputThreeCauses.astro';
+
+Three different support bots get asked the exact same question and give the exact same wrong answer. If you only look at the transcript — question in, answer out — they look identical. They are not the same bug, and fixing one bot's problem does nothing for the other two.
+
+<SameOutputThreeCauses />
+
+## The setup
+
+The question, every time: *"When did our company adopt SOC 2?"* The correct answer, in every trace, is 2023 — that's when the company actually completed its SOC 2 Type II certification. All three bots answer: **"We adopted SOC 2 in 2021."** What differs is what each bot had in its context window when it said that.
+
+## Step by step
+
+**Trace 1 — no context at all.**
+
+The bot ran with just the user's question, no retrieval, no compliance record in context.
+
+```
+context: (empty)
+question: "When did our company adopt SOC 2?"
+answer:   "We adopted SOC 2 in 2021."
+```
+
+> **Why this step?** With nothing in the input to draw on, the model fell back on parametric priors — a generic sense of "companies our size usually get certified within a couple years of founding" — and produced a specific-sounding year with no source behind it at all.
+
+**Diagnosis:** factual hallucination (wrong against the real 2023 date) and extrinsic (there was zero input content about SOC 2 to contradict or confirm — the whole claim is an unchecked addition). See [factual vs. faithfulness](/learn/hallucinations/factual-vs-faithfulness-distinction) and [intrinsic vs. extrinsic](/learn/hallucinations/intrinsic-vs-extrinsic-hallucination).
+
+**Fix:** this bot needs retrieval added, full stop. There was nothing to be faithful to.
+
+**Trace 2 — the right document, ignored.**
+
+The bot retrieved the actual compliance record, which was correct.
+
+```
+context: "Compliance record — SOC 2 Type II: completed 2023."
+question: "When did our company adopt SOC 2?"
+answer:   "We adopted SOC 2 in 2021."
+```
+
+> **Why this step?** The correct answer was sitting in context. The model answered from a stale training-time association anyway — the same failure mode as [knowledge-cutoff hallucination](/learn/hallucinations/knowledge-cutoff-and-temporal-hallucination), except here it overrode a *correct*, *present* source instead of merely lacking one.
+
+**Diagnosis:** factual (2023 is the true date, 2021 is wrong) and intrinsic (you don't need to leave the context window to catch this — the document right there says 2023).
+
+**Fix:** this bot has a grounding-adherence problem, not a retrieval problem. Retrieval already found the right document; the model needs to be constrained to actually use it — stronger instruction-following, or a citation requirement that forces the model to point at the specific line it's drawing from (it can't point at "2023" and then say "2021").
+
+**Trace 3 — a real document, misread.**
+
+The bot retrieved a document that was accurate but discussed two different milestones.
+
+```
+context: "Security review began in 2021. SOC 2 Type II: completed 2023."
+question: "When did our company adopt SOC 2?"
+answer:   "We adopted SOC 2 in 2021."
+```
+
+> **Why this step?** The document never claims 2021 was the adoption date — it names 2021 as when the review *started*. The model conflated "the review began" with "we adopted," pulling the wrong number out of a source that, read correctly, has the right answer sitting right next to it.
+
+**Diagnosis:** a faithfulness failure, and intrinsic — the misreading is checkable using only this document, no outside knowledge needed. It's also factually wrong here, because in this trace the source was accurate and the model garbled it; that co-occurrence isn't automatic (see the SLA-memo case in [the master-axis lesson](/learn/hallucinations/factual-vs-faithfulness-distinction), where an intrinsic contradiction of the source was still factually correct).
+
+**Fix:** this bot needs better claim-to-span attribution — force it to quote the exact sentence its answer comes from, which would surface "review began in 2021" as visibly not the same sentence as "completed 2023."
+
+## Where it breaks (and the fix that actually generalizes)
+
+If your logging only captures `question` and `answer`, all three traces are indistinguishable — "We adopted SOC 2 in 2021" three times over. You'd apply one fix (say, better retrieval) to all three tickets and watch it solve exactly one of them, at random, while the other two keep failing and nobody can say why.
+
+The fix is structural, not clever: **log the full retrieved context alongside every output**, not just the final answer. It costs storage, not engineering effort, and it's the only thing that makes trace 1, 2, and 3 distinguishable after the fact. See [fact-checking pipelines](/learn/hallucinations/fact-checking-pipelines) for where this logging plugs into a review workflow.
+
+## Takeaways
+
+- You cannot classify a hallucination from the output string alone. The same wrong sentence can be extrinsic-factual, intrinsic-factual, or intrinsic-faithfulness, and each needs a different fix.
+- "The bot is wrong" is not a diagnosis. "The bot had the right document and contradicted it" versus "the bot had no document at all" are different bugs filed in different places.
+- If you're debugging a hallucination and you don't have the context the model saw, stop and go get it before you touch the model, the prompt, or the retriever — you're guessing at which of three fixes you need.
+
+**Related:** [The Master Axis: Factual vs. Faithfulness Hallucination](/learn/hallucinations/factual-vs-faithfulness-distinction), [Intrinsic vs. Extrinsic Hallucination](/learn/hallucinations/intrinsic-vs-extrinsic-hallucination), [Fact-Checking Pipelines](/learn/hallucinations/fact-checking-pipelines), [Cheatsheet: A Decision Tree for Classifying Any Hallucination](/learn/hallucinations/taxonomy-decision-tree)

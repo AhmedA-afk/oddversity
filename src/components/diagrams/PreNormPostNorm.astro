@@ -1,0 +1,86 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The same residual block wired twice, so the only difference a reader has to
+ * find is where the NORM box sits.
+ *
+ * Both halves share one skeleton — a vertical residual spine, a branch that
+ * leaves it and rejoins at the +. Post-norm puts NORM on the spine; pre-norm
+ * moves that same box into the branch, above the sublayer. Holding every other
+ * coordinate identical is the whole argument: the figure is a diff, not two
+ * drawings.
+ *
+ * Brass is on exactly one shape — the post-norm NORM box — because it is the
+ * one operation standing on the residual path itself, and the lesson blames
+ * precisely that for post-norm's warmup sensitivity. Nothing in the pre-norm
+ * half can fail, so nothing in it is brass. Lines stay indigo in both halves:
+ * post-norm's path is unstable, not broken, and dashed here means failure.
+ *
+ * Six primary shapes, under the ceiling of seven, and no room for a seventh.
+ */
+---
+<Figure
+  title="Post-norm and pre-norm residual wiring, side by side"
+  caption="The same block wired both ways: post-norm leaves a normalization step standing on the residual path itself, while pre-norm moves it into the sublayer branch and lets the path through the addition stay untouched."
+  desc="Two vertical residual streams drawn side by side. In the post-norm half, the stream branches into a sublayer, rejoins at an addition, and then passes through a NORM box sitting on the stream itself before continuing. In the pre-norm half, the branch contains a NORM box followed by the sublayer, and the stream runs from top to bottom through the addition with nothing on it."
+>
+  <svg viewBox="0 0 560 340" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="pn-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+    </defs>
+
+    {/* ---------- post-norm ---------- */}
+    <text x="118" y="16" class="dg-label">POST-NORM</text>
+    <text x="60" y="36" class="dg-note">residual stream</text>
+
+    <line x1="60" y1="46" x2="60" y2="197" class="dg-line" />
+    <path d="M60,68 H176 V138" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <rect x="128" y="142" width="96" height="42" rx="6" class="dg-box" />
+    <text x="176" y="167" class="dg-label">SUBLAYER</text>
+
+    <path d="M176,184 V208 H75" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <circle cx="60" cy="208" r="11" class="dg-box" />
+    <line x1="54" y1="208" x2="66" y2="208" class="dg-line" />
+    <line x1="60" y1="202" x2="60" y2="214" class="dg-line" />
+
+    <line x1="60" y1="219" x2="60" y2="228" class="dg-line" marker-end="url(#pn-tip)" />
+
+    {/* The one brass shape: a non-identity step standing on the residual path. */}
+    <rect x="12" y="232" width="96" height="42" rx="6" class="dg-box-warn" />
+    <text x="60" y="257" class="dg-label dg-label-warn">NORM</text>
+
+    <line x1="60" y1="274" x2="60" y2="296" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <text x="118" y="322" class="dg-note dg-note-warn">every backward pass crosses this norm</text>
+
+    {/* ---------- pre-norm ---------- */}
+    <text x="438" y="16" class="dg-label">PRE-NORM</text>
+    <text x="380" y="36" class="dg-note">residual stream</text>
+
+    <line x1="380" y1="46" x2="380" y2="197" class="dg-line" />
+    <path d="M380,68 H496 V78" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <rect x="448" y="82" width="96" height="42" rx="6" class="dg-box" />
+    <text x="496" y="107" class="dg-label">NORM</text>
+
+    <line x1="496" y1="124" x2="496" y2="138" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <rect x="448" y="142" width="96" height="42" rx="6" class="dg-box" />
+    <text x="496" y="167" class="dg-label">SUBLAYER</text>
+
+    <path d="M496,184 V208 H395" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <circle cx="380" cy="208" r="11" class="dg-box" />
+    <line x1="374" y1="208" x2="386" y2="208" class="dg-line" />
+    <line x1="380" y1="202" x2="380" y2="214" class="dg-line" />
+
+    <line x1="380" y1="219" x2="380" y2="296" class="dg-line" marker-end="url(#pn-tip)" />
+
+    <text x="438" y="322" class="dg-note">the residual path stays untouched</text>
+  </svg>
+</Figure>

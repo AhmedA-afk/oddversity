@@ -1,0 +1,113 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The same four floats, stored two ways.
+ *
+ * Both structures start identically — a contiguous strip of fixed-width cells —
+ * so the figure isolates the one difference that matters: what the cells hold.
+ * The list's cells hold pointers, and every read leaves the strip for an object
+ * sitting anywhere on the heap. Those hops are the brass: the lesson's whole
+ * argument is that the indirection is the cost, it is paid once per element, and
+ * rewriting the loop in C does not remove it. The array's cells hold the values,
+ * so the right half has nothing leaving it — the emptiness under the block is
+ * the point, not a gap to fill.
+ *
+ * Six primary elements: one pointer strip, four heap objects, one array block.
+ */
+
+const N = 4;
+const CELL_W = 70;
+const STRIP_H = 34;
+const STRIP_Y = 50;
+const STRIP_W = N * CELL_W;
+
+const LIST_X = 20;
+const ARRAY_X = 408;
+
+const listCell = (i: number) => LIST_X + i * CELL_W + CELL_W / 2;
+const arrayCell = (i: number) => ARRAY_X + i * CELL_W + CELL_W / 2;
+
+/** Scattered on purpose: no two heap objects share a row or a column. */
+const OBJ_W = 78;
+const OBJ_H = 28;
+const objects = [
+  { x: 6, y: 152 },
+  { x: 96, y: 110 },
+  { x: 190, y: 152 },
+  { x: 246, y: 110 },
+];
+
+/** Orthogonal only — down out of the cell, across, down into the object. */
+const hops = objects.map((o, i) => {
+  const from = listCell(i);
+  const to = o.x + OBJ_W / 2;
+  const lane = o.y === 110 ? 96 : 144;
+  return `M ${from} ${STRIP_Y + STRIP_H} V ${lane} H ${to} V ${o.y - 4}`;
+});
+---
+<Figure
+  title="A list of pointers to scattered heap objects, beside one contiguous typed block"
+  caption="Both layouts hold the same four floats in the same number of cells; the list's cells hold pointers to objects sitting anywhere on the heap, and following them is the cost the array removes."
+  desc="Two panels. On the left, a contiguous strip of four cells labelled PTR, with a dashed line leaving each cell for one of four separate boxes labelled FLOAT OBJ, placed at scattered positions below. On the right, a single unbroken block of four cells labelled F64, with nothing leaving it."
+>
+  <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="avlm-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    <text x="160" y="26" class="dg-label">LIST</text>
+    <text x="548" y="26" class="dg-label">ARRAY</text>
+
+    {/* The pointer strip. Contiguous, like the array — that is not the difference. */}
+    <rect x={LIST_X} y={STRIP_Y} width={STRIP_W} height={STRIP_H} rx="6" class="dg-box" />
+    {Array.from({ length: N }, (_, i) => (
+      <>
+        {i > 0 && (
+          <line
+            x1={LIST_X + i * CELL_W} y1={STRIP_Y}
+            x2={LIST_X + i * CELL_W} y2={STRIP_Y + STRIP_H}
+            class="dg-rule"
+          />
+        )}
+        <text x={listCell(i)} y={STRIP_Y + STRIP_H / 2 + 4} class="dg-label">PTR</text>
+      </>
+    ))}
+
+    {/* The hops. The one thing in this figure that breaks performance. */}
+    {hops.map((d) => (
+      <path d={d} class="dg-line-warn" marker-end="url(#avlm-tip-warn)" />
+    ))}
+
+    {objects.map((o) => (
+      <>
+        <rect x={o.x} y={o.y} width={OBJ_W} height={OBJ_H} rx="6" class="dg-box-warn" />
+        <text x={o.x + OBJ_W / 2} y={o.y + OBJ_H / 2 + 4} class="dg-label dg-label-warn">FLOAT OBJ</text>
+      </>
+    ))}
+
+    <text x="160" y="206" class="dg-note dg-note-warn">one hop per element, and C pays it too</text>
+
+    <line x1="352" y1="16" x2="352" y2="206" class="dg-rule" />
+
+    {/* One block, one dtype. Nothing leaves it. */}
+    <rect x={ARRAY_X} y={STRIP_Y} width={STRIP_W} height={STRIP_H} rx="6" class="dg-box" />
+    {Array.from({ length: N }, (_, i) => (
+      <>
+        {i > 0 && (
+          <line
+            x1={ARRAY_X + i * CELL_W} y1={STRIP_Y}
+            x2={ARRAY_X + i * CELL_W} y2={STRIP_Y + STRIP_H}
+            class="dg-rule"
+          />
+        )}
+        <text x={arrayCell(i)} y={STRIP_Y + STRIP_H / 2 + 4} class="dg-label">F64</text>
+      </>
+    ))}
+
+    <text x="548" y="132" class="dg-note">the values are the block</text>
+    <text x="548" y="206" class="dg-note">nothing to follow</text>
+  </svg>
+</Figure>

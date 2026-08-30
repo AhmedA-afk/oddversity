@@ -1,0 +1,67 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * Where a chained assignment actually lands.
+ *
+ * The lesson's prose explains that `df[mask]["credits"] = 50` is two calls, not
+ * one — the first builds a new object, the second writes into it, and nothing
+ * holds a reference to it afterwards. That is hard to see in a source line that
+ * reads left to right as a single statement, which is exactly the case for a
+ * second way in: the figure gives the temporary a body on the page.
+ *
+ * One DataFrame, two paths out of it. The temporary and the dashed path into
+ * DISCARDED are brass because they are the bug — the write succeeds, into an
+ * object that is about to stop existing. DISCARDED itself is muted: it is the
+ * void, not the failure. The .loc path returns into the DataFrame, which is the
+ * whole distinction the lesson draws.
+ *
+ * Four primary elements. Nothing here is asserted that the lesson does not say.
+ */
+---
+<Figure
+  title="Where a chained assignment actually writes"
+  caption="Chained indexing is two operations: the filter builds a temporary object and the assignment writes into that, so the original DataFrame is untouched, while a single .loc call resolves rows and columns against the DataFrame itself."
+  desc="One DataFrame box has two paths leaving it. The upper path filters into a temporary copy, which is highlighted, and a dashed line runs from the temporary to a discarded box — the assignment lands in the temporary and nothing holds a reference to it. The lower path passes through a single .loc call taking rows and columns together, and returns into the DataFrame."
+>
+  <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="chain-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="chain-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* The object you meant to change. Both paths start here. */}
+    <rect x="24" y="96" width="140" height="50" rx="6" class="dg-box" />
+    <text x="94" y="126" class="dg-label">DATAFRAME</text>
+
+    {/* Chained path: filter builds a temporary, the write goes into it. */}
+    <path d="M164,112 H196 V52 H232" class="dg-line" marker-end="url(#chain-tip)" />
+
+    <rect x="236" y="30" width="140" height="44" rx="6" class="dg-box-warn" />
+    <text x="306" y="57" class="dg-label dg-label-warn">TEMP COPY</text>
+
+    <path d="M376,52 H426" class="dg-line-warn" marker-end="url(#chain-tip-warn)" />
+
+    <rect x="430" y="30" width="140" height="44" rx="6" class="dg-box-mute" />
+    <text x="500" y="57" class="dg-label">DISCARDED</text>
+
+    {/* Single .loc call: resolved against the DataFrame, and back into it. */}
+    <path d="M164,130 H196 V190 H232" class="dg-line" marker-end="url(#chain-tip)" />
+
+    <rect x="236" y="168" width="140" height="44" rx="6" class="dg-box" />
+    <text x="306" y="195" class="dg-label">.LOC[ROWS, COLS]</text>
+
+    <path d="M306,212 V236 H94 V150" class="dg-line" marker-end="url(#chain-tip)" />
+
+    {/* Annotations sit outside the shapes. */}
+    <text x="306" y="20" class="dg-note">filtering returns a new object</text>
+    <text x="306" y="92" class="dg-note dg-note-warn">the write lands here</text>
+    <text x="500" y="92" class="dg-note">nothing holds a reference</text>
+    <text x="306" y="158" class="dg-note">rows and columns, one call</text>
+    <text x="458" y="240" class="dg-note">the write lands in df</text>
+  </svg>
+</Figure>

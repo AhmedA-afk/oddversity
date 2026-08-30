@@ -1,0 +1,61 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The one-client-per-server rule, drawn for the consequence rather than the
+ * taxonomy: two clients inside one host, each pinned to its own server, and the
+ * dashed failure path from the broken server terminating at its own client.
+ *
+ * Brass is the failed server and the link back to its client, because the
+ * lesson's closing claim is the isolation — "one server hanging or erroring
+ * doesn't take down the others" — so the failure is the thing to notice and the
+ * reason the figure exists. The host is drawn muted: it is the enclosure, not a
+ * third component competing with the two roles being paired.
+ *
+ * Five primary elements. A third client/server pair would say nothing the second
+ * does not, and would cost the symmetry that makes the isolation legible.
+ */
+---
+<Figure
+  title="One client per server, and the failure domain that creates"
+  caption="Each client inside the host manages exactly one server connection, so a server that hangs or errors reaches only the client pinned to it."
+  desc="A host contains two clients stacked vertically. Each client connects to its own server on the right. The upper client and server are joined by a solid working link. The lower server is marked as failed, and its dashed link runs back only as far as its own client — it does not reach the upper client or its server."
+>
+  <svg viewBox="0 0 568 250" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="mcp-role-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="mcp-role-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* The host is the enclosure. Muted, so it does not read as a third peer. */}
+    <rect x="20" y="44" width="210" height="170" rx="6" class="dg-box-mute" />
+    <text x="125" y="68" class="dg-label">HOST</text>
+
+    <rect x="42" y="88" width="166" height="42" rx="6" class="dg-box" />
+    <text x="125" y="113" class="dg-label">CLIENT</text>
+
+    <rect x="42" y="152" width="166" height="42" rx="6" class="dg-box" />
+    <text x="125" y="177" class="dg-label">CLIENT</text>
+
+    <rect x="382" y="88" width="166" height="42" rx="6" class="dg-box" />
+    <text x="465" y="113" class="dg-label">SERVER</text>
+
+    {/* The failure. Brass carries it, and nothing else in the figure is brass. */}
+    <rect x="382" y="152" width="166" height="42" rx="6" class="dg-box-warn" />
+    <text x="465" y="177" class="dg-label dg-label-warn">SERVER</text>
+
+    <line x1="208" y1="109" x2="378" y2="109" class="dg-line" marker-end="url(#mcp-role-tip)" />
+    <line x1="382" y1="173" x2="212" y2="173" class="dg-line-warn" marker-end="url(#mcp-role-tip-warn)" />
+
+    <text x="295" y="145" class="dg-note">one client per server</text>
+
+    {/* Annotations sit outside the shapes, per the grammar. */}
+    <line x1="310" y1="181" x2="310" y2="204" class="dg-line-warn" />
+    <text x="310" y="216" class="dg-note dg-note-warn">stops at its own client</text>
+    <text x="465" y="216" class="dg-note dg-note-warn">hanging or erroring</text>
+  </svg>
+</Figure>

@@ -1,0 +1,90 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * Row 3 of a causal mask over a length-4 sequence.
+ *
+ * The lesson states the rule in one line — "row 3 may attend indices 1–3 but
+ * never 4" — and states the symptom in another: a model that sees its target
+ * through a missing mask reports unrealistically low loss. The figure draws
+ * exactly those two claims and nothing else.
+ *
+ * The four keys sit in a row; the query row sits beneath them, so every edge is
+ * orthogonal and the legal edges arrive from above while the illegal one
+ * arrives from the side. That separation is the whole point of the layout.
+ *
+ * One brass element: the dashed edge from position 4. It is the failure itself,
+ * not an accent — the mask that is missing or broadcast on the wrong axis is
+ * what leaves it open, and a run with that edge open looks better than a
+ * correct one.
+ *
+ * Five primary elements, under the ceiling of seven.
+ */
+const keys = [
+  { label: 'POS 1', cx: 85 },
+  { label: 'POS 2', cx: 215 },
+  { label: 'POS 3', cx: 345 },
+  { label: 'POS 4', cx: 475 },
+];
+
+const KEY_W = 104;
+const KEY_H = 40;
+const KEY_Y = 40;
+const KEY_BOTTOM = KEY_Y + KEY_H;
+
+const Q_X = 260;
+const Q_Y = 190;
+const Q_W = 170;
+const Q_H = 40;
+const Q_RIGHT = Q_X + Q_W;
+const Q_MID = Q_Y + Q_H / 2;
+
+/* Each legal edge turns at its own level so no two of them cross. */
+const legal = [
+  `M85,${KEY_BOTTOM} V140 H290 V${Q_Y - 4}`,
+  `M215,${KEY_BOTTOM} V110 H325 V${Q_Y - 4}`,
+  `M345,${KEY_BOTTOM} V${Q_Y - 4}`,
+];
+
+/* The leak enters from the right, so it never reads as one of the legal three. */
+const leak = `M475,${KEY_BOTTOM} V${Q_MID} H${Q_RIGHT + 4}`;
+---
+<Figure
+  title="Row 3 of a causal mask, and the forward edge a missing mask leaves open"
+  caption="For a length-4 sequence, row 3 of a causal mask may attend positions 1 through 3; the dashed edge from position 4 is the forward-looking attention a missing or wrongly broadcast mask leaves open, and it is what makes a broken run report an implausibly low loss."
+  desc="Four key positions sit in a row above a single query row for position 3. Solid edges run from positions 1, 2 and 3 down into the query row: these are the legal context. A dashed edge runs from position 4 into the right-hand side of the query row, marked as the forward-looking attention that a missing causal mask permits."
+>
+  <svg viewBox="0 0 560 288" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="cml-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="cml-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    <text x="280" y="24" class="dg-note">a length-4 sequence</text>
+
+    {keys.map((k) => (
+      <>
+        <rect x={k.cx - KEY_W / 2} y={KEY_Y} width={KEY_W} height={KEY_H} rx="6" class="dg-box" />
+        <text x={k.cx} y={KEY_Y + KEY_H / 2 + 4} class="dg-label">{k.label}</text>
+      </>
+    ))}
+
+    {legal.map((d) => (
+      <path d={d} class="dg-line" marker-end="url(#cml-tip)" />
+    ))}
+
+    <path d={leak} class="dg-line-warn" marker-end="url(#cml-tip-warn)" />
+
+    <rect x={Q_X} y={Q_Y} width={Q_W} height={Q_H} rx="6" class="dg-box" />
+    <text x={Q_X + Q_W / 2} y={Q_Y + Q_H / 2 + 4} class="dg-label">QUERY ROW 3</text>
+
+    {/* Annotations sit outside the shapes. */}
+    <text x="150" y="172" class="dg-note">positions 1–3 are legal</text>
+    <text x="440" y="252" class="dg-note dg-note-warn">a missing mask leaves this edge open</text>
+    <text x="440" y="270" class="dg-note dg-note-warn">and loss then looks implausibly low</text>
+  </svg>
+</Figure>

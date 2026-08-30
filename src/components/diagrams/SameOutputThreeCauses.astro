@@ -1,0 +1,88 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The lesson's three traces, drawn as a converge-then-diverge shape: three
+ * different context windows collapse into one answer, which then fans back out
+ * into three different bugs.
+ *
+ * Brass sits on the ANSWER box alone. It is not the failure path here — it is
+ * the thing that deceives you. It is byte-identical in all three traces, so the
+ * one element a reader's eye lands on is precisely the one that carries no
+ * diagnostic information. Nothing else in the figure is brass, because nothing
+ * else misleads: the contexts and the diagnoses are all true and all different.
+ *
+ * Seven boxes, which is the grammar's ceiling. Adding a fourth trace means
+ * splitting the figure.
+ */
+
+const ROWS = [
+  { ctx: 'NO CONTEXT',    diag: 'EXTRINSIC FACTUAL',      y: 34 },
+  { ctx: 'CORRECT DOC',   diag: 'INTRINSIC FACTUAL',      y: 106 },
+  { ctx: 'AMBIGUOUS DOC', diag: 'INTRINSIC FAITHFULNESS', y: 178 },
+];
+
+const BOX_H = 42;
+const CTX_X = 6;
+const CTX_W = 150;
+const ANS_X = 250;
+const ANS_W = 130;
+const DIAG_X = 474;
+const DIAG_W = 190;
+
+const MID_Y = 127;      /* centre row — the answer sits on it */
+const JOIN_IN = 203;    /* where the three traces merge */
+const JOIN_OUT = 421;   /* where the one answer splits again */
+
+const W = 670;
+const H = 236;
+---
+<Figure
+  title="One wrong answer, three different bugs"
+  caption="The same wrong sentence comes out of three different context windows and gets three different diagnoses, so the answer string alone cannot tell you which bug you have."
+  desc="Three context windows on the left — no context, the correct document, an ambiguous document — converge on a single shared answer box, which then splits into three separate diagnoses: extrinsic factual, intrinsic factual, and intrinsic faithfulness. The shared answer is highlighted as the element that looks identical in all three traces."
+>
+  <svg viewBox={`0 0 ${W} ${H}`} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="soc-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+    </defs>
+
+    {/* Column headings sit outside the shapes, per the grammar. */}
+    <text x={CTX_X + CTX_W / 2} y="18" class="dg-note">what the model saw</text>
+    <text x={DIAG_X + DIAG_W / 2} y="18" class="dg-note">the actual bug</text>
+
+    {ROWS.map((r) => {
+      const cy = r.y + BOX_H / 2;
+      const inPath = cy === MID_Y
+        ? `M${CTX_X + CTX_W},${cy} H${JOIN_IN}`
+        : `M${CTX_X + CTX_W},${cy} H${JOIN_IN} V${MID_Y}`;
+      const outPath = cy === MID_Y
+        ? `M${JOIN_OUT},${MID_Y} H${DIAG_X - 4}`
+        : `M${JOIN_OUT},${MID_Y} V${cy} H${DIAG_X - 4}`;
+      return (
+        <>
+          <rect x={CTX_X} y={r.y} width={CTX_W} height={BOX_H} rx="6" class="dg-box" />
+          <text x={CTX_X + CTX_W / 2} y={cy + 4} class="dg-label">{r.ctx}</text>
+
+          <path d={inPath} class="dg-line" />
+          <path d={outPath} class="dg-line" marker-end="url(#soc-tip)" />
+
+          <rect x={DIAG_X} y={r.y} width={DIAG_W} height={BOX_H} rx="6" class="dg-box" />
+          <text x={DIAG_X + DIAG_W / 2} y={cy + 4} class="dg-label">{r.diag}</text>
+        </>
+      );
+    })}
+
+    {/* The merged run in, and the single run out before it splits. */}
+    <line x1={JOIN_IN} y1={MID_Y} x2={ANS_X - 4} y2={MID_Y} class="dg-line" marker-end="url(#soc-tip)" />
+    <line x1={ANS_X + ANS_W} y1={MID_Y} x2={JOIN_OUT} y2={MID_Y} class="dg-line" />
+
+    {/* The element that deceives: identical in every trace, diagnostic in none. */}
+    <rect x={ANS_X} y="106" width={ANS_W} height={BOX_H} rx="6" class="dg-box-warn" />
+    <text x={ANS_X + ANS_W / 2} y={MID_Y + 4} class="dg-label dg-label-warn">ANSWER</text>
+    <text x={ANS_X + ANS_W / 2} y="170" class="dg-note dg-note-warn">“We adopted SOC 2 in 2021.”</text>
+    <text x={ANS_X + ANS_W / 2} y="189" class="dg-note">identical in all three traces</text>
+  </svg>
+</Figure>

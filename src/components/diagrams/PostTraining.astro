@@ -1,0 +1,70 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The post-training pipeline, drawn so that the seam is the geometry rather
+ * than a claim.
+ *
+ * The reward model is brass because it is the thing that breaks — not because
+ * it is badly trained, but because of where it sits. The humans are upstream of
+ * it and connect to nothing downstream; the policy's only return path is the
+ * dashed brass one, back onto the proxy. Reward hacking is what that shape
+ * makes inevitable, and no single box in the figure is at fault for it.
+ *
+ * Five primary elements, two under the ceiling, so a sixth stage (DPO, the
+ * frozen reference model, a reward-model ensemble) is a second figure rather
+ * than an addition to this one.
+ */
+---
+<Figure
+  title="The post-training pipeline and the proxy the policy optimizes against"
+  caption="Human choices reach the policy only through the reward model, so the policy has a gradient path to the proxy and none to the preference the proxy stands for."
+  desc="A bottom row runs left to right: base model, SFT model, policy. Above it, completions sampled from the SFT model feed human choices, which fit the reward model. The reward model scores the policy, and a dashed return path carries the policy's optimization pressure back onto the reward model. Nothing connects the policy to the human choices directly."
+>
+  <svg viewBox="0 0 656 268" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="pt-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="pt-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* Upper track: where human judgement enters, and where it stops. */}
+    <rect x="180" y="48" width="124" height="44" rx="6" class="dg-box" />
+    <text x="242" y="74" class="dg-label">HUMAN CHOICES</text>
+
+    <rect x="508" y="48" width="124" height="44" rx="6" class="dg-box-warn" />
+    <text x="570" y="74" class="dg-label dg-label-warn">REWARD MODEL</text>
+
+    {/* Lower track: the model itself, base through policy. */}
+    <rect x="16" y="178" width="124" height="44" rx="6" class="dg-box" />
+    <text x="78" y="204" class="dg-label">BASE MODEL</text>
+
+    <rect x="180" y="178" width="124" height="44" rx="6" class="dg-box" />
+    <text x="242" y="204" class="dg-label">SFT MODEL</text>
+
+    <rect x="508" y="178" width="124" height="44" rx="6" class="dg-box" />
+    <text x="570" y="204" class="dg-label">POLICY</text>
+
+    <line x1="140" y1="200" x2="176" y2="200" class="dg-line" marker-end="url(#pt-tip)" />
+    <line x1="304" y1="200" x2="504" y2="200" class="dg-line" marker-end="url(#pt-tip)" />
+    <text x="404" y="190" class="dg-note">policy starts as SFT</text>
+
+    <line x1="242" y1="174" x2="242" y2="96" class="dg-line" marker-end="url(#pt-tip)" />
+    <text x="168" y="139" class="dg-note">completions compared</text>
+
+    <line x1="304" y1="70" x2="504" y2="70" class="dg-line" marker-end="url(#pt-tip)" />
+    <text x="404" y="58" class="dg-note">Bradley-Terry fit</text>
+
+    <line x1="538" y1="96" x2="538" y2="174" class="dg-line" marker-end="url(#pt-tip)" />
+    <text x="503" y="139" class="dg-note">score</text>
+
+    {/* The return path. Brass and dashed: this is the pressure that finds the
+        gap between "scores well" and "is actually good". */}
+    <line x1="602" y1="174" x2="602" y2="96" class="dg-line-warn" marker-end="url(#pt-tip-warn)" />
+    <text x="570" y="34" class="dg-note dg-note-warn">a proxy, not the human</text>
+    <text x="570" y="246" class="dg-note dg-note-warn">optimized against</text>
+  </svg>
+</Figure>

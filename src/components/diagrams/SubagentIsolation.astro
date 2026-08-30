@@ -1,0 +1,56 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * Two context windows drawn as two containers, because the whole idea is that
+ * they are separate objects rather than one stream. Only three things move: the
+ * task down, the result back up, and the subagent's internal trace — which is
+ * the one that must not move, so it is the only brass element here.
+ *
+ * The dashed brass line deliberately stops at the subagent's own edge and
+ * carries no arrowhead. Piping that trace upward is the failure the lesson
+ * exists to prevent: the orchestrator then grows by the sum of N traces instead
+ * of N results.
+ *
+ * Six primary elements: two windows, the trace, two solid crossings, the
+ * blocked one. Nothing may be added without splitting the figure.
+ */
+---
+<Figure
+  title="What crosses an agent boundary, and what must not"
+  caption="Two windows, not one: the task crosses down and the distilled result crosses back, while the subagent's dead ends and tool output stop at its own boundary — pipe them upward and the orchestrator grows by the sum of N traces instead of N results."
+  desc="An orchestrator window sits above a separate subagent window. A solid line carries the task downward across the gap, and a second solid line carries the result back up. Inside the subagent window sits its internal trace — dead ends, retries and tool output — with a dashed line rising from it that stops at the subagent's own edge and never reaches the orchestrator."
+>
+  <svg viewBox="0 0 620 292" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="sai-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+    </defs>
+
+    {/* The orchestrator's window. */}
+    <rect x="40" y="16" width="380" height="48" rx="6" class="dg-box" />
+    <text x="230" y="45" class="dg-label">ORCHESTRATOR</text>
+    <text x="520" y="45" class="dg-note">holds the result, not the work</text>
+
+    {/* The two things that legitimately cross. */}
+    <line x1="140" y1="68" x2="140" y2="148" class="dg-line" marker-end="url(#sai-tip)" />
+    <text x="110" y="112" class="dg-note">task</text>
+
+    <line x1="320" y1="148" x2="320" y2="68" class="dg-line" marker-end="url(#sai-tip)" />
+    <text x="352" y="112" class="dg-note">result</text>
+
+    {/* The subagent's window — a separate container, not a region of the first. */}
+    <rect x="40" y="152" width="380" height="120" rx="6" class="dg-box" />
+    <text x="230" y="177" class="dg-label">SUBAGENT</text>
+
+    {/* The trace. Brass, because moving it is the failure. */}
+    <rect x="90" y="192" width="280" height="60" rx="6" class="dg-box-warn" />
+    <text x="230" y="227" class="dg-label dg-label-warn">INTERNAL TRACE</text>
+    <text x="520" y="222" class="dg-note dg-note-warn">dead ends, retries, tool output</text>
+
+    {/* Stops at the boundary, and carries no arrowhead, because it never lands. */}
+    <line x1="230" y1="190" x2="230" y2="154" class="dg-line-warn" />
+    <text x="230" y="140" class="dg-note dg-note-warn">does not cross</text>
+  </svg>
+</Figure>

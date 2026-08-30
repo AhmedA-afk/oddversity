@@ -1,0 +1,79 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * Two lanes, the same two operations, opposite order.
+ *
+ * The figure exists because the lesson treats filter placement as a decision
+ * rather than an implementation detail, and the reason is a shape rather than a
+ * sentence: the post-filter lane's result set is whatever survives a filter
+ * applied to an already-truncated top-k, so it is the only thing here that can
+ * fail and the only thing in brass. The dashed edge into it is the failure
+ * path. Six primary elements — the grammar's ceiling is seven, so a third lane
+ * would mean a second figure.
+ *
+ * No counts appear anywhere: the lesson's 10-and-8 example is illustrative
+ * prose, and a number inside a shape reads as measurement.
+ */
+
+const BOX_W = 116;
+const BOX_H = 44;
+const X1 = 104;
+const X2 = 252;
+const X3 = 400;
+const LANE_A = 40;
+const LANE_B = 148;
+const mid = (y: number) => y + BOX_H / 2 + 4;
+---
+<Figure
+  title="Pre-filter and post-filter, the same two operations in opposite order"
+  caption="Filtering before the similarity search leaves a full top-k of allowed chunks; filtering after it can delete most of a list that was already cut to k, while better-matching allowed chunks further down were never considered."
+  desc="Two horizontal lanes. The pre-filter lane runs filter, then search, and ends in a full top-k. The post-filter lane runs search, then filter, and ends in a result set of few or no chunks, marked as the failure."
+>
+  <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="pfpf-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="pfpf-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* Lane A — filter first. */}
+    <text x="46" y={mid(LANE_A)} class="dg-note">Pre-filter</text>
+
+    <rect x={X1} y={LANE_A} width={BOX_W} height={BOX_H} rx="6" class="dg-box" />
+    <text x={X1 + BOX_W / 2} y={mid(LANE_A)} class="dg-label">FILTER</text>
+
+    <rect x={X2} y={LANE_A} width={BOX_W} height={BOX_H} rx="6" class="dg-box" />
+    <text x={X2 + BOX_W / 2} y={mid(LANE_A)} class="dg-label">SEARCH</text>
+
+    <rect x={X3} y={LANE_A} width={BOX_W} height={BOX_H} rx="6" class="dg-box" />
+    <text x={X3 + BOX_W / 2} y={mid(LANE_A)} class="dg-label">FULL TOP-K</text>
+
+    <line x1={X1 + BOX_W} y1={mid(LANE_A) - 4} x2={X2 - 4} y2={mid(LANE_A) - 4} class="dg-line" marker-end="url(#pfpf-tip)" />
+    <line x1={X2 + BOX_W} y1={mid(LANE_A) - 4} x2={X3 - 4} y2={mid(LANE_A) - 4} class="dg-line" marker-end="url(#pfpf-tip)" />
+
+    <text x={X3 + BOX_W / 2} y={LANE_A + BOX_H + 22} class="dg-note">every allowed chunk competed</text>
+
+    <line x1="20" y1="124" x2="580" y2="124" class="dg-rule" />
+
+    {/* Lane B — filter second. The result set is what breaks. */}
+    <text x="46" y={mid(LANE_B)} class="dg-note">Post-filter</text>
+
+    <rect x={X1} y={LANE_B} width={BOX_W} height={BOX_H} rx="6" class="dg-box" />
+    <text x={X1 + BOX_W / 2} y={mid(LANE_B)} class="dg-label">SEARCH</text>
+
+    <rect x={X2} y={LANE_B} width={BOX_W} height={BOX_H} rx="6" class="dg-box" />
+    <text x={X2 + BOX_W / 2} y={mid(LANE_B)} class="dg-label">FILTER</text>
+
+    <rect x={X3} y={LANE_B} width={BOX_W} height={BOX_H} rx="6" class="dg-box-warn" />
+    <text x={X3 + BOX_W / 2} y={mid(LANE_B)} class="dg-label dg-label-warn">FEW OR NONE</text>
+
+    <line x1={X1 + BOX_W} y1={mid(LANE_B) - 4} x2={X2 - 4} y2={mid(LANE_B) - 4} class="dg-line" marker-end="url(#pfpf-tip)" />
+    <line x1={X2 + BOX_W} y1={mid(LANE_B) - 4} x2={X3 - 4} y2={mid(LANE_B) - 4} class="dg-line-warn" marker-end="url(#pfpf-tip-warn)" />
+
+    <text x={X3 + BOX_W / 2} y={LANE_B + BOX_H + 22} class="dg-note dg-note-warn">better matches sat below the cut</text>
+  </svg>
+</Figure>

@@ -1,0 +1,69 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The four fundamental subspaces, drawn as one split rather than four
+ * definitions: the input space divides into what A records and what A
+ * destroys, the output space into what A can reach and what it cannot.
+ *
+ * Brass is the null space and the dashed path it takes to zero. That is the
+ * lesson's stated failure mode — two parameter vectors differing by a null
+ * direction produce identical predictions, so nothing downstream can recover
+ * the distinction. Everything else here is normal behaviour and stays indigo.
+ * Zero itself is muted: it is the destination, not the thing that breaks.
+ *
+ * Five primary shapes, under the seven-element ceiling. Nothing is asserted
+ * that the prose does not already state: the split, rank–nullity, and
+ * Col(A) = Null(Aᵀ)ᗮ are all in "How it works".
+ */
+---
+<Figure
+  title="The four fundamental subspaces of a linear map"
+  caption="The row space is the part of an input A actually inspects and the column space is every output it can produce; anything in the null space is sent to zero, so two inputs differing by a null direction are indistinguishable from the output alone."
+  desc="The input space splits into two blocks: the row space, which the matrix records, and the null space, which it sends to zero along a dashed path. The output space splits into the column space, holding every reachable output, and the left null space, which no input reaches. A solid arrow runs from the row space to the column space; the dashed arrow from the null space ends at zero."
+>
+  <svg viewBox="0 0 660 268" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="fs-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="fs-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* Column headings sit outside the shapes, per the grammar. */}
+    <text x="112" y="24" class="dg-note">input space R<tspan font-size="8" dy="-4">n</tspan></text>
+    <text x="548" y="24" class="dg-note">output space R<tspan font-size="8" dy="-4">m</tspan></text>
+
+    {/* Input space: what A records. */}
+    <rect x="36" y="44" width="152" height="44" rx="6" class="dg-box" />
+    <text x="112" y="70" class="dg-label">ROW SPACE</text>
+
+    {/* Input space: what A destroys. The one thing here that breaks. */}
+    <rect x="36" y="170" width="152" height="44" rx="6" class="dg-box-warn" />
+    <text x="112" y="196" class="dg-label dg-label-warn">NULL SPACE</text>
+
+    {/* Output space: what A can produce. */}
+    <rect x="472" y="44" width="152" height="44" rx="6" class="dg-box" />
+    <text x="548" y="70" class="dg-label">COLUMN SPACE</text>
+
+    {/* Output space: what nothing maps onto. */}
+    <rect x="472" y="170" width="152" height="44" rx="6" class="dg-box" />
+    <text x="548" y="196" class="dg-label">LEFT NULL SPACE</text>
+
+    <rect x="272" y="170" width="116" height="44" rx="6" class="dg-box-mute" />
+    <text x="330" y="196" class="dg-label">ZERO</text>
+
+    {/* The working path. */}
+    <line x1="188" y1="66" x2="468" y2="66" class="dg-line" marker-end="url(#fs-tip)" />
+    <text x="328" y="56" class="dg-note">A</text>
+
+    {/* The failure path: every null direction collapses. */}
+    <line x1="188" y1="192" x2="268" y2="192" class="dg-line-warn" marker-end="url(#fs-tip-warn)" />
+    <text x="330" y="240" class="dg-note dg-note-warn">no downstream computation recovers this</text>
+
+    <text x="112" y="240" class="dg-note">dim Row + dim Null = n</text>
+    <text x="548" y="240" class="dg-note">nothing maps here</text>
+  </svg>
+</Figure>

@@ -1,0 +1,71 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The reliability stack from the whole-game lesson: the stages a fabricated
+ * answer has to get past, and the one exit that exists because none of them is
+ * sufficient on its own.
+ *
+ * Brass is the ESCALATE box and the dashed branch into it, and nothing else.
+ * Every other stage is the working path — generate, classify, detect, ground,
+ * verify, then monitoring feeding the next answer. Escalation is the only step
+ * that fires *because* everything upstream is imperfect, which is the lesson's
+ * thesis: abstaining beats guessing louder.
+ *
+ * Seven boxes is the grammar's hard ceiling and this uses all of it. Anything
+ * further belongs in a second figure.
+ */
+---
+<Figure
+  title="The reliability stack a wrong answer has to get past"
+  caption="Each stage exists because the one before it is imperfect, so the only honest exit is the dashed one: when verification cannot confirm the answer, the system abstains instead of guessing louder."
+  desc="Five stages run left to right — generate, classify, detect, ground, verify. A dashed branch drops from verify into escalate, taken when verification fails. From verify a solid path loops down and back through monitor into generate."
+>
+  <svg viewBox="0 0 672 202" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="rel-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="rel-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* The working path. */}
+    <rect x="8" y="20" width="108" height="42" rx="6" class="dg-box" />
+    <text x="62" y="45" class="dg-label">GENERATE</text>
+
+    <rect x="138" y="20" width="108" height="42" rx="6" class="dg-box" />
+    <text x="192" y="45" class="dg-label">CLASSIFY</text>
+
+    <rect x="268" y="20" width="108" height="42" rx="6" class="dg-box" />
+    <text x="322" y="45" class="dg-label">DETECT</text>
+
+    <rect x="398" y="20" width="108" height="42" rx="6" class="dg-box" />
+    <text x="452" y="45" class="dg-label">GROUND</text>
+
+    <rect x="528" y="20" width="108" height="42" rx="6" class="dg-box" />
+    <text x="582" y="45" class="dg-label">VERIFY</text>
+
+    <line x1="116" y1="41" x2="134" y2="41" class="dg-line" marker-end="url(#rel-tip)" />
+    <line x1="246" y1="41" x2="264" y2="41" class="dg-line" marker-end="url(#rel-tip)" />
+    <line x1="376" y1="41" x2="394" y2="41" class="dg-line" marker-end="url(#rel-tip)" />
+    <line x1="506" y1="41" x2="524" y2="41" class="dg-line" marker-end="url(#rel-tip)" />
+
+    {/* Measurement closes the loop back into the next answer. */}
+    <rect x="8" y="108" width="108" height="42" rx="6" class="dg-box" />
+    <text x="62" y="133" class="dg-label">MONITOR</text>
+
+    <path d="M636,41 H660 V188 H62 V154" class="dg-line" marker-end="url(#rel-tip)" />
+    <line x1="62" y1="108" x2="62" y2="66" class="dg-line" marker-end="url(#rel-tip)" />
+    <text x="200" y="89" class="dg-note">did the rate actually fall?</text>
+
+    {/* The one brass element: the branch taken when nothing upstream held. */}
+    <line x1="582" y1="62" x2="582" y2="104" class="dg-line-warn" marker-end="url(#rel-tip-warn)" />
+    <text x="486" y="89" class="dg-note dg-note-warn">verification fails</text>
+
+    <rect x="528" y="108" width="108" height="42" rx="6" class="dg-box-warn" />
+    <text x="582" y="133" class="dg-label dg-label-warn">ESCALATE</text>
+    <text x="582" y="170" class="dg-note dg-note-warn">abstain, or fetch a person</text>
+  </svg>
+</Figure>

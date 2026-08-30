@@ -1,0 +1,60 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The prediction-time contract as one timeline: what may be read before t0,
+ * what is scored after it.
+ *
+ * t0, the feature window and the outcome horizon are structure — they cannot
+ * fail, so they are indigo. The single brass element is the backwards arrow:
+ * an aggregate computed through the label window, which is the lesson's own
+ * counterexample 5 and the deliberate failure the Hands-on asks the reader to
+ * reproduce. It is drawn dashed because it is the path that must not exist.
+ *
+ * Four primary elements — window, boundary, horizon, leak — well inside the
+ * seven-element ceiling, which is the point: the contract is small.
+ */
+---
+<Figure
+  title="The prediction-time contract: feature window, t0, outcome horizon"
+  caption="The contract is a timeline: features may only read what was known at t0, the target may only count what happens after it, and an aggregate computed through the label window quietly breaks both."
+  desc="A left-to-right timeline. Left of the prediction timestamp t0 sits the feature window, holding events with event_time at or before t0. Right of t0 sits the outcome horizon, the interval from t0 to t0 plus h, over which the target is defined. A dashed arrow runs backwards from the outcome horizon into the feature window, marking an aggregate computed through the label window."
+>
+  <svg viewBox="0 0 620 216" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="ptc-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+      <marker id="ptc-tip-warn" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow-warn" />
+      </marker>
+    </defs>
+
+    {/* The timeline itself. */}
+    <line x1="40" y1="62" x2="556" y2="62" class="dg-line" marker-end="url(#ptc-tip)" />
+    <text x="584" y="66" class="dg-note">time</text>
+
+    {/* The prediction timestamp: the boundary the whole contract turns on. */}
+    <line x1="310" y1="50" x2="310" y2="140" class="dg-line" />
+    <text x="310" y="42" class="dg-label">t0</text>
+
+    <rect x="40" y="80" width="250" height="44" rx="6" class="dg-box" />
+    <text x="165" y="107" class="dg-label">FEATURE WINDOW</text>
+
+    <rect x="330" y="80" width="250" height="44" rx="6" class="dg-box" />
+    <text x="455" y="107" class="dg-label">OUTCOME HORIZON</text>
+
+    {/* Annotations sit outside the shapes. Both are the lesson's own contract. */}
+    <text x="165" y="146" class="dg-note">event_time ≤ t0</text>
+    <text x="455" y="146" class="dg-note">target over (t0, t0 + h]</text>
+
+    {/* The one thing here that can fail: history read through the label window. */}
+    <path
+      d="M455,124 L455,176 L165,176 L165,132"
+      class="dg-line-warn" marker-end="url(#ptc-tip-warn)"
+    />
+    <text x="310" y="200" class="dg-note dg-note-warn">
+      aggregate computed through the label window
+    </text>
+  </svg>
+</Figure>

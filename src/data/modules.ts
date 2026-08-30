@@ -105,6 +105,13 @@ export const moduleMap: Record<string, ModuleBoundary[]> = {
     { name: 'Concept recaps', startsAt: 'attention-and-transformers' },
   ],
 
+  'classical-ai': [
+    { name: 'Search, constraints, games, and planning', startsAt: 'search-planning/101-state-spaces-representation-actions-goals-and-costs' },
+    { name: 'Knowledge, logic, and uncertainty', startsAt: 'knowledge-uncertainty/201-knowledge-representation-models-and-tradeoffs' },
+    { name: 'Agents, robotics, and hybrid systems', startsAt: 'agents-robotics/301-agent-architectures-and-rationality' },
+    { name: 'Original concept recaps', startsAt: 'search-and-planning' },
+  ],
+
   'prompt-engineering': [
     { name: 'Prompt anatomy', startsAt: 'answer-first-prompting' },
     { name: 'Examples and reasoning', startsAt: 'few-shot-prompting' },

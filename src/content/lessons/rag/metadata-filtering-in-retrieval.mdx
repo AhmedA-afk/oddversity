@@ -6,7 +6,11 @@ summary: "Combine vector similarity with structured filters so retrieval respect
 duration: "5 min read"
 ---
 
+import PreFilterVsPostFilter from '../../../components/diagrams/PreFilterVsPostFilter.astro';
+
 Vector similarity alone doesn't know that a user shouldn't see another team's documents, or that a query about "this quarter's numbers" should exclude last year's report. Metadata filtering fixes that by narrowing the candidate set with structured fields before or alongside the similarity search.
+
+<PreFilterVsPostFilter />
 
 ## Why similarity search isn't enough
 

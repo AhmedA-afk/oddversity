@@ -1,0 +1,92 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * One instruction, two positions, drawn against a fixed generation point.
+ *
+ * The figure exists because the lesson's claim is spatial and the prose has to
+ * spend a paragraph describing a distance. Here the distance is the drawing:
+ * both rows hold the same two blocks and the same generation rule, so the only
+ * thing that differs is how much document sits between the instruction and the
+ * first generated token.
+ *
+ * Brass is the instruction-first block and the span it has to survive. That
+ * placement is the one that breaks — it drops the Q3 deadline — and it breaks
+ * for no reason other than where it sits. The document blocks are muted: they
+ * are inert context, not something that happens or fails.
+ *
+ * Five primary elements: two blocks per row, plus the generation rule.
+ */
+
+const BOX_H = 42;
+const DOC_W = 380;
+const INS_W = 118;
+const GAP = 10;
+
+const X0 = 24;
+const GEN_X = 548;
+
+// Row 1: instruction, then document.
+const R1_Y = 40;
+const r1Ins = X0;
+const r1Doc = X0 + INS_W + GAP;
+
+// Row 2: document, then instruction.
+const R2_Y = 140;
+const r2Doc = X0;
+const r2Ins = X0 + DOC_W + GAP;
+
+// The two spans: right edge of the instruction to the generation point.
+const span1From = r1Ins + INS_W;
+const span1Y = 96;
+const span2From = r2Ins + INS_W;
+const span2Y = 196;
+---
+<Figure
+  title="Instruction position relative to the generation point"
+  caption="Identical wording, two positions: placed first, the instruction sits 400 words of document away from the moment generation begins, and it is the placement that tends to drop the Q3 deadline."
+  desc="Two rows share one vertical rule at the right marking where generation begins. The top row runs instruction, then document, leaving the full 400-word document between the instruction and the rule. The bottom row runs the same document, then the same instruction, leaving nothing between the instruction and the rule."
+>
+  <svg viewBox="0 0 620 238" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="instr-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+    </defs>
+
+    {/* The fixed point both rows are measured against. */}
+    <text x={GEN_X} y="20" class="dg-note">generation begins</text>
+    <line x1={GEN_X} y1="30" x2={GEN_X} y2="204" class="dg-rule" />
+
+    {/* Row one — instruction first. The placement that breaks. */}
+    <rect x={r1Ins} y={R1_Y} width={INS_W} height={BOX_H} rx="6" class="dg-box-warn" />
+    <text x={r1Ins + INS_W / 2} y={R1_Y + BOX_H / 2 + 4} class="dg-label dg-label-warn">INSTRUCTION</text>
+
+    <rect x={r1Doc} y={R1_Y} width={DOC_W} height={BOX_H} rx="6" class="dg-box-mute" />
+    <text x={r1Doc + DOC_W / 2} y={R1_Y + BOX_H / 2 + 4} class="dg-label">DOCUMENT</text>
+
+    <line x1={r1Ins + INS_W} y1={R1_Y + BOX_H / 2} x2={r1Doc} y2={R1_Y + BOX_H / 2} class="dg-line" />
+    <line x1={r1Doc + DOC_W} y1={R1_Y + BOX_H / 2} x2={GEN_X - 4} y2={R1_Y + BOX_H / 2} class="dg-line" marker-end="url(#instr-tip)" />
+
+    {/* The distance it has to survive, drawn to scale against row two. */}
+    <line x1={span1From} y1={span1Y - 6} x2={span1From} y2={span1Y + 6} class="dg-line-warn" />
+    <line x1={span1From} y1={span1Y} x2={GEN_X} y2={span1Y} class="dg-line-warn" />
+    <line x1={GEN_X} y1={span1Y - 6} x2={GEN_X} y2={span1Y + 6} class="dg-line-warn" />
+    <text x={(span1From + GEN_X) / 2} y={span1Y + 24} class="dg-note dg-note-warn">400 words from generation — the Q3 deadline drops</text>
+
+    {/* Row two — instruction last. Same words, same document. */}
+    <rect x={r2Doc} y={R2_Y} width={DOC_W} height={BOX_H} rx="6" class="dg-box-mute" />
+    <text x={r2Doc + DOC_W / 2} y={R2_Y + BOX_H / 2 + 4} class="dg-label">DOCUMENT</text>
+
+    <rect x={r2Ins} y={R2_Y} width={INS_W} height={BOX_H} rx="6" class="dg-box" />
+    <text x={r2Ins + INS_W / 2} y={R2_Y + BOX_H / 2 + 4} class="dg-label">INSTRUCTION</text>
+
+    <line x1={r2Doc + DOC_W} y1={R2_Y + BOX_H / 2} x2={r2Ins} y2={R2_Y + BOX_H / 2} class="dg-line" />
+    <line x1={r2Ins + INS_W} y1={R2_Y + BOX_H / 2} x2={GEN_X - 4} y2={R2_Y + BOX_H / 2} class="dg-line" marker-end="url(#instr-tip)" />
+
+    <line x1={span2From} y1={span2Y - 6} x2={span2From} y2={span2Y + 6} class="dg-line" />
+    <line x1={span2From} y1={span2Y} x2={GEN_X} y2={span2Y} class="dg-line" />
+    <line x1={GEN_X} y1={span2Y - 6} x2={GEN_X} y2={span2Y + 6} class="dg-line" />
+    <text x="400" y={span2Y + 24} class="dg-note">last thing read before the first token</text>
+  </svg>
+</Figure>

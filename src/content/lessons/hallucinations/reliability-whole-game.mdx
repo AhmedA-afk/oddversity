@@ -1,0 +1,50 @@
+---
+title: "The Whole Game: From Fabrication to Trustworthy Systems"
+track: "hallucinations"
+status: live
+summary: "One wrong answer, traced through detection, grounding, verification, and escalation - a map of every module in this track."
+duration: "8 min read"
+---
+
+import ReliabilityStack from '../../../components/diagrams/ReliabilityStack.astro';
+
+A support assistant gets asked: "What's the refund window in our 2024 policy?" It answers instantly: "You have 60 days from the date of purchase." The tone is identical to every other answer it's ever given - no stammer, no hedge, no asterisk. The actual 2024 policy says 30 days. Nothing in the response signals that this one is different from a correct one. Closing that gap, end to end, is what this whole track builds toward.
+
+<ReliabilityStack />
+
+## The big picture
+
+Follow that one bad answer through a system built to catch it, and you've toured every module in this course.
+
+**1. The answer gets generated from memory, not evidence.** The model has seen thousands of refund policies during training and produces the most statistically plausible number for "a refund window," not the one this company actually uses this year. This is the mechanism this Foundations module covers: why the model fabricates at all ([why-models-hallucinate](/learn/hallucinations/why-models-hallucinate)), why it reached for a memorized prior instead of checking anything ([parametric-vs-contextual-knowledge](/learn/hallucinations/parametric-vs-contextual-knowledge)), and why this particular question - specific number, this year's policy, easy to state confidently - was high risk before the model ever answered it ([hallucination-risk-factors](/learn/hallucinations/hallucination-risk-factors)).
+
+**2. Someone has to classify the failure before they can fix it.** Is this a hallucination, a retrieval bug, or a bias in the training mix? The distinction matters because each gets a different fix - see [hallucination-vs-error-vs-bug](/learn/hallucinations/hallucination-vs-error-vs-bug). Once you know it's a hallucination, the next module gives you the fuller taxonomy, starting with whether it's a factuality failure or a faithfulness failure ([factual-vs-faithfulness-distinction](/learn/hallucinations/factual-vs-faithfulness-distinction)).
+
+**3. A detection signal fires before the answer reaches the customer.** Maybe the system resamples the answer a few times and gets "60 days," "45 days," and "90 days" back - disagreement that a human would read as "this model doesn't actually know." That's the detection module's job: [self-consistency](/learn/hallucinations/self-consistency-detector-impl) and [semantic entropy](/learn/hallucinations/semantic-entropy-and-uncertainty-quantification) are two of the signals it's built on.
+
+**4. Grounding retrieves the actual clause.** Instead of trusting the model's memory, the system pulls the real 2024 policy document and hands the relevant paragraph to the model as context - [grounding-with-source-documents](/learn/hallucinations/grounding-with-source-documents) and [retrieval-augmented-mitigation](/learn/hallucinations/retrieval-augmented-mitigation). This doesn't automatically fix things (the model can still misread the retrieved text, which is its own lesson: [why-rag-still-hallucinates](/learn/hallucinations/why-rag-still-hallucinates)), but it moves the model from guessing to reading comprehension - a much easier problem.
+
+**5. A judge verifies the new answer against the retrieved clause.** Before anything ships, a separate check compares "30 days" against the source paragraph and confirms they match - [llm-as-judge-for-faithfulness](/learn/hallucinations/llm-as-judge-for-faithfulness) and [self-verification-techniques](/learn/hallucinations/self-verification-techniques) cover how. This is also where calibration and uncertainty estimation live: how confident should the system actually be, and does the model's stated confidence mean anything at all.
+
+**6. If verification fails, the system abstains or escalates instead of guessing louder.** "I don't have a confirmed answer for this - let me get a person" beats a fluent wrong number. That's [teaching-models-to-say-i-dont-know](/learn/hallucinations/teaching-models-to-say-i-dont-know) and [escalation-design-for-uncertain-answers](/learn/hallucinations/escalation-design-for-uncertain-answers), wrapped in the guardrails that decide when this path triggers.
+
+**7. None of this works unless someone measures it.** Did the fix actually lower the hallucination rate, and on what denominator - answers given, or answers attempted ([hallucination-evaluation-and-benchmarks](/learn/hallucinations/hallucination-evaluation-and-benchmarks))? That's the evaluation module, and it feeds back into monitoring the same failure in production over time ([monitoring-hallucination-in-prod](/learn/hallucinations/monitoring-hallucination-in-prod)).
+
+Every stage exists because the previous one is imperfect on its own. Detection alone tells you something's wrong without fixing it. Grounding alone doesn't guarantee the model reads the source faithfully. Verification alone doesn't help if there's nowhere to escalate to. The system in the diagram above is what "handling hallucination" actually looks like in production - not one clever prompt, but a pipeline where each stage catches what the last one missed.
+
+## What trips people up
+
+| Idea | Confusion | Where to learn it |
+|---|---|---|
+| "The model lied" | Assumes intent and hidden knowledge the model doesn't have | [hallucination-as-confident-guessing](/learn/hallucinations/hallucination-as-confident-guessing) |
+| "Bigger models fix this" | Scale reduces the rate on common facts, not the underlying mechanism | [myths-about-hallucination](/learn/hallucinations/myths-about-hallucination) |
+| "We added RAG, we're done" | Retrieval helps only if the right document is fetched and faithfully read | [why-rag-still-hallucinates](/learn/hallucinations/why-rag-still-hallucinates) |
+| "Zero hallucination is the goal" | The realistic target is a calibrated, bounded rate, not elimination | [is-hallucination-fixable](/learn/hallucinations/is-hallucination-fixable) |
+
+## A reading path
+
+Start where this module starts: what a hallucination precisely is ([what-is-a-hallucination](/learn/hallucinations/what-is-a-hallucination)) and why the mechanism produces it ([why-models-hallucinate](/learn/hallucinations/why-models-hallucinate)), then work through the rest of Foundations to build the vocabulary the later modules assume. From there, the natural order mirrors the pipeline above: taxonomy (what kind of failure is this), detection (how do you notice it before a user does), uncertainty and calibration (how confident should the system actually be), mitigation (grounding, citations, prompting, abstention), evaluation (did any of this work), and production (guardrails, escalation, monitoring). Each module ends with a cheatsheet and a quiz you can use as a checkpoint before moving on.
+
+Four questions run under every lesson in this course, and by the end you should be able to answer all four for any system you build: **what** counts as a hallucination here, **why** does the model produce it, **how do you detect** it before it reaches someone who trusts it, and **how do you handle** it once you have.
+
+**Related:** [What a Hallucination Actually Is](/learn/hallucinations/what-is-a-hallucination), [Why Models Hallucinate](/learn/hallucinations/why-models-hallucinate), [Is Hallucination Fixable in Principle?](/learn/hallucinations/is-hallucination-fixable), [Foundations Cheatsheet](/learn/hallucinations/foundations-cheatsheet)

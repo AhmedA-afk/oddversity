@@ -6,7 +6,12 @@ summary: "The entire RAG pipeline on one page — ingest to evaluation — with 
 duration: "7 min read"
 ---
 
+import RagPipeline from '../../../components/diagrams/RagPipeline.astro';
+
 RAG isn't one technique, it's a relay race: ten-ish small systems, each with its own failure modes, handing a baton of "relevant text" to the next until an LLM turns it into an answer. Drop the baton anywhere in that chain and the final answer is wrong, no matter how good the model is.
+
+<RagPipeline />
+
 
 If you haven't already, read [What Is RAG and When to Use It](/learn/rag/what-is-rag-and-when-to-use-it) first — it covers the why and the when. This page assumes you're past that and want the how: the full mechanical pipeline, laid out end to end, so you know where every piece lives before you start building one.
 

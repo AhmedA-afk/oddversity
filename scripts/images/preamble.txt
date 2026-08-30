@@ -5,8 +5,13 @@ warm brass accent (#A8741C). Absolutely no other colours.
 Hard constraints:
 - No text, no letters, no numbers, no labels, no captions anywhere in the image.
 - No people, no faces, no hands, no figures.
-- No gradients, no shadows, no 3D, no perspective, no texture, no glow, no
-  photorealism.
+- No gradients, no shadows, no 3D, no texture, no glow, no photorealism.
+- Strictly flat and face-on. No perspective, no isometric or axonometric
+  projection, no stacked depth, no side faces on shapes, no drop shadows.
+  Every shape is drawn flat as if seen from directly in front.
+- Do not use black or dark grey anywhere. The only shape colours permitted are
+  indigo (#3B54A3) and brass (#A8741C). Shadows and depth-shading get flattened
+  to black in post-processing and ruin the image.
 - Light background with dark shapes drawn on it. Do not fill the background
   dark.
 - Generous empty margin around the subject; the shapes should occupy roughly the

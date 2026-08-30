@@ -1,0 +1,51 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The agent loop, with the stopping conditions drawn as the thing that breaks
+ * it rather than as an afterthought — which is how they are usually treated,
+ * and why agents run away.
+ */
+---
+<Figure
+  title="The agent loop and the three guards that stop it"
+  caption="Call, execute, append, repeat. The loop itself is about forty lines; a turn limit alone does not bound cost, because a single turn can carry an enormous context."
+  desc="A cycle of four stages — model call, tool call, execute, append result — returning to the model call. Three guards sit outside the loop: turn limit, token budget, and no-progress detection."
+>
+  <svg viewBox="0 0 620 250" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="loop-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+    </defs>
+
+    <rect x="40"  y="34"  width="120" height="42" rx="6" class="dg-box" />
+    <text x="100" y="59" class="dg-label">CALL MODEL</text>
+
+    <rect x="250" y="34"  width="120" height="42" rx="6" class="dg-box" />
+    <text x="310" y="59" class="dg-label">TOOL CALL</text>
+
+    <rect x="250" y="150" width="120" height="42" rx="6" class="dg-box" />
+    <text x="310" y="175" class="dg-label">EXECUTE</text>
+
+    <rect x="40"  y="150" width="120" height="42" rx="6" class="dg-box" />
+    <text x="100" y="175" class="dg-label">APPEND</text>
+
+    <line x1="160" y1="55"  x2="246" y2="55"  class="dg-line" marker-end="url(#loop-tip)" />
+    <line x1="310" y1="76"  x2="310" y2="146" class="dg-line" marker-end="url(#loop-tip)" />
+    <line x1="250" y1="171" x2="164" y2="171" class="dg-line" marker-end="url(#loop-tip)" />
+    <line x1="100" y1="150" x2="100" y2="80"  class="dg-line" marker-end="url(#loop-tip)" />
+
+    {/* The exit — the only way out that isn't a guard firing. */}
+    <line x1="370" y1="55" x2="452" y2="55" class="dg-line" marker-end="url(#loop-tip)" />
+    <text x="512" y="59" class="dg-note">no tool called → done</text>
+
+    {/* The guards. Brass, because each one exists for a failure. */}
+    <line x1="440" y1="150" x2="376" y2="171" class="dg-line-warn" />
+    <rect x="440" y="120" width="150" height="100" rx="6" class="dg-box-warn" />
+    <text x="515" y="145" class="dg-label dg-label-warn">GUARDS</text>
+    <text x="515" y="168" class="dg-note">turn limit</text>
+    <text x="515" y="187" class="dg-note">token budget</text>
+    <text x="515" y="206" class="dg-note">no progress</text>
+  </svg>
+</Figure>

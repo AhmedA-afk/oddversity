@@ -3,6 +3,7 @@ import Layout from '../../components/Layout.astro';
 import { roles, getRole, conceptTitles } from '../../data/roles.ts';
 import { getTrack } from '../../data/curriculum.ts';
 import { roleArtAlt } from '../../data/role-art';
+import { existsSync } from 'node:fs';
 
 export function getStaticPaths() {
   return roles.map((r) => ({ params: { role: r.id } }));
@@ -14,7 +15,12 @@ const role = getRole(roleId!)!;
 // The illustration is decorative — the page states everything it conveys — but
 // it still carries real alt text rather than an empty string, because the shape
 // it describes is the one visual idea a screen-reader user would otherwise miss.
+//
+// Guard on the file, not on the alt text: the manifest describes every role,
+// but generation is rate-limited and can leave gaps. A role without art renders
+// without the image rather than shipping a broken one.
 const artAlt = roleArtAlt[role.id];
+const hasArt = existsSync(new URL(`../../../public/img/roles/role-${role.id}.webp`, import.meta.url));
 
 const steps = role.path.map((ref) => {
   const [tid, slug] = ref.split('/');
@@ -38,7 +44,7 @@ const steps = role.path.map((ref) => {
         <p class="desc">{role.description}</p>
         <p class="meta mono">{steps.length} lessons, in order</p>
       </div>
-      {artAlt && (
+      {hasArt && artAlt && (
         <img
           class="art"
           src={`/img/roles/role-${role.id}.webp`}
@@ -72,9 +78,13 @@ const steps = role.path.map((ref) => {
 <style>
   .head { padding-block: 48px 8px; }
   .head-grid { display: grid; grid-template-columns: minmax(0, 1fr) 208px; gap: 48px; align-items: start; }
-  /* Flat art on a paper ground: no border, no card, no shadow. It should read
-     as part of the page rather than as a pasted-in picture. */
-  .art { width: 208px; height: 208px; border-radius: 10px; justify-self: end; }
+  /* The illustration is a light-ground raster and cannot follow the theme, so
+     on dark it is inevitably a bright panel. A hairline makes that read as a
+     deliberate inset plate rather than as an untreated white box. */
+  .art {
+    width: 208px; height: 208px; border-radius: 10px; justify-self: end;
+    border: 1px solid var(--rule);
+  }
   @media (max-width: 760px) {
     .head-grid { grid-template-columns: 1fr; gap: 26px; }
     .art { width: 132px; height: 132px; justify-self: start; order: -1; }

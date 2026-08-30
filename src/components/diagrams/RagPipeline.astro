@@ -1,0 +1,73 @@
+---
+import Figure from './Figure.astro';
+
+/**
+ * The retrieval pipeline, with the stage that actually decides answer quality
+ * marked in brass. Seven stages is the grammar's hard ceiling and this uses all
+ * of it, so nothing may be added without splitting the figure.
+ */
+const stages = [
+  { label: 'PARSE' },
+  { label: 'CHUNK' },
+  { label: 'EMBED' },
+  { label: 'INDEX' },
+  { label: 'RETRIEVE', warn: true },
+  { label: 'RERANK' },
+  { label: 'ANSWER' },
+];
+
+const BOX_W = 88;
+const BOX_H = 42;
+const GAP = 14;
+const X0 = 6;
+const Y = 44;
+const step = BOX_W + GAP;
+const width = X0 * 2 + stages.length * BOX_W + (stages.length - 1) * GAP;
+---
+<Figure
+  title="The retrieval pipeline, in seven stages"
+  caption="Retrieval is the stage that sets the ceiling: if the passage holding the answer never enters the candidate set, no amount of reranking or prompting downstream can recover it."
+  desc="Seven stages run left to right: parse, chunk, embed, index, retrieve, rerank, answer. The retrieve stage is highlighted as the one that determines the accuracy ceiling."
+>
+  <svg viewBox={`0 0 ${width} 128`} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <marker id="rag-tip" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 z" class="dg-arrow" />
+      </marker>
+    </defs>
+
+    {stages.map((s, i) => {
+      const x = X0 + i * step;
+      return (
+        <>
+          <rect
+            x={x} y={Y} width={BOX_W} height={BOX_H} rx="6"
+            class={s.warn ? 'dg-box-warn' : 'dg-box'}
+          />
+          <text x={x + BOX_W / 2} y={Y + BOX_H / 2 + 4} class:list={['dg-label', { 'dg-label-warn': s.warn }]}>
+            {s.label}
+          </text>
+          {i < stages.length - 1 && (
+            <line
+              x1={x + BOX_W} y1={Y + BOX_H / 2}
+              x2={x + BOX_W + GAP - 4} y2={Y + BOX_H / 2}
+              class="dg-line" marker-end="url(#rag-tip)"
+            />
+          )}
+        </>
+      );
+    })}
+
+    {/* The annotation sits outside the shape, per the grammar. */}
+    <line
+      x1={X0 + 4 * step + BOX_W / 2} y1={Y + BOX_H + 6}
+      x2={X0 + 4 * step + BOX_W / 2} y2={Y + BOX_H + 22}
+      class="dg-line-warn"
+    />
+    <text x={X0 + 4 * step + BOX_W / 2} y={Y + BOX_H + 38} class="dg-note dg-note-warn">
+      sets the accuracy ceiling
+    </text>
+    <text x={X0 + 1.5 * step} y={Y - 14} class="dg-note">ingestion, done once</text>
+    <text x={X0 + 5 * step + BOX_W / 2} y={Y - 14} class="dg-note">per question</text>
+  </svg>
+</Figure>

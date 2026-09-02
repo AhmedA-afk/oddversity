@@ -1,0 +1,243 @@
+---
+import Layout from '../../../components/Layout.astro';
+import { getCollection } from 'astro:content';
+import { fdeRole, fdePhases, fdeSchedule, fdeNodeCount, fdeKindLabel } from '../../../data/fde';
+
+const entries = await getCollection('fde');
+const live = new Set(entries.map((e) => e.id));
+const total = fdeNodeCount();
+const base = `/roles/${fdeRole.id}`;
+
+const phaseStats = fdePhases.map((p) => {
+  const nodes = p.modules.flatMap((m) => m.nodes);
+  const liveCount = nodes.filter((n) => live.has(`${p.id}/${n.slug}`)).length;
+  return { phase: p, total: nodes.length, live: liveCount };
+});
+
+const practice = fdePhases.find((p) => p.id === 'practice')!;
+const kindCounts = practice.modules.map((m) => ({
+  module: m,
+  kind: m.nodes.find((n) => n.kind !== 'reference')?.kind ?? 'lesson',
+  count: m.nodes.filter((n) => n.kind !== 'reference').length,
+  live: m.nodes.filter((n) => live.has(`${practice.id}/${n.slug}`)).length,
+}));
+
+const firstLive = (() => {
+  for (const p of fdePhases) for (const m of p.modules) for (const n of m.nodes) {
+    if (live.has(`${p.id}/${n.slug}`)) return `${base}/${p.id}/${n.slug}`;
+  }
+  return null;
+})();
+---
+<Layout
+  title={`${fdeRole.name} — the 0-to-FDE path`}
+  description={fdeRole.description}
+  type="course"
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Roles', url: '/roles' }, { name: fdeRole.name, url: base }]}
+  itemList={fdePhases.map((p) => ({ name: `${p.n} ${p.name}`, url: `${base}/${p.id}` }))}
+  course={{ level: 'Beginner to job-ready', lessonCount: total, sections: fdePhases.map((p) => p.name) }}
+>
+  <section class="head container">
+    <a href="/roles" class="back mono">← Roles</a>
+    <div class="row"><span class="node-dot" aria-hidden="true"></span><span class="eyebrow">Role path · built from zero</span></div>
+    <h1>{fdeRole.name}</h1>
+    <p class="desc">{fdeRole.description}</p>
+    <div class="chips">
+      <span class="chip">{fdeRole.length.months} months · {fdeRole.length.weeks} weeks</span>
+      <span class="chip">{fdeRole.length.hoursPerWeek} hours a week · {fdeRole.length.totalHours} total</span>
+      <span class="chip">{live.size} of {total} pages live</span>
+      <span class="chip">Free, no account</span>
+    </div>
+    <div class="meter head-meter" data-track-progress="fde" data-track-total={total} hidden>
+      <span class="meter-rail"><span class="meter-fill" data-bar></span></span>
+      <span class="meter-label" data-label></span>
+    </div>
+    <div class="actions">
+      {firstLive && <a href={firstLive} class="btn btn-primary">Start at the beginning →</a>}
+      <a href={`${base}/practice`} class="btn btn-ghost">Go to field practice</a>
+    </div>
+  </section>
+
+  <section class="container what">
+    <div class="what-grid">
+      <div>
+        <div class="eyebrow">The job in one paragraph</div>
+        <p>A Forward Deployed Engineer is a software engineer who embeds inside a customer's organisation, usually on site part of the week, to take a vendor's platform or model from "we bought it" to "it runs our workflow in production". They scope the problem with the customer, do the data plumbing, write production code in the customer's environment, build the evals that prove it works, drive adoption, and then feed what they learned back to the core product so the next customer needs less of them.</p>
+        <p>The one thing that separates an FDE from a solutions engineer or an implementation consultant is that mandated feedback loop into the product. Without it the job collapses into professional services, and most of the criticism of the title is exactly that it often has.</p>
+      </div>
+      <div>
+        <div class="eyebrow">Why this path is separate</div>
+        <p>The other role paths resequence the main curriculum. This one does not. An FDE needs things no software or AI course teaches: decomposing an ambiguous enterprise problem live, building the eval with a domain expert before the build, modelling a customer's business, deploying into a network you do not control, writing a statement of work, saying no with an alternative, and deciding what generalises. So it has its own phases, its own drills, simulated customers to practise against, and capstones rebuilt from public deployments.</p>
+        <p>It is written with the Indian market in view (the Indian postings, the DPDP Act, Hinglish rooms, WhatsApp as an interface) and the global one in scope (HIPAA, GDPR, air-gapped defence, the US labs' loops).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="container length">
+    <div class="eyebrow">The length, and why</div>
+    <h2>Nine months at twelve to fifteen hours a week</h2>
+    <p>That is roughly five hundred hours. Postings from the frontier labs ask for four to five years of experience, so no course delivers a lab seat from zero; the honest first target is an associate or startup FDE seat, or a solutions-engineer seat you turn into one. Nine months is what it takes to get from no code to "deployed a service unaided" (three months), through engineering craft, enterprise data and eval-first AI work (three months), into the field tier that nobody else teaches (two months), and out with a portfolio that survives a take-home and a decomposition round (one month). If you already code, skip Stage 1 and it is six.</p>
+    <div class="stages">
+      {fdeRole.stages.map((s) => (
+        <div class="stage">
+          <span class="mono sn">Stage {s.n} · {s.weeks}</span>
+          <h3>{s.name}</h3>
+          <p>{s.line}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="container roadmap">
+    <div class="eyebrow">The roadmap</div>
+    <h2>{fdePhases.length} phases, {fdePhases.reduce((n, p) => n + p.modules.length, 0)} modules, {total} pages</h2>
+    <p class="sub">Categories are phases. Sub-categories are modules, each with one sentence saying what you can do afterwards. A page is live when it exists; the rest are planned and say so.</p>
+    <ol class="phases">
+      {phaseStats.map(({ phase: p, total: t, live: l }) => (
+        <li class="phase" id={p.id}>
+          <a href={`${base}/${p.id}`} class="phase-head">
+            <span class="mono pn">{p.n}</span>
+            <span class="phase-title">
+              <h3>{p.name}</h3>
+              <span class="mono pmeta">Stage {p.stage} · {p.weeks} · {l} of {t} live</span>
+            </span>
+            <span class="mono open">Open →</span>
+          </a>
+          <p class="psum">{p.summary}</p>
+          <p class="pnote"><span class="mono">Field note</span> {p.fieldNote}</p>
+          <ul class="mods">
+            {p.modules.map((m) => {
+              const ml = m.nodes.filter((n) => live.has(`${p.id}/${n.slug}`)).length;
+              return (
+                <li>
+                  <a href={`${base}/${p.id}#${m.id}`}>{m.name}</a>
+                  <span class="mono mcount">{ml}/{m.nodes.length}</span>
+                  <span class="moutcome">{m.outcome}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="container practice">
+    <div class="eyebrow">Field practice, all the way through</div>
+    <h2>Drills, simulated customers, capstones</h2>
+    <p class="sub">No existing resource supplies a customer to practise against. From week 8 you run one decomposition drill a week. Six simulated customers, each a stakeholder cast plus messy exports, are run as one-to-five-day bootcamps. Five capstones rebuild public FDE deployments, each with the eval before the build and an adoption plan after. Every one leaves an artifact in your portfolio.</p>
+    <div class="cards-3">
+      {kindCounts.map((k) => (
+        <a href={`${base}/practice#${k.module.id}`} class="card">
+          <span class="mono kcount">{k.count} {fdeKindLabel[k.kind].toLowerCase()}s · {k.live} live</span>
+          <h3>{k.module.name}</h3>
+          <p>{k.module.outcome}</p>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="container schedule">
+    <div class="eyebrow">Week by week</div>
+    <h2>The 36-week plan</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Weeks</th><th>Focus</th><th>Phase</th><th>Practice</th></tr></thead>
+        <tbody>
+          {fdeSchedule.map((r) => (
+            <tr>
+              <td class="mono">{r.weeks}</td>
+              <td>{r.focus}</td>
+              <td>{r.phases.map((id) => { const p = fdePhases.find((x) => x.id === id)!; return <a href={`${base}/${p.id}`}>{p.n} {p.name}</a>; })}</td>
+              <td class="muted">{r.practice ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="container honest">
+    <div class="eyebrow">Read before you commit</div>
+    <ul>
+      <li><strong>The experience wall is real.</strong> Frontier-lab postings ask for four to five plus years and a customer-facing record. Indian postings from Sarvam, Razorpay and Databricks-India ask for two to five. Plan for the second group first.</li>
+      <li><strong>The critics have a point.</strong> "Rebranded consultant", "you may code less than a product engineer", travel-driven burnout. Phase 00 puts their arguments in front of you before you spend nine months.</li>
+      <li><strong>No course can manufacture production experience.</strong> This one is designed so that every artifact you leave behind, from a deployed service to a first-person case study with a recorded walkthrough, functions as evidence anyway.</li>
+      <li><strong>Numbers here are sourced or absent.</strong> Where a claim comes from a vendor survey it is labelled as directional. Where nothing verifiable exists, the page says so.</li>
+    </ul>
+  </section>
+</Layout>
+
+<style>
+  .head { padding-block: 48px 8px; }
+  .back { font-size: 12px; color: var(--muted); }
+  .back:hover { color: var(--accent); text-decoration: none; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; }
+  .head h1 { font-size: clamp(32px, 5vw, 48px); letter-spacing: -.02em; }
+  .desc { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--muted); max-width: 64ch; }
+  .chips { margin-top: 18px; }
+  .head-meter { margin-top: 16px; max-width: 420px; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+
+  h2 { font-size: clamp(22px, 3vw, 30px); letter-spacing: -.015em; margin-top: 12px; }
+  .sub { margin-top: 12px; color: var(--muted); max-width: 70ch; font-size: 15px; line-height: 1.6; }
+
+  .what { padding-top: 48px; }
+  .what-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .what p { margin-top: 12px; font-size: 15px; line-height: 1.65; color: var(--text); }
+  .what p + p { color: var(--muted); }
+
+  .length { padding-top: 56px; }
+  .length > p { margin-top: 14px; font-size: 15px; line-height: 1.65; color: var(--muted); max-width: 76ch; }
+  .stages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 28px; }
+  .stage { padding: 18px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); }
+  .stage .sn { font-size: 10.5px; color: var(--faint); letter-spacing: .04em; }
+  .stage h3 { margin-top: 8px; font-size: 17px; }
+  .stage p { margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+  .roadmap { padding-top: 56px; }
+  .phases { list-style: none; padding: 0; margin: 28px 0 0; display: flex; flex-direction: column; gap: 18px; }
+  .phase { border: 1px solid var(--rule); border-radius: 14px; background: var(--paper); padding: 22px 24px; scroll-margin-top: 88px; }
+  .phase-head { display: flex; align-items: flex-start; gap: 16px; color: var(--text); }
+  .phase-head:hover { text-decoration: none; }
+  .phase-head:hover h3 { color: var(--accent); }
+  .pn { flex: none; font-size: 12px; color: var(--faint); margin-top: 6px; width: 28px; }
+  .phase-title { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .phase-title h3 { font-size: 20px; letter-spacing: -.01em; }
+  .pmeta { font-size: 10.5px; color: var(--faint); letter-spacing: .04em; }
+  .open { flex: none; font-size: 11px; color: var(--accent); margin-top: 8px; }
+  .psum { margin-top: 12px; font-size: 14.5px; line-height: 1.6; color: var(--muted); max-width: 76ch; }
+  .pnote { margin-top: 10px; font-size: 13.5px; line-height: 1.55; color: var(--text); max-width: 76ch; }
+  .pnote .mono { font-size: 10px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
+  .mods { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+  .mods li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--rule); font-size: 14px; }
+  .mods a { color: var(--text); font-weight: 500; }
+  .mods a:hover { color: var(--accent); text-decoration: none; }
+  .mcount { font-size: 10.5px; color: var(--faint); }
+  .moutcome { grid-column: 1 / -1; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+
+  .practice { padding-top: 56px; }
+  .practice .cards-3 { margin-top: 24px; }
+  .kcount { font-size: 10.5px; color: var(--accent); letter-spacing: .04em; }
+  .practice .card h3 { margin-top: 8px; font-size: 17px; }
+  .practice .card p { margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+  .schedule { padding-top: 56px; }
+  .table-wrap { margin-top: 20px; overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font: 500 10.5px/1 'IBM Plex Mono', 'IBM Plex Mono Fallback', monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); padding: 12px 14px; border-bottom: 1px solid var(--rule); background: var(--paper); }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.5; }
+  tr:last-child td { border-bottom: 0; }
+  td.mono { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+  td.muted { color: var(--muted); font-size: 12.5px; }
+  td a { color: var(--text); }
+  td a:hover { color: var(--accent); text-decoration: none; }
+
+  .honest { padding-block: 56px 72px; }
+  .honest ul { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 12px; max-width: 76ch; }
+  .honest li { padding: 14px 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); font-size: 14px; line-height: 1.55; color: var(--muted); }
+  .honest strong { color: var(--text); }
+
+  @media (max-width: 900px) { .stages { grid-template-columns: 1fr 1fr; } .what-grid { grid-template-columns: 1fr; gap: 24px; } }
+  @media (max-width: 640px) { .stages { grid-template-columns: 1fr; } .mods { grid-template-columns: 1fr; } .phase { padding: 18px; } }
+</style>

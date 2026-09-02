@@ -68,4 +68,27 @@ const guides = defineCollection({
   }),
 });
 
-export const collections = { lessons, questions, scenarios, blog, guides };
+// The Forward Deployed Engineer path. Its own tree (see src/data/fde.ts): id is
+// "<phase>/<slug>". A file here is what makes a planned node "live".
+const fde = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/fde' }),
+  schema: z.object({
+    title: z.string(),
+    phase: z.string(),
+    module: z.string(),
+    kind: z.enum(['lesson', 'lab', 'drill', 'bootcamp', 'capstone', 'reference']).default('lesson'),
+    summary: z.string(),
+    duration: z.string().optional(),
+    // YAML turns an unquoted 2026-09-02 into a Date; accept both so an author
+    // forgetting the quotes cannot break the build.
+    updated: z.union([z.string(), z.date()]).transform((v) => (typeof v === 'string' ? v : v.toISOString().slice(0, 10))).optional(),
+    /** What the learner can do afterwards. Rendered as the opening checklist. */
+    outcomes: z.array(z.string()).default([]),
+    /** The evidence this page leaves in the portfolio, if any. */
+    artifact: z.string().optional(),
+    /** Source URLs the page's claims trace to. Rendered at the foot. */
+    sources: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { lessons, questions, scenarios, blog, guides, fde };

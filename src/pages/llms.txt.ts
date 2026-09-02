@@ -4,6 +4,7 @@ import { tracks, roleTracks } from '../data/curriculum';
 import { terms } from '../data/glossary';
 import { quickGuides } from '../data/quick-guides';
 import { quizTracks } from '../data/quizzes';
+import { fdePhases, fdeRole } from '../data/fde';
 
 const SITE = 'https://oddversity.com';
 
@@ -55,6 +56,19 @@ export const GET: APIRoute = async () => {
   push(`- [Scenarios](${SITE}/scenarios): realistic build decisions walked through`);
   push(`- [Blog](${SITE}/blog): notes on building with AI ([RSS](${SITE}/rss.xml))`);
   push(`- [About](${SITE}/about): what this is and what it deliberately is not`);
+  push();
+
+  const fde = await getCollection('fde');
+  push('## Forward Deployed Engineer path');
+  push();
+  push(`- [${fdeRole.name}](${SITE}/roles/${fdeRole.id}): an independent zero-to-FDE path — ` +
+    `${fdeRole.length.months} months, ${fde.length} pages live of a planned ` +
+    `${fdePhases.reduce((n, p) => n + p.modules.reduce((m, mod) => m + mod.nodes.length, 0), 0)}, ` +
+    'with weekly decomposition drills, simulated-customer bootcamps and eval-first capstones.');
+  for (const p of fdePhases) {
+    const live = fde.filter((e) => e.data.phase === p.id).length;
+    push(`  - [${p.n} ${p.name}](${SITE}/roles/${fdeRole.id}/${p.id}): ${p.summary} (${live} live)`);
+  }
   push();
 
   push('## Technical tracks');

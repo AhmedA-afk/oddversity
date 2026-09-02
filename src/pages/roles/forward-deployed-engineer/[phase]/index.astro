@@ -1,0 +1,143 @@
+---
+import Layout from '../../../../components/Layout.astro';
+import { getCollection } from 'astro:content';
+import { fdeRole, fdePhases, getFdePhase, fdeKindLabel } from '../../../../data/fde';
+
+export function getStaticPaths() {
+  return fdePhases.map((p) => ({ params: { phase: p.id } }));
+}
+
+const { phase: phaseId } = Astro.params;
+const phase = getFdePhase(phaseId!)!;
+const base = `/roles/${fdeRole.id}`;
+const idx = fdePhases.findIndex((p) => p.id === phase.id);
+const prev = fdePhases[idx - 1];
+const next = fdePhases[idx + 1];
+
+const entries = (await getCollection('fde')).filter((e) => e.data.phase === phase.id);
+const byId = new Map(entries.map((e) => [e.id, e]));
+const nodes = phase.modules.flatMap((m) => m.nodes);
+const liveCount = nodes.filter((n) => byId.has(`${phase.id}/${n.slug}`)).length;
+
+const minutes = entries.reduce((total, e) => {
+  const n = parseInt((e.data.duration ?? '').replace(/\D+/g, ''), 10);
+  return total + (Number.isFinite(n) ? n : 12);
+}, 0);
+const hours = minutes ? Math.max(1, Math.round(minutes / 60)) : 0;
+const first = nodes.find((n) => byId.has(`${phase.id}/${n.slug}`));
+---
+<Layout
+  title={`${phase.n} ${phase.name} · ${fdeRole.short} path`}
+  description={phase.summary}
+  type="course"
+  breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Roles', url: '/roles' }, { name: fdeRole.name, url: base }, { name: phase.name, url: `${base}/${phase.id}` }]}
+  itemList={nodes.filter((n) => byId.has(`${phase.id}/${n.slug}`)).map((n) => ({ name: n.title, url: `${base}/${phase.id}/${n.slug}` }))}
+  course={{ level: `Stage ${phase.stage}`, lessonCount: nodes.length, sections: phase.modules.map((m) => m.name) }}
+>
+  <section class="head container">
+    <a href={base} class="back mono">← {fdeRole.name}</a>
+    <div class="row"><span class="node-dot" aria-hidden="true"></span><span class="eyebrow">Phase {phase.n} · Stage {phase.stage} · {phase.weeks}</span></div>
+    <h1>{phase.name}</h1>
+    <p class="desc">{phase.summary}</p>
+    <p class="note"><span class="mono">Field note</span> {phase.fieldNote}</p>
+    <div class="chips">
+      <span class="chip">{phase.modules.length} modules</span>
+      <span class="chip">{liveCount} of {nodes.length} pages live</span>
+      {hours > 0 && <span class="chip">≈ {hours} h of reading live</span>}
+    </div>
+    <div class="meter head-meter" data-track-progress={`fde/${phase.id}`} data-track-total={nodes.length} hidden>
+      <span class="meter-rail"><span class="meter-fill" data-bar></span></span>
+      <span class="meter-label" data-label></span>
+    </div>
+    {first && <div class="actions"><a href={`${base}/${phase.id}/${first.slug}`} class="btn btn-primary">Start this phase →</a></div>}
+    <nav class="modjump" aria-label="Modules in this phase">
+      {phase.modules.map((m, i) => (<a href={`#${m.id}`}><span class="mono">{String(i + 1).padStart(2, '0')}</span> {m.name}</a>))}
+    </nav>
+  </section>
+
+  <section class="container contents">
+    {phase.modules.map((m, mi) => (
+      <div class="mod" id={m.id}>
+        <div class="mod-head">
+          <span class="mono mn">{String(mi + 1).padStart(2, '0')}</span>
+          <div>
+            <h2>{m.name}</h2>
+            <p class="outcome"><span class="mono">Afterwards you can</span> {m.outcome}</p>
+          </div>
+        </div>
+        <ol class="nodes">
+          {m.nodes.map((n, ni) => {
+            const entry = byId.get(`${phase.id}/${n.slug}`);
+            const href = `${base}/${phase.id}/${n.slug}`;
+            return (
+              <li class:list={['node', { planned: !entry }]}>
+                <span class="mono sn">{String(ni + 1).padStart(2, '0')}</span>
+                <span class="body">
+                  {entry ? <a href={href} class="title" data-lesson-link={`fde/${phase.id}/${n.slug}`}>{n.title}</a> : <span class="title dim">{n.title}</span>}
+                  <span class="line">{entry?.data.summary ?? n.blurb ?? ''}</span>
+                </span>
+                <span class="right mono">
+                  <span class:list={['kind', `kind-${n.kind}`]}>{fdeKindLabel[n.kind]}</span>
+                  {entry ? (entry.data.duration ?? 'Open →') : 'Planned'}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    ))}
+  </section>
+
+  <nav class="container pager" aria-label="Phase navigation">
+    {prev ? <a href={`${base}/${prev.id}`} class="pg"><span class="mono">← Previous phase</span><span class="pt">{prev.n} {prev.name}</span></a> : <span></span>}
+    {next ? <a href={`${base}/${next.id}`} class="pg alignr"><span class="mono">Next phase →</span><span class="pt">{next.n} {next.name}</span></a> : <span></span>}
+  </nav>
+</Layout>
+
+<style>
+  .head { padding-block: 48px 8px; }
+  .back { font-size: 12px; color: var(--muted); }
+  .back:hover { color: var(--accent); text-decoration: none; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; }
+  .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; }
+  .desc { margin-top: 16px; font-size: 16px; line-height: 1.6; color: var(--muted); max-width: 66ch; }
+  .note { margin-top: 12px; font-size: 14px; line-height: 1.55; color: var(--text); max-width: 66ch; }
+  .note .mono { font-size: 10px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
+  .chips { margin-top: 18px; }
+  .head-meter { margin-top: 16px; max-width: 420px; }
+  .actions { margin-top: 20px; }
+  .modjump { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; }
+  .modjump a { color: var(--muted); }
+  .modjump a:hover { color: var(--accent); text-decoration: none; }
+  .modjump .mono { font-size: 10.5px; color: var(--faint); margin-right: 4px; }
+
+  .contents { padding-top: 36px; display: flex; flex-direction: column; gap: 40px; }
+  .mod { scroll-margin-top: 88px; }
+  .mod-head { display: flex; gap: 16px; align-items: flex-start; }
+  .mn { flex: none; width: 28px; font-size: 12px; color: var(--faint); margin-top: 8px; }
+  .mod h2 { font-size: 22px; letter-spacing: -.012em; }
+  .outcome { margin-top: 6px; font-size: 14px; line-height: 1.55; color: var(--muted); max-width: 70ch; }
+  .outcome .mono { font-size: 10px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
+  .nodes { list-style: none; padding: 0; margin: 16px 0 0 44px; border-top: 1px solid var(--rule); }
+  .node { display: flex; align-items: flex-start; gap: 16px; padding: 13px 4px; border-bottom: 1px solid var(--rule); }
+  .sn { flex: none; width: 24px; font-size: 11px; color: var(--faint); margin-top: 3px; }
+  .body { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .title { font: 500 15px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  a.title:hover { color: var(--accent); text-decoration: none; }
+  a.title.is-read::before { content: "✓ "; color: var(--accent); }
+  .title.dim { color: var(--muted); font-weight: 400; }
+  .line { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+  .right { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 11px; color: var(--faint); margin-top: 2px; }
+  .kind { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); }
+  .kind-drill, .kind-bootcamp, .kind-capstone { border-color: var(--accent); color: var(--accent); }
+  .kind-lab { color: var(--text); }
+  .planned .right { opacity: .8; }
+
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-block: 48px 72px; }
+  .pg { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--rule); border-radius: 10px; color: var(--text); }
+  .pg:hover { border-color: var(--accent); text-decoration: none; }
+  .pg .mono { font-size: 10.5px; color: var(--faint); }
+  .pg .pt { font-size: 14px; font-weight: 500; }
+  .alignr { text-align: right; align-items: flex-end; }
+  @media (max-width: 640px) { .nodes { margin-left: 0; } .right { display: none; } .pager { grid-template-columns: 1fr; } }
+</style>

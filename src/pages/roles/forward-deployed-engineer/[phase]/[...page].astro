@@ -1,0 +1,255 @@
+---
+import Layout from '../../../../components/Layout.astro';
+import { getCollection, render } from 'astro:content';
+import { fdeRole, fdePhases, getFdePhase, fdeKindLabel } from '../../../../data/fde';
+
+export async function getStaticPaths() {
+  const entries = await getCollection('fde');
+  return entries.map((entry) => {
+    const [phase, ...rest] = entry.id.split('/');
+    return { params: { phase, page: rest.join('/') }, props: { entry } };
+  });
+}
+
+const { entry } = Astro.props;
+const { phase: phaseId, page: slug } = Astro.params;
+const phase = getFdePhase(phaseId!);
+const base = `/roles/${fdeRole.id}`;
+const { Content, headings } = await render(entry);
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const all = (await getCollection('fde')).filter((e) => e.data.phase === phaseId);
+const live = new Set(all.map((e) => e.id));
+
+// Flat, in-plan order; only live pages take part in the pager so "next" never
+// lands on a page that does not exist yet.
+const planned = phase ? phase.modules.flatMap((m) => m.nodes.map((n) => ({ ...n, module: m }))) : [];
+const playable = planned.filter((n) => live.has(`${phaseId}/${n.slug}`));
+const cur = playable.findIndex((n) => n.slug === slug);
+const prev = playable[cur - 1];
+const next = playable[cur + 1];
+const currentModule = planned.find((n) => n.slug === slug)?.module ?? null;
+const summaryFor = new Map(all.map((e) => [e.id, e.data.summary]));
+const related = currentModule
+  ? currentModule.nodes.filter((n) => n.slug !== slug && live.has(`${phaseId}/${n.slug}`) && n.slug !== prev?.slug && n.slug !== next?.slug).slice(0, 4)
+  : [];
+---
+<Layout
+  title={entry.data.title}
+  description={entry.data.summary}
+  type="learning-resource"
+  modifiedTime={entry.data.updated}
+  breadcrumbs={[
+    { name: 'Home', url: '/' },
+    { name: 'Roles', url: '/roles' },
+    { name: fdeRole.name, url: base },
+    ...(phase ? [{ name: phase.name, url: `${base}/${phase.id}` }] : []),
+    ...(currentModule ? [{ name: currentModule.name, url: `${base}/${phaseId}#${currentModule.id}` }] : []),
+    { name: entry.data.title, url: `${base}/${phaseId}/${slug}` },
+  ]}
+>
+  <div class="wrap">
+    <aside class="side" aria-label="Phase contents">
+      {phase && (
+        <div class="side-inner">
+          <a href={base} class="side-role mono">{fdeRole.short} path</a>
+          <a href={`${base}/${phase.id}`} class="side-track">
+            {phase.n} {phase.name}
+            <span class="side-count mono">{playable.length} live</span>
+          </a>
+          <div class="side-scroll">
+            {phase.modules.map((mod) => (
+              <details class="side-mod" open={mod === currentModule}>
+                <summary>
+                  <span class="mod-name">{mod.name}</span>
+                  <span class="mod-count mono">{mod.nodes.filter((n) => live.has(`${phaseId}/${n.slug}`)).length}/{mod.nodes.length}</span>
+                </summary>
+                <ul class="side-list">
+                  {mod.nodes.map((nd) => (
+                    <li>
+                      {live.has(`${phaseId}/${nd.slug}`) ? (
+                        <a href={`${base}/${phaseId}/${nd.slug}`} class:list={['sl', { current: nd.slug === slug }]} data-lesson-link={`fde/${phaseId}/${nd.slug}`} aria-current={nd.slug === slug ? 'page' : undefined}>
+                          <svg class="check" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+                          <span>{nd.title}</span>
+                        </a>
+                      ) : (
+                        <span class="sl dim"><span>{nd.title}</span></span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
+    </aside>
+
+    <article class="doc" data-lesson={`fde/${phaseId}/${slug}`} data-track={`fde/${phaseId}`} data-track-name={phase ? `FDE · ${phase.name}` : fdeRole.name} data-title={entry.data.title}>
+      <nav class="crumb mono" aria-label="Breadcrumb">
+        <a href={base}>{fdeRole.short}</a> <span>/</span> <a href={`${base}/${phaseId}`}>{phase?.name}</a>
+        {currentModule && (<><span>/</span><a href={`${base}/${phaseId}#${currentModule.id}`}>{currentModule.name}</a></>)}
+      </nav>
+
+      {phase && (
+        <details class="mobile-contents">
+          <summary>Phase contents · {playable.length} live</summary>
+          <ol>
+            {playable.map((nd, i) => (
+              <li><a href={`${base}/${phaseId}/${nd.slug}`} class:list={{ current: nd.slug === slug }}><span class="mono">{String(i + 1).padStart(2, '0')}</span> {nd.title}</a></li>
+            ))}
+          </ol>
+        </details>
+      )}
+
+      <span class:list={['kind mono', `kind-${entry.data.kind}`]}>{fdeKindLabel[entry.data.kind]}</span>
+      <h1>{entry.data.title}</h1>
+      <div class="meta mono">
+        {entry.data.duration && <span>{entry.data.duration}</span>}
+        {cur >= 0 && <><span aria-hidden="true">·</span><span>{cur + 1} of {playable.length} live in this phase</span></>}
+        {currentModule && <><span aria-hidden="true">·</span><span>{currentModule.name}</span></>}
+        {entry.data.updated && <><span aria-hidden="true">·</span><span>Updated {entry.data.updated}</span></>}
+      </div>
+      <p class="lede">{entry.data.summary}</p>
+
+      {entry.data.outcomes.length > 0 && (
+        <div class="outcomes">
+          <div class="eyebrow">After this page you can</div>
+          <ul>{entry.data.outcomes.map((o) => <li>{o}</li>)}</ul>
+        </div>
+      )}
+
+      <div class="prose">
+        <Content />
+      </div>
+
+      {entry.data.artifact && (
+        <div class="artifact">
+          <div class="eyebrow">Portfolio artifact</div>
+          <p>{entry.data.artifact}</p>
+        </div>
+      )}
+
+      {entry.data.sources.length > 0 && (
+        <div class="sources">
+          <div class="eyebrow">Sources this page traces to</div>
+          <ol>{entry.data.sources.map((s) => <li><a href={s} rel="nofollow noopener" target="_blank">{s.replace(/^https?:\/\//, '').replace(/\/$/, '')}</a></li>)}</ol>
+        </div>
+      )}
+
+      <div class="lesson-actions">
+        <button type="button" class="complete" data-complete-toggle aria-pressed="false">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"></path></svg>
+          <span data-complete-label>Mark complete</span>
+        </button>
+        <span class="note">Saved in this browser only — no account, nothing sent anywhere.</span>
+      </div>
+
+      <nav class="pager" aria-label="Page navigation">
+        {prev ? <a href={`${base}/${phaseId}/${prev.slug}`} class="pg"><span class="mono">← Previous</span><span class="pt">{prev.title}</span></a> : <span></span>}
+        {next ? <a href={`${base}/${phaseId}/${next.slug}`} class="pg alignr"><span class="mono">Next →</span><span class="pt">{next.title}</span></a> : (
+          (() => { const i = fdePhases.findIndex((p) => p.id === phaseId); const np = fdePhases[i + 1]; return np ? <a href={`${base}/${np.id}`} class="pg alignr"><span class="mono">Next phase →</span><span class="pt">{np.n} {np.name}</span></a> : <span></span>; })()
+        )}
+      </nav>
+
+      {related.length > 0 && currentModule && (
+        <section class="related">
+          <div class="eyebrow">More in {currentModule.name}</div>
+          <ul>
+            {related.map((n) => (
+              <li><a href={`${base}/${phaseId}/${n.slug}`}>{n.title}</a><span>{summaryFor.get(`${phaseId}/${n.slug}`)}</span></li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </article>
+
+    <aside class="toc" aria-label="On this page">
+      <div class="toc-inner">
+        {toc.length > 0 && (<><div class="eyebrow">On this page</div><ul>{toc.map((h) => (<li class:list={{ sub: h.depth === 3 }}><a href={`#${h.slug}`}>{h.text}</a></li>))}</ul></>)}
+        <button type="button" class="toc-search mono" data-search-open>Search everything ⌘K</button>
+      </div>
+    </aside>
+  </div>
+</Layout>
+
+<style>
+  .wrap { max-width: 1320px; margin-inline: auto; padding: 36px 32px 8px; display: grid; grid-template-columns: 248px minmax(0, 1fr) 200px; gap: 44px; align-items: start; }
+  .side-inner, .toc-inner { position: sticky; top: 84px; max-height: calc(100vh - 108px); display: flex; flex-direction: column; }
+  .side-role { font-size: 10.5px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; padding-bottom: 8px; }
+  .side-role:hover { text-decoration: none; }
+  .side-track { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font: 600 13px/1.3 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); padding-bottom: 11px; border-bottom: 1px solid var(--rule); flex: none; }
+  .side-track:hover { color: var(--accent); text-decoration: none; }
+  .side-count { font-size: 10.5px; color: var(--muted); white-space: nowrap; font-weight: 400; }
+  .side-scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; padding-right: 2px; scrollbar-width: thin; margin-top: 6px; }
+  .side-list { list-style: none; padding: 0 0 6px; margin: 0; display: flex; flex-direction: column; gap: 1px; }
+  .side-mod { border-bottom: 1px solid var(--rule); }
+  .side-mod:last-child { border-bottom: 0; }
+  .side-mod > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; cursor: pointer; list-style: none; padding: 9px 0 8px; font: 500 11.5px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); }
+  .side-mod > summary::-webkit-details-marker { display: none; }
+  .side-mod > summary::before { content: ""; flex: none; width: 0; height: 0; margin-right: 2px; border-left: 4px solid var(--muted); border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; transform: translateY(-1px); }
+  .side-mod[open] > summary::before { transform: rotate(90deg) translateX(-1px); }
+  .side-mod > summary:hover { color: var(--accent); }
+  .mod-name { flex: 1; }
+  .mod-count { flex: none; font-size: 10px; color: var(--muted); font-weight: 400; }
+  .sl { display: flex; align-items: flex-start; gap: 8px; padding: 6px 9px; margin: 0 -7px; border-radius: 6px; font: 400 12.5px/1.4 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--muted); overflow-wrap: anywhere; }
+  .sl:hover { color: var(--text); background: var(--paper); text-decoration: none; }
+  .sl.current { color: var(--accent); font-weight: 500; background: var(--accent-wash); }
+  .sl.dim { color: var(--faint); }
+  .sl .check { margin-top: 3px; opacity: 0; }
+  .sl.is-read .check { opacity: 1; }
+
+  .doc { min-width: 0; max-width: 730px; }
+  .crumb { font-size: 11.5px; color: var(--muted); margin-bottom: 18px; }
+  .crumb a { color: var(--muted); }
+  .crumb a:hover { color: var(--accent); text-decoration: none; }
+  .crumb span { margin: 0 6px; }
+  .mobile-contents { display: none; margin-bottom: 22px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); padding: 12px 15px; }
+  .mobile-contents summary { cursor: pointer; font: 500 13px/1.3 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .mobile-contents ol { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .mobile-contents a { color: var(--muted); }
+  .mobile-contents a.current { color: var(--accent); font-weight: 500; }
+  .mobile-contents .mono { font-size: 10.5px; color: var(--faint); margin-right: 6px; }
+
+  .kind { display: inline-block; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); margin-bottom: 14px; }
+  .kind-drill, .kind-bootcamp, .kind-capstone { border-color: var(--accent); color: var(--accent); }
+  .doc h1 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -.02em; line-height: 1.15; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; font-size: 11px; color: var(--faint); letter-spacing: .04em; }
+  .lede { margin-top: 16px; font-size: 17px; line-height: 1.55; color: var(--muted); }
+  .outcomes { margin-top: 24px; padding: 16px 18px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); }
+  .outcomes ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.6; color: var(--text); }
+  .prose { margin-top: 28px; }
+  .artifact { margin-top: 32px; padding: 16px 18px; border-left: 3px solid var(--accent); background: var(--accent-wash); border-radius: 0 10px 10px 0; }
+  .artifact p { margin-top: 6px; font-size: 14.5px; line-height: 1.6; }
+  .sources { margin-top: 28px; }
+  .sources ol { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
+  .sources a { color: var(--muted); }
+  .sources a:hover { color: var(--accent); }
+
+  .lesson-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--rule); }
+  .complete { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); color: var(--text); font: 500 13px/1 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; cursor: pointer; }
+  .complete:hover { border-color: var(--accent); color: var(--accent); }
+  .complete.is-done { border-color: var(--accent); background: var(--accent-wash); color: var(--accent); }
+  .lesson-actions .note { font-size: 11.5px; color: var(--faint); }
+
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .pg { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--rule); border-radius: 10px; color: var(--text); }
+  .pg:hover { border-color: var(--accent); text-decoration: none; }
+  .pg .mono { font-size: 10.5px; color: var(--faint); }
+  .pg .pt { font-size: 14px; font-weight: 500; }
+  .alignr { text-align: right; align-items: flex-end; }
+  .related { margin-top: 40px; padding-bottom: 48px; }
+  .related ul { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 10px; }
+  .related li { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+  .related li span { font-size: 12.5px; color: var(--muted); }
+
+  .toc ul { list-style: none; padding: 0; margin: 10px 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+  .toc li.sub { padding-left: 12px; }
+  .toc a { color: var(--muted); }
+  .toc a:hover { color: var(--accent); text-decoration: none; }
+  .toc-search { margin-top: 8px; font-size: 11px; color: var(--muted); background: none; border: 1px solid var(--rule); border-radius: 6px; padding: 7px 10px; cursor: pointer; text-align: left; }
+  .toc-search:hover { color: var(--accent); border-color: var(--accent); }
+
+  @media (max-width: 1100px) { .wrap { grid-template-columns: 236px minmax(0, 1fr); } .toc { display: none; } }
+  @media (max-width: 800px) { .wrap { grid-template-columns: 1fr; padding: 24px 20px 8px; } .side { display: none; } .mobile-contents { display: block; } .pager { grid-template-columns: 1fr; } }
+</style>

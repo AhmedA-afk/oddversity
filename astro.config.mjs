@@ -15,6 +15,10 @@ function lastModified(path) {
     candidates.push(`src/content/${parts[0]}/${parts[1]}.md`, `src/content/${parts[0]}/${parts[1]}.mdx`);
   } else if (parts[0] === 'interview' && parts.length === 2) {
     candidates.push(`src/content/questions/${parts[1]}.mdx`);
+  } else if (parts[0] === 'roles' && parts[1] === 'forward-deployed-engineer' && parts.length === 4) {
+    candidates.push(`src/content/fde/${parts[2]}/${parts[3]}.md`, `src/content/fde/${parts[2]}/${parts[3]}.mdx`);
+  } else if (parts[0] === 'roles' && parts[1] === 'forward-deployed-engineer') {
+    candidates.push('src/data/fde.ts');
   } else if (parts[0] === 'learn' && parts.length === 2) {
     candidates.push('src/data/curriculum.ts');
   }

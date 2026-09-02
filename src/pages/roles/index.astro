@@ -1,17 +1,39 @@
 ---
 import Layout from '../../components/Layout.astro';
 import { roles } from '../../data/roles.ts';
+import { fdeRole, fdePhases, fdeNodeCount } from '../../data/fde.ts';
+import { getCollection } from 'astro:content';
+const fdeLive = (await getCollection('fde')).length;
+const fdeTotal = fdeNodeCount();
 ---
 <Layout
   title="AI role paths"
   description="AI for your job — 11 role paths that resequence the curriculum for developers, ML engineers, PMs, founders, designers, marketers, security engineers and students."
   breadcrumbs={[{ name: 'Home', url: '/' }, { name: 'Roles', url: '/roles' }]}
-  itemList={roles.map((r) => ({ name: r.name, url: `/roles/${r.id}` }))}
+  itemList={[{ name: fdeRole.name, url: `/roles/${fdeRole.id}` }, ...roles.map((r) => ({ name: r.name, url: `/roles/${r.id}` }))]}
 >
   <section class="head container">
     <span class="eyebrow">AI for your job</span>
     <h1>Pick your role. Get a path built for it.</h1>
-    <p class="sub">The same curriculum, resequenced for what you actually do. Each path pulls the concepts that matter for your work and puts them in order.</p>
+    <p class="sub">The same curriculum, resequenced for what you actually do. Each path pulls the concepts that matter for your work and puts them in order. One path is different: the Forward Deployed Engineer path is its own curriculum, built from zero.</p>
+  </section>
+  <section class="container">
+    <a href={`/roles/${fdeRole.id}`} class="feature">
+      <div class="feature-body">
+        <span class="eyebrow">Featured · a complete path, not a resequence</span>
+        <h2>{fdeRole.name}</h2>
+        <p>{fdeRole.description}</p>
+        <div class="feature-meta mono">
+          <span>{fdeRole.length.months} months · {fdeRole.length.hoursPerWeek} h/week</span>
+          <span>{fdePhases.length} phases</span>
+          <span>{fdeLive} of {fdeTotal} pages live</span>
+        </div>
+      </div>
+      <ul class="feature-phases mono" aria-label="Phases">
+        {fdePhases.map((p) => (<li><span class="pn">{p.n}</span> {p.name}</li>))}
+      </ul>
+      <span class="cta mono">Open the path →</span>
+    </a>
   </section>
   <section class="container grid">
     {roles.map((r) => (
@@ -29,6 +51,16 @@ import { roles } from '../../data/roles.ts';
   .head { padding-block: 56px 8px; }
   .head h1 { font-size: clamp(30px, 4.5vw, 42px); letter-spacing: -.02em; margin-top: 14px; max-width: 20ch; }
   .sub { margin-top: 16px; color: var(--muted); max-width: 62ch; font-size: 15px; }
+  .feature { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 28px; margin-top: 36px; padding: 28px; border: 1px solid var(--accent); border-radius: 14px; background: var(--paper); position: relative; }
+  .feature:hover { text-decoration: none; box-shadow: 0 0 0 3px var(--accent-wash); }
+  .feature h2 { font-size: clamp(24px, 3.2vw, 32px); letter-spacing: -.02em; margin-top: 10px; }
+  .feature:hover h2 { color: var(--accent); }
+  .feature p { margin-top: 12px; color: var(--muted); font-size: 14.5px; line-height: 1.55; max-width: 58ch; }
+  .feature-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 16px; font-size: 11px; color: var(--accent); letter-spacing: .04em; }
+  .feature-phases { list-style: none; margin: 0; padding: 0 0 0 20px; border-left: 1px solid var(--rule); display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; color: var(--muted); align-self: center; }
+  .feature-phases .pn { color: var(--faint); margin-right: 6px; }
+  .feature .cta { position: absolute; right: 28px; bottom: 22px; font-size: 11.5px; color: var(--accent); }
+  @media (max-width: 760px) { .feature { grid-template-columns: 1fr; } .feature-phases { padding-left: 0; border-left: 0; padding-top: 14px; border-top: 1px solid var(--rule); } .feature .cta { position: static; margin-top: 10px; } }
   .grid { padding-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .rcard { display: flex; flex-direction: column; gap: 8px; padding: 22px; border: 1px solid var(--rule); border-radius: 12px; background: var(--paper); }
   .rcard:hover { text-decoration: none; border-color: var(--accent); }

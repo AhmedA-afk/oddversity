@@ -29,6 +29,11 @@ const isActive = (href: string) => path === href || path.startsWith(href + '/');
         <span class="kbd mono" aria-hidden="true">⌘K</span>
       </button>
 
+      <a href="/saved" class="icon-btn saved-btn" aria-label="Saved lessons and where you left off" title="Saved">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5h10v15l-5-3.5-5 3.5z"></path></svg>
+        <span class="badge mono" data-saved-count hidden></span>
+      </a>
+
       <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode">
         <svg class="sun" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.6"></circle><path d="M10 1.5v2M10 16.5v2M18.5 10h-2M3.5 10h-2M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4M15.8 15.8l-1.4-1.4M5.6 5.6L4.2 4.2"></path></svg>
         <svg class="moon" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 11.2A6.8 6.8 0 1 1 8.8 3.5a5.4 5.4 0 0 0 7.7 7.7Z"></path></svg>
@@ -44,6 +49,7 @@ const isActive = (href: string) => path === href || path.startsWith(href + '/');
     <nav aria-label="Mobile">
       {nav.map((n) => (<a href={n.href} class:list={['mlink', { active: isActive(n.href) }]}>{n.label}</a>))}
       <a href="/roles" class="mlink">Role paths</a>
+      <a href="/saved" class="mlink">Saved</a>
       <a href="/scenarios" class="mlink">Scenarios</a>
       <a href="/about" class="mlink">About</a>
     </nav>

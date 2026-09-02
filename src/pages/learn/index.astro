@@ -100,6 +100,10 @@ const itemList = tracks.map((t) => ({ name: t.name, url: `/learn/${t.id}` }));
       {tracks.length} technical tracks and {roleTracks.length} role paths — {totalLessons} lessons, all free, all open.
       Tracks are ordered by dependency, so you can start at the top or drop straight into the one you need.
     </p>
+    <div class="resume" data-resume hidden>
+      <span class="eyebrow">Pick up where you left off</span>
+      <a href="/learn"><span data-resume-title>Continue</span> <span class="rtrack mono" data-resume-track></span> →</a>
+    </div>
     <div class="tools">
       <input type="search" data-catalog-filter class="filter" placeholder="Filter tracks — try “retrieval”, “agents”, “maths”" aria-label="Filter tracks" />
       <button type="button" class="btn btn-ghost" data-search-open>Search all {totalLessons} lessons</button>
@@ -289,6 +293,9 @@ const itemList = tracks.map((t) => ({ name: t.name, url: `/learn/${t.id}` }));
 
   .empty { padding-block: 40px; color: var(--muted); }
 
+  .resume { margin-top: 22px; padding: 14px 16px; border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--paper); max-width: 480px; }
+  .resume a { display: block; margin-top: 6px; font: 500 14.5px/1.4 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .rtrack { font-size: 11px; color: var(--muted); }
   .roles-band { padding-top: 72px; }
   .role-featured { box-shadow: inset 0 0 0 1.5px var(--accent); background: var(--accent-wash); }
   .role-featured .rname { color: var(--accent); }

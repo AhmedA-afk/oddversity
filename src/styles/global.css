@@ -295,3 +295,20 @@ a.card:hover h3 { color: var(--accent); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .prose pre.astro-code span[style*="#6A737D"] { color: #9AA4B0 !important; }
 }
+
+/* --- /saved page lists (rendered by site.js, so global by necessity) ------ */
+.saved-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+.saved-row { display: flex; align-items: center; gap: 14px; padding: 12px 2px; border-bottom: 1px solid var(--rule); }
+.saved-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.saved-title { font: 500 14.5px/1.35 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; color: var(--text); overflow-wrap: anywhere; }
+.saved-title:hover { color: var(--accent); text-decoration: none; }
+.saved-meta { font-size: 10.5px; color: var(--faint); letter-spacing: .03em; }
+.saved-empty { font-size: 13.5px; color: var(--muted); }
+.saved-remove { flex: none; font-size: 10.5px; color: var(--muted); background: none; border: 1px solid var(--rule); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+.saved-remove:hover { color: var(--text); border-color: var(--accent); }
+.saved-body .meter { max-width: 360px; margin-top: 2px; }
+
+/* --- top-bar saved button badge ------------------------------------------- */
+.saved-btn { position: relative; text-decoration: none; }
+.saved-btn:hover { text-decoration: none; }
+.saved-btn .badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--accent-contrast, #fff); font: 600 9.5px/16px 'IBM Plex Mono', 'IBM Plex Mono Fallback', monospace; text-align: center; }

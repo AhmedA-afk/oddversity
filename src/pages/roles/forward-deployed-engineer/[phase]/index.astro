@@ -49,6 +49,10 @@ const first = nodes.find((n) => byId.has(`${phase.id}/${n.slug}`));
       <span class="meter-rail"><span class="meter-fill" data-bar></span></span>
       <span class="meter-label" data-label></span>
     </div>
+    <div class="resume" data-resume data-resume-scope={`fde/${phase.id}/`} hidden>
+      <span class="eyebrow">Pick up where you left off</span>
+      <a href={`${base}/${phase.id}`}><span data-resume-title>Continue</span> <span class="rtrack mono" data-resume-track></span> →</a>
+    </div>
     {first && <div class="actions"><a href={`${base}/${phase.id}/${first.slug}`} class="btn btn-primary">Start this phase →</a></div>}
     <nav class="modjump" aria-label="Modules in this phase">
       {phase.modules.map((m, i) => (<a href={`#${m.id}`}><span class="mono">{String(i + 1).padStart(2, '0')}</span> {m.name}</a>))}
@@ -105,6 +109,9 @@ const first = nodes.find((n) => byId.has(`${phase.id}/${n.slug}`));
   .note .mono { font-size: 10px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; margin-right: 8px; }
   .chips { margin-top: 18px; }
   .head-meter { margin-top: 16px; max-width: 420px; }
+  .resume { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 8px; background: var(--paper); max-width: 480px; }
+  .resume a { display: block; margin-top: 6px; font: 500 14.5px/1.4 'IBM Plex Sans', 'IBM Plex Sans Fallback', sans-serif; }
+  .rtrack { font-size: 11px; color: var(--muted); }
   .actions { margin-top: 20px; }
   .modjump { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; }
   .modjump a { color: var(--muted); }

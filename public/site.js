@@ -2,7 +2,7 @@
    Four small features, no dependencies, no backend:
      1. ⌘K search over a static JSON index (fetched on first open)
      2. Copy buttons on code blocks
-     3. Local progress: visited lessons, per-track completion, "resume"
+     3. Local progress: completion, bookmarks, recent history, "resume", and the /saved page
      4. Sidebar filter for long track contents
    Everything degrades to plain HTML if JS is off or storage is blocked. */
 (function () {
@@ -197,18 +197,37 @@
     })(blocks[b]);
   }
 
-  /* -------------------------------------------------------------- progress */
+  /* -------------------------------------------------------------- progress
+     Four records, all in localStorage, none ever sent anywhere:
+       fg-progress   { lessonId: timestamp }        marked complete
+       fg-last       { id, url, title, track }      the last lesson opened
+       fg-recent     [ { id, url, title, track, ts } ]  last 15 opened, newest first
+       fg-bookmarks  { lessonId: { url, title, track, ts } }
+     /saved renders all four and can export/import them as one JSON blob so a
+     reader can carry their place to another browser without an account. */
+  var RKEY = 'fg-recent';
+  var BKEY = 'fg-bookmarks';
   var progress = read(PKEY, {});
+  var bookmarks = read(BKEY, {});
   var article = document.querySelector('[data-lesson]');
+
+  function entryFor(el) {
+    return {
+      id: el.getAttribute('data-lesson'),
+      url: window.location.pathname,
+      title: el.getAttribute('data-title') || document.title,
+      track: el.getAttribute('data-track-name') || el.getAttribute('data-track') || '',
+      ts: Date.now()
+    };
+  }
 
   if (article) {
     var lessonId = article.getAttribute('data-lesson');
-    var lessonTrack = article.getAttribute('data-track');
-    write(LKEY, {
-      url: window.location.pathname,
-      title: article.getAttribute('data-title') || document.title,
-      track: article.getAttribute('data-track-name') || lessonTrack,
-    });
+    var here = entryFor(article);
+    write(LKEY, here);
+    var recent = read(RKEY, []).filter(function (r) { return r && r.id !== here.id; });
+    recent.unshift(here);
+    write(RKEY, recent.slice(0, 15));
 
     var toggle = document.querySelector('[data-complete-toggle]');
     var setDone = function (done) {
@@ -224,7 +243,36 @@
       setDone(!!progress[lessonId]);
       toggle.addEventListener('click', function () { setDone(!progress[lessonId]); });
     }
+
+    var bm = document.querySelector('[data-bookmark-toggle]');
+    var setSaved = function (saved) {
+      if (saved) bookmarks[lessonId] = entryFor(article); else delete bookmarks[lessonId];
+      write(BKEY, bookmarks);
+      if (bm) {
+        bm.setAttribute('aria-pressed', String(saved));
+        bm.querySelector('[data-bookmark-label]').textContent = saved ? 'Saved' : 'Save for later';
+        bm.classList.toggle('is-done', saved);
+      }
+      updateSavedCount();
+    };
+    if (bm) {
+      setSaved(!!bookmarks[lessonId]);
+      bm.addEventListener('click', function () { setSaved(!bookmarks[lessonId]); });
+    }
   }
+
+  // Bookmark count in the top bar.
+  function updateSavedCount() {
+    // Read fresh: the /saved page rewrites the record before calling this.
+    bookmarks = read(BKEY, {});
+    var n = Object.keys(bookmarks).length;
+    var badges = document.querySelectorAll('[data-saved-count]');
+    for (var b = 0; b < badges.length; b++) {
+      badges[b].textContent = n ? String(n) : '';
+      badges[b].hidden = !n;
+    }
+  }
+  updateSavedCount();
 
   // Track completion meters, wherever they appear.
   var meters = document.querySelectorAll('[data-track-progress]');
@@ -250,19 +298,196 @@
     if (progress[links[l].getAttribute('data-lesson-link')]) links[l].classList.add('is-read');
   }
 
-  // "Pick up where you left off".
-  var resume = document.querySelector('[data-resume]');
-  if (resume) {
-    var last = read(LKEY, null);
-    if (last && last.url) {
-      resume.hidden = false;
-      var a = resume.querySelector('a');
+  // "Pick up where you left off". A block may carry data-resume-scope="fde/"
+  // to resume the newest lesson inside that part of the site only.
+  var resumes = document.querySelectorAll('[data-resume]');
+  for (var rs = 0; rs < resumes.length; rs++) {
+    (function (box) {
+      var scope = box.getAttribute('data-resume-scope');
+      var last = null;
+      if (scope) {
+        var list = read(RKEY, []);
+        for (var i = 0; i < list.length; i++) {
+          if (list[i] && list[i].id && list[i].id.indexOf(scope) === 0) { last = list[i]; break; }
+        }
+      } else {
+        last = read(LKEY, null);
+      }
+      if (!last || !last.url) return;
+      box.hidden = false;
+      var a = box.querySelector('a');
       if (a) { a.href = last.url; }
-      var t = resume.querySelector('[data-resume-title]');
+      var t = box.querySelector('[data-resume-title]');
       if (t) t.textContent = last.title;
-      var tr = resume.querySelector('[data-resume-track]');
+      var tr = box.querySelector('[data-resume-track]');
       if (tr && last.track) tr.textContent = last.track;
+    })(resumes[rs]);
+  }
+
+  /* ------------------------------------------------------------- /saved page */
+  var savedRoot = document.querySelector('[data-saved-page]');
+  if (savedRoot) {
+    var tracksEl = document.querySelector('[data-saved-tracks]');
+    var trackMeta = {};
+    try { trackMeta = JSON.parse(tracksEl ? tracksEl.textContent : '{}'); } catch (e) {}
+
+    function el(tag, cls, text) {
+      var node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text != null) node.textContent = text;
+      return node;
     }
+    function when(ts) {
+      if (!ts) return '';
+      var d = new Date(ts);
+      return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    }
+    function row(entry, extra) {
+      var li = el('li', 'saved-row');
+      var a = el('a', 'saved-title', entry.title || entry.url);
+      a.href = entry.url;
+      var meta = el('span', 'saved-meta mono', (entry.track ? entry.track + ' · ' : '') + when(entry.ts));
+      var body = el('span', 'saved-body');
+      body.appendChild(a); body.appendChild(meta);
+      li.appendChild(body);
+      if (extra) li.appendChild(extra);
+      return li;
+    }
+    function fill(container, items, emptyText, extraFor) {
+      container.innerHTML = '';
+      if (!items.length) { container.appendChild(el('p', 'saved-empty', emptyText)); return; }
+      var ul = el('ul', 'saved-list');
+      for (var i = 0; i < items.length; i++) ul.appendChild(row(items[i], extraFor ? extraFor(items[i]) : null));
+      container.appendChild(ul);
+    }
+
+    function render() {
+      progress = read(PKEY, {});
+      bookmarks = read(BKEY, {});
+      var recent = read(RKEY, []);
+      var last = read(LKEY, null);
+
+      var cont = savedRoot.querySelector('[data-saved-continue]');
+      if (cont) {
+        cont.innerHTML = '';
+        if (last && last.url) {
+          var a = el('a', 'btn btn-primary', 'Continue: ' + (last.title || last.url) + ' →');
+          a.href = last.url;
+          cont.appendChild(a);
+          if (last.track) cont.appendChild(el('span', 'saved-meta mono', last.track));
+        } else {
+          cont.appendChild(el('p', 'saved-empty', 'Open any lesson and it will be waiting here.'));
+        }
+      }
+
+      var bmBox = savedRoot.querySelector('[data-saved-bookmarks]');
+      if (bmBox) {
+        var list = [];
+        for (var k in bookmarks) if (bookmarks.hasOwnProperty(k)) list.push(bookmarks[k]);
+        list.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
+        fill(bmBox, list, 'Nothing saved yet. Every lesson has a "Save for later" button under it.', function (entry) {
+          var btn = el('button', 'saved-remove mono', 'Remove');
+          btn.type = 'button';
+          btn.addEventListener('click', function () {
+            for (var id in bookmarks) if (bookmarks[id] && bookmarks[id].url === entry.url) delete bookmarks[id];
+            write(BKEY, bookmarks); updateSavedCount(); render();
+          });
+          return btn;
+        });
+      }
+
+      var rcBox = savedRoot.querySelector('[data-saved-recent]');
+      if (rcBox) fill(rcBox, recent.filter(Boolean), 'No lessons opened in this browser yet.');
+
+      var prBox = savedRoot.querySelector('[data-saved-progress]');
+      if (prBox) {
+        prBox.innerHTML = '';
+        var counts = {};
+        for (var key in progress) {
+          if (!progress.hasOwnProperty(key)) continue;
+          for (var tid in trackMeta) {
+            if (key.indexOf(tid + '/') === 0) { counts[tid] = (counts[tid] || 0) + 1; }
+          }
+        }
+        var ids = Object.keys(counts).sort(function (x, y) { return counts[y] - counts[x]; });
+        if (!ids.length) { prBox.appendChild(el('p', 'saved-empty', 'Mark a lesson complete and its track shows up here with a meter.')); }
+        else {
+          var ul = el('ul', 'saved-list');
+          for (var i = 0; i < ids.length; i++) {
+            var meta = trackMeta[ids[i]];
+            var li = el('li', 'saved-row');
+            var body = el('span', 'saved-body');
+            var a2 = el('a', 'saved-title', meta.name); a2.href = meta.url;
+            var pct = Math.min(100, Math.round((counts[ids[i]] / meta.total) * 100));
+            var meter = el('span', 'meter');
+            var rail = el('span', 'meter-rail'); var fillBar = el('span', 'meter-fill'); fillBar.style.width = pct + '%';
+            rail.appendChild(fillBar); meter.appendChild(rail);
+            meter.appendChild(el('span', 'meter-label', counts[ids[i]] + ' / ' + meta.total + ' done'));
+            body.appendChild(a2); body.appendChild(meter);
+            li.appendChild(body); ul.appendChild(li);
+          }
+          prBox.appendChild(ul);
+        }
+      }
+
+      var ex = savedRoot.querySelector('[data-saved-export]');
+      if (ex) ex.value = JSON.stringify({ 'fg-progress': progress, 'fg-bookmarks': bookmarks, 'fg-recent': recent, 'fg-last': last }, null, 0);
+    }
+
+    var copyBtn = savedRoot.querySelector('[data-saved-copy]');
+    var ex2 = savedRoot.querySelector('[data-saved-export]');
+    if (copyBtn && ex2) copyBtn.addEventListener('click', function () {
+      var done = function () { copyBtn.textContent = 'Copied'; setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ex2.value).then(done, function () { ex2.select(); });
+      else { ex2.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
+    });
+
+    var importBtn = savedRoot.querySelector('[data-saved-import]');
+    var importBox = savedRoot.querySelector('[data-saved-import-box]');
+    var importMsg = savedRoot.querySelector('[data-saved-import-msg]');
+    if (importBtn && importBox) importBtn.addEventListener('click', function () {
+      var data;
+      try { data = JSON.parse(importBox.value); } catch (e) { if (importMsg) importMsg.textContent = 'That is not valid JSON.'; return; }
+      if (!data || typeof data !== 'object') { if (importMsg) importMsg.textContent = 'Nothing usable in that text.'; return; }
+      var merged = 0;
+      if (data['fg-progress'] && typeof data['fg-progress'] === 'object') {
+        var cur = read(PKEY, {});
+        for (var k in data['fg-progress']) if (typeof data['fg-progress'][k] === 'number') { cur[k] = data['fg-progress'][k]; merged++; }
+        write(PKEY, cur);
+      }
+      if (data['fg-bookmarks'] && typeof data['fg-bookmarks'] === 'object') {
+        var curB = read(BKEY, {});
+        for (var kb in data['fg-bookmarks']) { var v = data['fg-bookmarks'][kb]; if (v && typeof v.url === 'string' && v.url.charAt(0) === '/') { curB[kb] = v; merged++; } }
+        write(BKEY, curB);
+      }
+      if (Array.isArray(data['fg-recent'])) {
+        var curR = read(RKEY, []);
+        var seen = {};
+        var out = [];
+        var all = data['fg-recent'].concat(curR).filter(function (r) { return r && typeof r.url === 'string' && r.url.charAt(0) === '/'; });
+        all.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
+        for (var i = 0; i < all.length; i++) { if (!seen[all[i].id]) { seen[all[i].id] = 1; out.push(all[i]); } }
+        write(RKEY, out.slice(0, 15));
+      }
+      if (data['fg-last'] && data['fg-last'].url && typeof data['fg-last'].url === 'string' && data['fg-last'].url.charAt(0) === '/' && !read(LKEY, null)) write(LKEY, data['fg-last']);
+      if (importMsg) importMsg.textContent = 'Imported ' + merged + ' record' + (merged === 1 ? '' : 's') + '. Existing ones were kept.';
+      importBox.value = '';
+      updateSavedCount();
+      render();
+    });
+
+    var clearBtn = savedRoot.querySelector('[data-saved-clear]');
+    if (clearBtn) {
+      var armed = false;
+      clearBtn.addEventListener('click', function () {
+        if (!armed) { armed = true; clearBtn.textContent = 'Click again to erase everything'; setTimeout(function () { armed = false; clearBtn.textContent = 'Clear all saved data'; }, 4000); return; }
+        try { localStorage.removeItem(PKEY); localStorage.removeItem(LKEY); localStorage.removeItem(RKEY); localStorage.removeItem(BKEY); } catch (e) {}
+        armed = false; clearBtn.textContent = 'Clear all saved data';
+        updateSavedCount(); render();
+      });
+    }
+
+    render();
   }
 
   /* -------------------------------------------------------- sidebar filter */

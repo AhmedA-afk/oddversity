@@ -3,6 +3,7 @@ import Layout from '../../components/Layout.astro';
 import { getCollection } from 'astro:content';
 import { tracks, roleTracks, groups as groupNames } from '../../data/curriculum.ts';
 import { quickGuides } from '../../data/quick-guides';
+import { fdeRole } from '../../data/fde';
 import { ogImage } from '../../data/og-images';
 
 const lessons = await getCollection('lessons');
@@ -208,6 +209,11 @@ const itemList = tracks.map((t) => ({ name: t.name, url: `/learn/${t.id}` }));
       <a href="/roles" class="more-link">All role paths →</a>
     </div>
     <div class="roles">
+      <a href={`/roles/${fdeRole.id}`} class="role role-featured">
+        <span class="rtag mono">New · a complete path from zero</span>
+        <span class="rname">{fdeRole.name}</span>
+        <span class="rblurb">{fdeRole.blurb}</span>
+      </a>
       {roleTracks.map((r) => (
         <a href={`/roles/${r.id}`} class="role">
           <span class="rname">{r.name}</span>
@@ -284,6 +290,9 @@ const itemList = tracks.map((t) => ({ name: t.name, url: `/learn/${t.id}` }));
   .empty { padding-block: 40px; color: var(--muted); }
 
   .roles-band { padding-top: 72px; }
+  .role-featured { box-shadow: inset 0 0 0 1.5px var(--accent); background: var(--accent-wash); }
+  .role-featured .rname { color: var(--accent); }
+  .rtag { display: block; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
   .roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
   .role { background: var(--bg); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
   .role:hover { background: var(--paper); text-decoration: none; }

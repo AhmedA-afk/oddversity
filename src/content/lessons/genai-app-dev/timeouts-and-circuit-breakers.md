@@ -97,7 +97,7 @@ class CircuitBreaker {
 }
 ```
 
-Three consecutive failures in a 30-second window trips it; a single stray timeout doesn't. That's deliberate — a breaker that opens on one failure is indistinguishable from no retry logic at all.
+Five consecutive failures in a 30-second window trips it; a single stray timeout doesn't. That's deliberate — a breaker that opens on one failure is indistinguishable from no retry logic at all.
 
 ## Where it shows up
 

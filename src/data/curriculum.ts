@@ -3065,89 +3065,421 @@ const unsortedTracks: Track[] = [
     "meta": "83 lessons",
     "summary": "Search, logic, planning, and the pre-deep-learning ideas that still underpin modern systems.",
     "nodes": [
-      { "title": "State Spaces: Representation, Actions, Goals, and Costs", "slug": "search-planning/101-state-spaces-representation-actions-goals-and-costs", "status": "live" },
-      { "title": "Graph Search Contracts: Tree Search, Graph Search, and Explored Sets", "slug": "search-planning/102-graph-search-contracts-tree-search-graph-search-and-explored-sets", "status": "live" },
-      { "title": "Breadth-First Search: Completeness, Depth, and Memory", "slug": "search-planning/103-breadth-first-search-completeness-depth-and-memory", "status": "live" },
-      { "title": "Depth-First Search: Stack Discipline, Cycles, and Depth Limits", "slug": "search-planning/104-depth-first-search-stack-discipline-cycles-and-depth-limits", "status": "live" },
-      { "title": "Uniform-Cost Search: Costs, Reopens, and Dijkstra’s Invariant", "slug": "search-planning/105-uniform-cost-search-costs-reopens-and-dijkstra-s-invariant", "status": "live" },
-      { "title": "A* Search: f = g + h and Optimal Frontier Reasoning", "slug": "search-planning/106-a-search-f-g-h-and-optimal-frontier-reasoning", "status": "live" },
-      { "title": "Heuristics: Admissibility, Consistency, Dominance, and Relaxations", "slug": "search-planning/107-heuristics-admissibility-consistency-dominance-and-relaxations", "status": "live" },
-      { "title": "Bidirectional Search: Meeting Frontiers and Reverse Operators", "slug": "search-planning/108-bidirectional-search-meeting-frontiers-and-reverse-operators", "status": "live" },
-      { "title": "Iterative Deepening and Memory-Bounded Search", "slug": "search-planning/109-iterative-deepening-and-memory-bounded-search", "status": "live" },
-      { "title": "Local Search: Hill Climbing, Plateaus, and Restarts", "slug": "search-planning/110-local-search-hill-climbing-plateaus-and-restarts", "status": "live" },
-      { "title": "Stochastic Search: Simulated Annealing, Beam Search, and Evolutionary Methods", "slug": "search-planning/111-stochastic-search-simulated-annealing-beam-search-and-evolutionary-methods", "status": "live" },
-      { "title": "Adversarial Search: Games, Utilities, and Minimax", "slug": "search-planning/112-adversarial-search-games-utilities-and-minimax", "status": "live" },
-      { "title": "Alpha-Beta Pruning: Bounds, Move Ordering, and Exactness", "slug": "search-planning/113-alpha-beta-pruning-bounds-move-ordering-and-exactness", "status": "live" },
-      { "title": "Monte Carlo Tree Search: Selection, Expansion, Rollouts, and Backup", "slug": "search-planning/114-monte-carlo-tree-search-selection-expansion-rollouts-and-backup", "status": "live" },
-      { "title": "Constraint Satisfaction Problems: Variables, Domains, and Constraints", "slug": "search-planning/115-constraint-satisfaction-problems-variables-domains-and-constraints", "status": "live" },
-      { "title": "CSP Propagation: Arc Consistency, Forward Checking, and Global Constraints", "slug": "search-planning/116-csp-propagation-arc-consistency-forward-checking-and-global-constraints", "status": "live" },
-      { "title": "CSP Backtracking: Variable Ordering, Value Ordering, and Conflict Learning", "slug": "search-planning/117-csp-backtracking-variable-ordering-value-ordering-and-conflict-learning", "status": "live" },
-      { "title": "STRIPS Planning: Preconditions, Effects, and Plan Validation", "slug": "search-planning/118-strips-planning-preconditions-effects-and-plan-validation", "status": "live" },
-      { "title": "Forward and Backward Planning: Progression, Regression, and Relevance", "slug": "search-planning/119-forward-and-backward-planning-progression-regression-and-relevance", "status": "live" },
-      { "title": "Partial-Order Planning: Causal Links, Threats, and Least Commitment", "slug": "search-planning/120-partial-order-planning-causal-links-threats-and-least-commitment", "status": "live" },
-      { "title": "Hierarchical Task Networks: Decomposition, Methods, and Operational Knowledge", "slug": "search-planning/121-hierarchical-task-networks-decomposition-methods-and-operational-knowledge", "status": "live" },
-      { "title": "Scheduling: Resources, Precedence, Critical Paths, and Objectives", "slug": "search-planning/122-scheduling-resources-precedence-critical-paths-and-objectives", "status": "live" },
-      { "title": "Planning Graphs and Heuristic Extraction", "slug": "search-planning/123-planning-graphs-and-heuristic-extraction", "status": "live" },
-      { "title": "Planning Under Uncertainty: Belief States and Contingent Plans", "slug": "search-planning/124-planning-under-uncertainty-belief-states-and-contingent-plans", "status": "live" },
-      { "title": "MDPs for Planning: Policies, Bellman Backups, and Value Iteration", "slug": "search-planning/125-mdps-for-planning-policies-bellman-backups-and-value-iteration", "status": "live" },
-      { "title": "POMDPs and Information-Gathering Actions", "slug": "search-planning/126-pomdps-and-information-gathering-actions", "status": "live" },
-      { "title": "Integrated Search and Planning Systems: Solvers, LLMs, and Verification", "slug": "search-planning/127-integrated-search-and-planning-systems-solvers-llms-and-verification", "status": "live" },
-      { "title": "Classical AI Search and Planning Capstone", "slug": "search-planning/128-classical-ai-search-and-planning-capstone", "status": "live" },
-      { "title": "Knowledge representation: models, commitments, and trade-offs", "slug": "knowledge-uncertainty/201-knowledge-representation-models-and-tradeoffs", "status": "live" },
-      { "title": "Open-world, closed-world, and non-monotonic reasoning", "slug": "knowledge-uncertainty/202-open-world-closed-world-and-nonmonotonic-reasoning", "status": "live" },
-      { "title": "Propositional logic: syntax, semantics, and models", "slug": "knowledge-uncertainty/203-propositional-logic-syntax-semantics-and-models", "status": "live" },
-      { "title": "Propositional inference: truth tables and proof rules", "slug": "knowledge-uncertainty/204-propositional-inference-truth-tables-and-natural-deduction", "status": "live" },
-      { "title": "Normal forms, SAT, and constraint encodings", "slug": "knowledge-uncertainty/205-normal-forms-sat-and-constraint-encodings", "status": "live" },
-      { "title": "Resolution, refutation, and proof certificates", "slug": "knowledge-uncertainty/206-resolution-refutation-and-proof-certificates", "status": "live" },
-      { "title": "First-order logic: objects, relations, and quantifiers", "slug": "knowledge-uncertainty/207-first-order-logic-objects-relations-and-quantifiers", "status": "live" },
-      { "title": "Unification, substitutions, and variable discipline", "slug": "knowledge-uncertainty/208-unification-substitutions-and-variable-discipline", "status": "live" },
-      { "title": "First-order resolution and theorem proving", "slug": "knowledge-uncertainty/209-first-order-resolution-and-theorem-proving", "status": "live" },
-      { "title": "Horn clauses and forward chaining", "slug": "knowledge-uncertainty/210-horn-clauses-and-forward-chaining", "status": "live" },
-      { "title": "Backward chaining and goal-directed reasoning", "slug": "knowledge-uncertainty/211-backward-chaining-goal-directed-reasoning", "status": "live" },
-      { "title": "Rule engines, expert systems, and conflict resolution", "slug": "knowledge-uncertainty/212-rule-engines-expert-systems-and-conflict-resolution", "status": "live" },
-      { "title": "Knowledge acquisition, validation, and maintenance", "slug": "knowledge-uncertainty/213-knowledge-acquisition-validation-and-maintenance", "status": "live" },
-      { "title": "Ontologies, taxonomies, and description logics", "slug": "knowledge-uncertainty/214-ontologies-taxonomies-and-description-logics", "status": "live" },
-      { "title": "Knowledge graphs: queries, provenance, and embeddings", "slug": "knowledge-uncertainty/215-knowledge-graphs-queries-provenance-and-embeddings", "status": "live" },
-      { "title": "Probability for AI: conditional independence and Bayes’ rule", "slug": "knowledge-uncertainty/216-probability-for-ai-conditional-independence-and-bayes-rule", "status": "live" },
-      { "title": "Bayesian networks: structure, factorization, and d-separation", "slug": "knowledge-uncertainty/217-bayesian-networks-structure-factorization-and-d-separation", "status": "live" },
-      { "title": "Exact inference: variable elimination and belief propagation", "slug": "knowledge-uncertainty/218-exact-inference-variable-elimination-and-belief-propagation", "status": "live" },
-      { "title": "Approximate inference: sampling and variational methods", "slug": "knowledge-uncertainty/219-approximate-inference-sampling-and-variational-methods", "status": "live" },
-      { "title": "Hidden Markov models: filtering, smoothing, and Viterbi", "slug": "knowledge-uncertainty/220-hidden-markov-models-filtering-smoothing-and-viterbi", "status": "live" },
-      { "title": "Dynamic Bayesian networks, POMDPs, and state estimation", "slug": "knowledge-uncertainty/221-dynamic-bayesian-networks-pomdps-and-state-estimation", "status": "live" },
-      { "title": "Decision theory: expected utility and action selection", "slug": "knowledge-uncertainty/222-decision-theory-expected-utility-and-action-selection", "status": "live" },
-      { "title": "Utility, risk attitudes, and multi-attribute decisions", "slug": "knowledge-uncertainty/223-utility-risk-attitudes-and-multi-attribute-decisions", "status": "live" },
-      { "title": "Value of information and active observation", "slug": "knowledge-uncertainty/224-value-of-information-and-active-observation", "status": "live" },
-      { "title": "Causal graphs: confounding, interventions, and counterfactuals", "slug": "knowledge-uncertainty/225-causal-graphs-confounding-interventions-and-counterfactuals", "status": "live" },
-      { "title": "Probabilistic diagnosis, abduction, and evidence fusion", "slug": "knowledge-uncertainty/226-probabilistic-diagnosis-abduction-and-evidence-fusion", "status": "live" },
-      { "title": "Explainability, proof traces, and the knowledge-based AI capstone", "slug": "knowledge-uncertainty/227-explainability-proof-traces-and-knowledge-based-ai-capstone", "status": "live" },
-      { "title": "Agent architectures and rationality", "slug": "agents-robotics/301-agent-architectures-and-rationality", "status": "live" },
-      { "title": "Reactive agents and behavior-based control", "slug": "agents-robotics/302-reactive-agents-and-behavior-based-control", "status": "live" },
-      { "title": "Deliberative agents: beliefs, goals, and intentions", "slug": "agents-robotics/303-deliberative-agents-beliefs-goals-and-intentions", "status": "live" },
-      { "title": "BDI agents and practical reasoning", "slug": "agents-robotics/304-bdi-agents-and-practical-reasoning", "status": "live" },
-      { "title": "Agent memory, state, and world models", "slug": "agents-robotics/305-agent-memory-state-and-world-models", "status": "live" },
-      { "title": "Tool use, planning, and action verification", "slug": "agents-robotics/306-tool-use-planning-and-action-verification", "status": "live" },
-      { "title": "Multi-agent coordination and task allocation", "slug": "agents-robotics/307-multi-agent-coordination-and-task-allocation", "status": "live" },
-      { "title": "Agent communication protocols and shared beliefs", "slug": "agents-robotics/308-communication-protocols-and-shared-beliefs", "status": "live" },
-      { "title": "Auctions and market-based coordination", "slug": "agents-robotics/309-auctions-and-market-based-coordination", "status": "live" },
-      { "title": "Game theory, strategic agents, and mechanism design", "slug": "agents-robotics/310-game-theory-strategic-agents-and-mechanism-design", "status": "live" },
-      { "title": "Robot sensors, perception, and calibration", "slug": "agents-robotics/311-robot-sensors-perception-and-calibration", "status": "live" },
-      { "title": "State estimation and Bayesian filtering", "slug": "agents-robotics/312-state-estimation-and-bayesian-filtering", "status": "live" },
-      { "title": "Localization with Kalman and particle filters", "slug": "agents-robotics/313-localization-particle-filters-and-kalman-filters", "status": "live" },
-      { "title": "Mapping and simultaneous localization and mapping", "slug": "agents-robotics/314-mapping-and-slam", "status": "live" },
-      { "title": "Motion planning, configuration spaces, and collision checking", "slug": "agents-robotics/315-motion-planning-configuration-spaces-and-collision-checking", "status": "live" },
-      { "title": "Sampling-based motion planning", "slug": "agents-robotics/316-sampling-based-motion-planning", "status": "live" },
-      { "title": "Robot control, feedback, and stability", "slug": "agents-robotics/317-robot-control-feedback-and-stability", "status": "live" },
-      { "title": "Task planning and execution monitoring", "slug": "agents-robotics/318-task-planning-and-execution-monitoring", "status": "live" },
-      { "title": "Human-robot interaction and shared autonomy", "slug": "agents-robotics/319-human-robot-interaction-and-shared-autonomy", "status": "live" },
-      { "title": "Robot safety constraints and runtime assurance", "slug": "agents-robotics/320-robot-safety-constraints-and-runtime-assurance", "status": "live" },
-      { "title": "Hybrid symbolic-neural systems", "slug": "agents-robotics/321-hybrid-symbolic-neural-systems", "status": "live" },
-      { "title": "Neuro-symbolic reasoning and knowledge integration", "slug": "agents-robotics/322-neuro-symbolic-reasoning-and-knowledge-integration", "status": "live" },
-      { "title": "Robotics applications and deployment case studies", "slug": "agents-robotics/323-robotics-applications-and-deployment-case-studies", "status": "live" },
-      { "title": "Agents and robotics staged capstone and technical defense", "slug": "agents-robotics/324-agents-robotics-staged-capstone-and-technical-defense", "status": "live" },
-      { "title": "Swarm robotics and collective intelligence", "slug": "agents-robotics/325-swarm-robotics-and-collective-intelligence", "status": "live" },
-      { "title": "Solve constraint problems by making rules explicit", "slug": "constraint-satisfaction", "status": "live" },
-      { "title": "Classical AI: search, planning, and the shape of a decision", "slug": "search-and-planning", "status": "live" },
-      { "title": "Separate uncertainty from the decision it informs", "slug": "uncertainty-and-decision", "status": "live" }
+      {
+        "title": "State Spaces: Representation, Actions, Goals, and Costs",
+        "slug": "search-planning/101-state-spaces-representation-actions-goals-and-costs",
+        "status": "live"
+      },
+      {
+        "title": "Graph Search Contracts: Tree Search, Graph Search, and Explored Sets",
+        "slug": "search-planning/102-graph-search-contracts-tree-search-graph-search-and-explored-sets",
+        "status": "live"
+      },
+      {
+        "title": "Breadth-First Search: Completeness, Depth, and Memory",
+        "slug": "search-planning/103-breadth-first-search-completeness-depth-and-memory",
+        "status": "live"
+      },
+      {
+        "title": "Depth-First Search: Stack Discipline, Cycles, and Depth Limits",
+        "slug": "search-planning/104-depth-first-search-stack-discipline-cycles-and-depth-limits",
+        "status": "live"
+      },
+      {
+        "title": "Uniform-Cost Search: Costs, Reopens, and Dijkstra’s Invariant",
+        "slug": "search-planning/105-uniform-cost-search-costs-reopens-and-dijkstra-s-invariant",
+        "status": "live"
+      },
+      {
+        "title": "A* Search: f = g + h and Optimal Frontier Reasoning",
+        "slug": "search-planning/106-a-search-f-g-h-and-optimal-frontier-reasoning",
+        "status": "live"
+      },
+      {
+        "title": "Heuristics: Admissibility, Consistency, Dominance, and Relaxations",
+        "slug": "search-planning/107-heuristics-admissibility-consistency-dominance-and-relaxations",
+        "status": "live"
+      },
+      {
+        "title": "Bidirectional Search: Meeting Frontiers and Reverse Operators",
+        "slug": "search-planning/108-bidirectional-search-meeting-frontiers-and-reverse-operators",
+        "status": "live"
+      },
+      {
+        "title": "Iterative Deepening and Memory-Bounded Search",
+        "slug": "search-planning/109-iterative-deepening-and-memory-bounded-search",
+        "status": "live"
+      },
+      {
+        "title": "Local Search: Hill Climbing, Plateaus, and Restarts",
+        "slug": "search-planning/110-local-search-hill-climbing-plateaus-and-restarts",
+        "status": "live"
+      },
+      {
+        "title": "Stochastic Search: Simulated Annealing, Beam Search, and Evolutionary Methods",
+        "slug": "search-planning/111-stochastic-search-simulated-annealing-beam-search-and-evolutionary-methods",
+        "status": "live"
+      },
+      {
+        "title": "Adversarial Search: Games, Utilities, and Minimax",
+        "slug": "search-planning/112-adversarial-search-games-utilities-and-minimax",
+        "status": "live"
+      },
+      {
+        "title": "Alpha-Beta Pruning: Bounds, Move Ordering, and Exactness",
+        "slug": "search-planning/113-alpha-beta-pruning-bounds-move-ordering-and-exactness",
+        "status": "live"
+      },
+      {
+        "title": "Monte Carlo Tree Search: Selection, Expansion, Rollouts, and Backup",
+        "slug": "search-planning/114-monte-carlo-tree-search-selection-expansion-rollouts-and-backup",
+        "status": "live"
+      },
+      {
+        "title": "Constraint Satisfaction Problems: Variables, Domains, and Constraints",
+        "slug": "search-planning/115-constraint-satisfaction-problems-variables-domains-and-constraints",
+        "status": "live"
+      },
+      {
+        "title": "CSP Propagation: Arc Consistency, Forward Checking, and Global Constraints",
+        "slug": "search-planning/116-csp-propagation-arc-consistency-forward-checking-and-global-constraints",
+        "status": "live"
+      },
+      {
+        "title": "CSP Backtracking: Variable Ordering, Value Ordering, and Conflict Learning",
+        "slug": "search-planning/117-csp-backtracking-variable-ordering-value-ordering-and-conflict-learning",
+        "status": "live"
+      },
+      {
+        "title": "STRIPS Planning: Preconditions, Effects, and Plan Validation",
+        "slug": "search-planning/118-strips-planning-preconditions-effects-and-plan-validation",
+        "status": "live"
+      },
+      {
+        "title": "Forward and Backward Planning: Progression, Regression, and Relevance",
+        "slug": "search-planning/119-forward-and-backward-planning-progression-regression-and-relevance",
+        "status": "live"
+      },
+      {
+        "title": "Partial-Order Planning: Causal Links, Threats, and Least Commitment",
+        "slug": "search-planning/120-partial-order-planning-causal-links-threats-and-least-commitment",
+        "status": "live"
+      },
+      {
+        "title": "Hierarchical Task Networks: Decomposition, Methods, and Operational Knowledge",
+        "slug": "search-planning/121-hierarchical-task-networks-decomposition-methods-and-operational-knowledge",
+        "status": "live"
+      },
+      {
+        "title": "Scheduling: Resources, Precedence, Critical Paths, and Objectives",
+        "slug": "search-planning/122-scheduling-resources-precedence-critical-paths-and-objectives",
+        "status": "live"
+      },
+      {
+        "title": "Planning Graphs and Heuristic Extraction",
+        "slug": "search-planning/123-planning-graphs-and-heuristic-extraction",
+        "status": "live"
+      },
+      {
+        "title": "Planning Under Uncertainty: Belief States and Contingent Plans",
+        "slug": "search-planning/124-planning-under-uncertainty-belief-states-and-contingent-plans",
+        "status": "live"
+      },
+      {
+        "title": "MDPs for Planning: Policies, Bellman Backups, and Value Iteration",
+        "slug": "search-planning/125-mdps-for-planning-policies-bellman-backups-and-value-iteration",
+        "status": "live"
+      },
+      {
+        "title": "POMDPs and Information-Gathering Actions",
+        "slug": "search-planning/126-pomdps-and-information-gathering-actions",
+        "status": "live"
+      },
+      {
+        "title": "Integrated Search and Planning Systems: Solvers, LLMs, and Verification",
+        "slug": "search-planning/127-integrated-search-and-planning-systems-solvers-llms-and-verification",
+        "status": "live"
+      },
+      {
+        "title": "Classical AI Search and Planning Capstone",
+        "slug": "search-planning/128-classical-ai-search-and-planning-capstone",
+        "status": "live"
+      },
+      {
+        "title": "Knowledge representation: models, commitments, and trade-offs",
+        "slug": "knowledge-uncertainty/201-knowledge-representation-models-and-tradeoffs",
+        "status": "live"
+      },
+      {
+        "title": "Open-world, closed-world, and non-monotonic reasoning",
+        "slug": "knowledge-uncertainty/202-open-world-closed-world-and-nonmonotonic-reasoning",
+        "status": "live"
+      },
+      {
+        "title": "Propositional logic: syntax, semantics, and models",
+        "slug": "knowledge-uncertainty/203-propositional-logic-syntax-semantics-and-models",
+        "status": "live"
+      },
+      {
+        "title": "Propositional inference: truth tables and proof rules",
+        "slug": "knowledge-uncertainty/204-propositional-inference-truth-tables-and-natural-deduction",
+        "status": "live"
+      },
+      {
+        "title": "Normal forms, SAT, and constraint encodings",
+        "slug": "knowledge-uncertainty/205-normal-forms-sat-and-constraint-encodings",
+        "status": "live"
+      },
+      {
+        "title": "Resolution, refutation, and proof certificates",
+        "slug": "knowledge-uncertainty/206-resolution-refutation-and-proof-certificates",
+        "status": "live"
+      },
+      {
+        "title": "First-order logic: objects, relations, and quantifiers",
+        "slug": "knowledge-uncertainty/207-first-order-logic-objects-relations-and-quantifiers",
+        "status": "live"
+      },
+      {
+        "title": "Unification, substitutions, and variable discipline",
+        "slug": "knowledge-uncertainty/208-unification-substitutions-and-variable-discipline",
+        "status": "live"
+      },
+      {
+        "title": "First-order resolution and theorem proving",
+        "slug": "knowledge-uncertainty/209-first-order-resolution-and-theorem-proving",
+        "status": "live"
+      },
+      {
+        "title": "Horn clauses and forward chaining",
+        "slug": "knowledge-uncertainty/210-horn-clauses-and-forward-chaining",
+        "status": "live"
+      },
+      {
+        "title": "Backward chaining and goal-directed reasoning",
+        "slug": "knowledge-uncertainty/211-backward-chaining-goal-directed-reasoning",
+        "status": "live"
+      },
+      {
+        "title": "Rule engines, expert systems, and conflict resolution",
+        "slug": "knowledge-uncertainty/212-rule-engines-expert-systems-and-conflict-resolution",
+        "status": "live"
+      },
+      {
+        "title": "Knowledge acquisition, validation, and maintenance",
+        "slug": "knowledge-uncertainty/213-knowledge-acquisition-validation-and-maintenance",
+        "status": "live"
+      },
+      {
+        "title": "Ontologies, taxonomies, and description logics",
+        "slug": "knowledge-uncertainty/214-ontologies-taxonomies-and-description-logics",
+        "status": "live"
+      },
+      {
+        "title": "Knowledge graphs: queries, provenance, and embeddings",
+        "slug": "knowledge-uncertainty/215-knowledge-graphs-queries-provenance-and-embeddings",
+        "status": "live"
+      },
+      {
+        "title": "Probability for AI: conditional independence and Bayes’ rule",
+        "slug": "knowledge-uncertainty/216-probability-for-ai-conditional-independence-and-bayes-rule",
+        "status": "live"
+      },
+      {
+        "title": "Bayesian networks: structure, factorization, and d-separation",
+        "slug": "knowledge-uncertainty/217-bayesian-networks-structure-factorization-and-d-separation",
+        "status": "live"
+      },
+      {
+        "title": "Exact inference: variable elimination and belief propagation",
+        "slug": "knowledge-uncertainty/218-exact-inference-variable-elimination-and-belief-propagation",
+        "status": "live"
+      },
+      {
+        "title": "Approximate inference: sampling and variational methods",
+        "slug": "knowledge-uncertainty/219-approximate-inference-sampling-and-variational-methods",
+        "status": "live"
+      },
+      {
+        "title": "Hidden Markov models: filtering, smoothing, and Viterbi",
+        "slug": "knowledge-uncertainty/220-hidden-markov-models-filtering-smoothing-and-viterbi",
+        "status": "live"
+      },
+      {
+        "title": "Dynamic Bayesian networks, POMDPs, and state estimation",
+        "slug": "knowledge-uncertainty/221-dynamic-bayesian-networks-pomdps-and-state-estimation",
+        "status": "live"
+      },
+      {
+        "title": "Decision theory: expected utility and action selection",
+        "slug": "knowledge-uncertainty/222-decision-theory-expected-utility-and-action-selection",
+        "status": "live"
+      },
+      {
+        "title": "Utility, risk attitudes, and multi-attribute decisions",
+        "slug": "knowledge-uncertainty/223-utility-risk-attitudes-and-multi-attribute-decisions",
+        "status": "live"
+      },
+      {
+        "title": "Value of information and active observation",
+        "slug": "knowledge-uncertainty/224-value-of-information-and-active-observation",
+        "status": "live"
+      },
+      {
+        "title": "Causal graphs: confounding, interventions, and counterfactuals",
+        "slug": "knowledge-uncertainty/225-causal-graphs-confounding-interventions-and-counterfactuals",
+        "status": "live"
+      },
+      {
+        "title": "Probabilistic diagnosis, abduction, and evidence fusion",
+        "slug": "knowledge-uncertainty/226-probabilistic-diagnosis-abduction-and-evidence-fusion",
+        "status": "live"
+      },
+      {
+        "title": "Explainability, proof traces, and the knowledge-based AI capstone",
+        "slug": "knowledge-uncertainty/227-explainability-proof-traces-and-knowledge-based-ai-capstone",
+        "status": "live"
+      },
+      {
+        "title": "Agent architectures and rationality",
+        "slug": "agents-robotics/301-agent-architectures-and-rationality",
+        "status": "live"
+      },
+      {
+        "title": "Reactive agents and behavior-based control",
+        "slug": "agents-robotics/302-reactive-agents-and-behavior-based-control",
+        "status": "live"
+      },
+      {
+        "title": "Deliberative agents: beliefs, goals, and intentions",
+        "slug": "agents-robotics/303-deliberative-agents-beliefs-goals-and-intentions",
+        "status": "live"
+      },
+      {
+        "title": "BDI agents and practical reasoning",
+        "slug": "agents-robotics/304-bdi-agents-and-practical-reasoning",
+        "status": "live"
+      },
+      {
+        "title": "Agent memory, state, and world models",
+        "slug": "agents-robotics/305-agent-memory-state-and-world-models",
+        "status": "live"
+      },
+      {
+        "title": "Tool use, planning, and action verification",
+        "slug": "agents-robotics/306-tool-use-planning-and-action-verification",
+        "status": "live"
+      },
+      {
+        "title": "Multi-agent coordination and task allocation",
+        "slug": "agents-robotics/307-multi-agent-coordination-and-task-allocation",
+        "status": "live"
+      },
+      {
+        "title": "Agent communication protocols and shared beliefs",
+        "slug": "agents-robotics/308-communication-protocols-and-shared-beliefs",
+        "status": "live"
+      },
+      {
+        "title": "Auctions and market-based coordination",
+        "slug": "agents-robotics/309-auctions-and-market-based-coordination",
+        "status": "live"
+      },
+      {
+        "title": "Game theory, strategic agents, and mechanism design",
+        "slug": "agents-robotics/310-game-theory-strategic-agents-and-mechanism-design",
+        "status": "live"
+      },
+      {
+        "title": "Robot sensors, perception, and calibration",
+        "slug": "agents-robotics/311-robot-sensors-perception-and-calibration",
+        "status": "live"
+      },
+      {
+        "title": "State estimation and Bayesian filtering",
+        "slug": "agents-robotics/312-state-estimation-and-bayesian-filtering",
+        "status": "live"
+      },
+      {
+        "title": "Localization with Kalman and particle filters",
+        "slug": "agents-robotics/313-localization-particle-filters-and-kalman-filters",
+        "status": "live"
+      },
+      {
+        "title": "Mapping and simultaneous localization and mapping",
+        "slug": "agents-robotics/314-mapping-and-slam",
+        "status": "live"
+      },
+      {
+        "title": "Motion planning, configuration spaces, and collision checking",
+        "slug": "agents-robotics/315-motion-planning-configuration-spaces-and-collision-checking",
+        "status": "live"
+      },
+      {
+        "title": "Sampling-based motion planning",
+        "slug": "agents-robotics/316-sampling-based-motion-planning",
+        "status": "live"
+      },
+      {
+        "title": "Robot control, feedback, and stability",
+        "slug": "agents-robotics/317-robot-control-feedback-and-stability",
+        "status": "live"
+      },
+      {
+        "title": "Task planning and execution monitoring",
+        "slug": "agents-robotics/318-task-planning-and-execution-monitoring",
+        "status": "live"
+      },
+      {
+        "title": "Human-robot interaction and shared autonomy",
+        "slug": "agents-robotics/319-human-robot-interaction-and-shared-autonomy",
+        "status": "live"
+      },
+      {
+        "title": "Robot safety constraints and runtime assurance",
+        "slug": "agents-robotics/320-robot-safety-constraints-and-runtime-assurance",
+        "status": "live"
+      },
+      {
+        "title": "Hybrid symbolic-neural systems",
+        "slug": "agents-robotics/321-hybrid-symbolic-neural-systems",
+        "status": "live"
+      },
+      {
+        "title": "Neuro-symbolic reasoning and knowledge integration",
+        "slug": "agents-robotics/322-neuro-symbolic-reasoning-and-knowledge-integration",
+        "status": "live"
+      },
+      {
+        "title": "Robotics applications and deployment case studies",
+        "slug": "agents-robotics/323-robotics-applications-and-deployment-case-studies",
+        "status": "live"
+      },
+      {
+        "title": "Agents and robotics staged capstone and technical defense",
+        "slug": "agents-robotics/324-agents-robotics-staged-capstone-and-technical-defense",
+        "status": "live"
+      },
+      {
+        "title": "Swarm robotics and collective intelligence",
+        "slug": "agents-robotics/325-swarm-robotics-and-collective-intelligence",
+        "status": "live"
+      },
+      {
+        "title": "Solve constraint problems by making rules explicit",
+        "slug": "constraint-satisfaction",
+        "status": "live"
+      },
+      {
+        "title": "Classical AI: search, planning, and the shape of a decision",
+        "slug": "search-and-planning",
+        "status": "live"
+      },
+      {
+        "title": "Separate uncertainty from the decision it informs",
+        "slug": "uncertainty-and-decision",
+        "status": "live"
+      }
     ]
   },
   {
@@ -7575,12 +7907,82 @@ const unsortedTracks: Track[] = [
     "n": "13",
     "name": "GenAI App Dev",
     "group": "Building",
-    "meta": "27 lessons",
+    "meta": "130 lessons",
     "summary": "Turn a working prompt into a shipped product: streaming UX, cost and latency budgets, and the plumbing that keeps a GenAI feature alive in production.",
     "nodes": [
       {
+        "title": "The Whole Game: Build a Support-Reply Drafter End to End",
+        "slug": "the-whole-game-genai-feature-tour",
+        "status": "live"
+      },
+      {
         "title": "Anatomy of a GenAI Feature",
         "slug": "anatomy-of-a-genai-feature",
+        "status": "live"
+      },
+      {
+        "title": "The Deterministic Shell Around a Probabilistic Core",
+        "slug": "what-makes-a-feature-genai",
+        "status": "live"
+      },
+      {
+        "title": "Tracing One Request Through Eight Hops",
+        "slug": "request-lifecycle-mental-model",
+        "status": "live"
+      },
+      {
+        "title": "Your First Call, Worked in TypeScript and Python",
+        "slug": "first-api-call-walkthrough-ts-python",
+        "status": "live"
+      },
+      {
+        "title": "System, User, Assistant: The Message Envelope",
+        "slug": "messages-roles-and-the-prompt-envelope",
+        "status": "live"
+      },
+      {
+        "title": "Temperature, top_p, and max_tokens in Practice",
+        "slug": "tuning-sampling-params-in-an-app",
+        "status": "live"
+      },
+      {
+        "title": "SDK vs Raw API vs Framework: Choosing Your Layer",
+        "slug": "sdk-vs-raw-api-decision",
+        "status": "live"
+      },
+      {
+        "title": "Scaffolding a GenAI Project From Zero",
+        "slug": "scaffolding-a-genai-project",
+        "status": "live"
+      },
+      {
+        "title": "What Actually Happens Over the Wire",
+        "slug": "what-happens-over-the-wire",
+        "status": "live"
+      },
+      {
+        "title": "Where the LLM Boundary Belongs in Your Architecture",
+        "slug": "where-the-llm-boundary-lives",
+        "status": "live"
+      },
+      {
+        "title": "Turning a Vague Product Ask Into a Buildable Spec",
+        "slug": "from-product-ask-to-feature-spec",
+        "status": "live"
+      },
+      {
+        "title": "Antipatterns in Your First GenAI Feature",
+        "slug": "first-genai-feature-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "GenAI Feature Starter Checklist",
+        "slug": "genai-feature-starter-checklist",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: The GenAI Request Lifecycle",
+        "slug": "quiz-genai-foundations",
         "status": "live"
       },
       {
@@ -7591,6 +7993,86 @@ const unsortedTracks: Track[] = [
       {
         "title": "Streaming Responses to the UI",
         "slug": "streaming-responses-to-the-ui",
+        "status": "live"
+      },
+      {
+        "title": "Why Streaming Changes Perceived Latency",
+        "slug": "why-stream-tokens",
+        "status": "live"
+      },
+      {
+        "title": "How Token Streaming Works End to End",
+        "slug": "streaming-response-fundamentals",
+        "status": "live"
+      },
+      {
+        "title": "SSE vs WebSockets: Choosing a Transport",
+        "slug": "sse-vs-websockets-deep",
+        "status": "live"
+      },
+      {
+        "title": "A Streaming SSE Endpoint in Next.js",
+        "slug": "streaming-sse-nextjs-endpoint",
+        "status": "live"
+      },
+      {
+        "title": "Consuming a Token Stream in React",
+        "slug": "consuming-a-stream-in-react",
+        "status": "live"
+      },
+      {
+        "title": "Streaming From a Python FastAPI Backend",
+        "slug": "streaming-in-python-fastapi",
+        "status": "live"
+      },
+      {
+        "title": "Chat UX That Doesn't Feel Broken",
+        "slug": "chat-ux-that-doesnt-feel-broken",
+        "status": "live"
+      },
+      {
+        "title": "Stop, Regenerate, and Rendering Partial Output",
+        "slug": "stop-regenerate-and-partial-render",
+        "status": "live"
+      },
+      {
+        "title": "Generative UI: Rendering Components From Model Output",
+        "slug": "generative-ui-rendering-components",
+        "status": "live"
+      },
+      {
+        "title": "Streaming Structured Output Into Live Components",
+        "slug": "streaming-structured-generative-ui",
+        "status": "live"
+      },
+      {
+        "title": "Accepting Multimodal Input: Images, Audio, Files",
+        "slug": "multimodal-input-images-audio-files",
+        "status": "live"
+      },
+      {
+        "title": "From File Upload to a Multimodal Call",
+        "slug": "uploading-and-sending-images",
+        "status": "live"
+      },
+      {
+        "title": "Streaming Failure Modes and How to Survive Them",
+        "slug": "streaming-failure-modes",
+        "status": "live"
+      },
+      {
+        "title": "Backpressure, Cancellation, and Abort Propagation",
+        "slug": "backpressure-and-cancellation",
+        "status": "live"
+      },
+      {
+        "title": "Streaming and Chat UX Cheatsheet",
+        "slug": "streaming-ux-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Streaming and Real-Time UX",
+        "slug": "quiz-streaming-ux",
         "status": "live"
       },
       {
@@ -7614,6 +8096,76 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "Setting a Latency Budget",
+        "slug": "latency-budgets",
+        "status": "live"
+      },
+      {
+        "title": "Where the Milliseconds Go",
+        "slug": "where-latency-comes-from",
+        "status": "live"
+      },
+      {
+        "title": "Measuring Latency: p50, p95, and TTFT",
+        "slug": "measuring-latency-p50-p95",
+        "status": "live"
+      },
+      {
+        "title": "Token Accounting and Per-User Quotas",
+        "slug": "token-accounting-and-quotas",
+        "status": "live"
+      },
+      {
+        "title": "Prompt Caching for Speed and Cost",
+        "slug": "prompt-caching",
+        "status": "live"
+      },
+      {
+        "title": "Implementing Prompt Caching",
+        "slug": "implementing-prompt-caching",
+        "status": "live"
+      },
+      {
+        "title": "Cutting Cost With a Model Cascade",
+        "slug": "cutting-cost-with-model-cascade",
+        "status": "live"
+      },
+      {
+        "title": "Moving Long Tasks to Background Jobs",
+        "slug": "background-jobs-for-long-tasks",
+        "status": "live"
+      },
+      {
+        "title": "The Queue, Worker, and Webhook Pattern",
+        "slug": "queue-worker-webhook-pattern",
+        "status": "live"
+      },
+      {
+        "title": "Client-Side Inference: When It Makes Sense",
+        "slug": "client-side-inference-tradeoffs",
+        "status": "live"
+      },
+      {
+        "title": "Performance and Cost Antipatterns",
+        "slug": "perf-cost-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Streaming, Caching, and Batching Together",
+        "slug": "streaming-caching-batching-together",
+        "status": "live"
+      },
+      {
+        "title": "Performance and Cost Cheatsheet",
+        "slug": "perf-cost-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Performance and Cost",
+        "slug": "quiz-performance-cost",
+        "status": "live"
+      },
+      {
         "title": "Cost Budgets and Usage Tracking",
         "slug": "cost-budgets-and-usage-tracking",
         "status": "live"
@@ -7629,6 +8181,76 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "The Provider Landscape and Its Tradeoffs",
+        "slug": "provider-landscape-and-tradeoffs",
+        "status": "live"
+      },
+      {
+        "title": "Why (and How Far) to Abstract the Provider",
+        "slug": "why-abstract-the-provider",
+        "status": "live"
+      },
+      {
+        "title": "Designing a Common Provider Interface",
+        "slug": "building-a-provider-interface-ts",
+        "status": "live"
+      },
+      {
+        "title": "Writing Two Adapters Behind One Interface",
+        "slug": "provider-adapter-anthropic-openai",
+        "status": "live"
+      },
+      {
+        "title": "Routing: Picking a Model Per Request",
+        "slug": "model-routing-strategies",
+        "status": "live"
+      },
+      {
+        "title": "Implementing Failover and Fallback Chains",
+        "slug": "implementing-failover-and-fallback-chains",
+        "status": "live"
+      },
+      {
+        "title": "Cost- and Capability-Aware Routing in Action",
+        "slug": "cost-and-capability-based-routing",
+        "status": "live"
+      },
+      {
+        "title": "Normalizing Responses: Usage, Finish Reasons, and Errors",
+        "slug": "normalizing-responses-across-providers",
+        "status": "live"
+      },
+      {
+        "title": "Handling API Keys and Secrets Safely",
+        "slug": "secrets-and-key-management",
+        "status": "live"
+      },
+      {
+        "title": "Storing Secrets: Env, Vault, and KMS Patterns",
+        "slug": "secret-storage-env-vault-kms",
+        "status": "live"
+      },
+      {
+        "title": "Build Your Own Layer or Use a Gateway?",
+        "slug": "gateway-vs-in-app-abstraction",
+        "status": "live"
+      },
+      {
+        "title": "When the Abstraction Leaks (and Over-Abstraction)",
+        "slug": "provider-abstraction-leaks",
+        "status": "live"
+      },
+      {
+        "title": "Provider Layer Cheatsheet",
+        "slug": "provider-layer-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Provider Layer and Secrets",
+        "slug": "quiz-provider-layer",
+        "status": "live"
+      },
+      {
         "title": "Handling API Keys and Secrets Safely",
         "slug": "handling-api-keys-and-secrets",
         "status": "live"
@@ -7639,6 +8261,76 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "The Failure Modes of an LLM Call",
+        "slug": "failure-modes-of-llm-calls",
+        "status": "live"
+      },
+      {
+        "title": "Typed Errors and a Clean Error Boundary",
+        "slug": "try-catch-and-typed-errors",
+        "status": "live"
+      },
+      {
+        "title": "Rate Limits and When to Retry",
+        "slug": "rate-limits-and-retry",
+        "status": "live"
+      },
+      {
+        "title": "Exponential Backoff With Jitter",
+        "slug": "exponential-backoff-with-jitter",
+        "status": "live"
+      },
+      {
+        "title": "Timeouts, Deadlines, and Circuit Breakers",
+        "slug": "timeouts-and-circuit-breakers",
+        "status": "live"
+      },
+      {
+        "title": "Input Validation and Prompt-Injection Defense",
+        "slug": "input-validation-and-injection-defense",
+        "status": "live"
+      },
+      {
+        "title": "Output Validation and Moderation Gates",
+        "slug": "output-validation-and-moderation",
+        "status": "live"
+      },
+      {
+        "title": "When to Put a Human in the Loop",
+        "slug": "human-in-the-loop-review",
+        "status": "live"
+      },
+      {
+        "title": "Building a Review Queue",
+        "slug": "building-a-review-queue",
+        "status": "live"
+      },
+      {
+        "title": "An Escalation and Approval Flow",
+        "slug": "escalation-and-approval-flow",
+        "status": "live"
+      },
+      {
+        "title": "Reliability Antipatterns",
+        "slug": "reliability-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Idempotency and Partial-Failure Recovery",
+        "slug": "idempotency-and-partial-failure",
+        "status": "live"
+      },
+      {
+        "title": "Reliability and Safety Cheatsheet",
+        "slug": "reliability-safety-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Reliability and Safety",
+        "slug": "quiz-reliability-safety",
+        "status": "live"
+      },
+      {
         "title": "Guardrails and Input Validation",
         "slug": "guardrails-and-input-validation",
         "status": "live"
@@ -7646,6 +8338,76 @@ const unsortedTracks: Track[] = [
       {
         "title": "Shipping Your First End-to-End GenAI App",
         "slug": "shipping-your-first-end-to-end-app",
+        "status": "live"
+      },
+      {
+        "title": "Prompt Versioning and Safe Rollbacks",
+        "slug": "prompt-versioning-and-rollback",
+        "status": "live"
+      },
+      {
+        "title": "Versioning Prompts in Git and a Registry",
+        "slug": "versioning-prompts-in-git-and-registry",
+        "status": "live"
+      },
+      {
+        "title": "Feature Flags and Gradual Rollout",
+        "slug": "feature-flags-and-gradual-rollout",
+        "status": "live"
+      },
+      {
+        "title": "Canary and Percentage-Based Rollout",
+        "slug": "canary-and-percentage-rollout",
+        "status": "live"
+      },
+      {
+        "title": "Observability for GenAI Features",
+        "slug": "observability-for-genai",
+        "status": "live"
+      },
+      {
+        "title": "Instrumenting Requests With Tracing",
+        "slug": "instrumenting-with-tracing",
+        "status": "live"
+      },
+      {
+        "title": "Logging Prompts and Completions Safely",
+        "slug": "logging-prompts-and-completions-safely",
+        "status": "live"
+      },
+      {
+        "title": "Evals and Regression Testing for Prompts",
+        "slug": "evals-and-regression-testing",
+        "status": "live"
+      },
+      {
+        "title": "A/B Testing Two Prompt Versions",
+        "slug": "a-b-testing-two-prompts",
+        "status": "live"
+      },
+      {
+        "title": "Shipping a GenAI Feature End to End",
+        "slug": "shipping-end-to-end",
+        "status": "live"
+      },
+      {
+        "title": "Launch-Day Antipatterns",
+        "slug": "launch-day-antipatterns",
+        "status": "live"
+      },
+      {
+        "title": "Incident Response for AI Features",
+        "slug": "incident-response-for-ai-features",
+        "status": "live"
+      },
+      {
+        "title": "Shipping and Operating Cheatsheet",
+        "slug": "shipping-operating-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: Shipping and Operating",
+        "slug": "quiz-shipping-operating",
         "status": "live"
       },
       {
@@ -7666,6 +8428,86 @@ const unsortedTracks: Track[] = [
       {
         "title": "Session and State Management for Multi-Turn Features",
         "slug": "session-state-multi-turn",
+        "status": "live"
+      },
+      {
+        "title": "Session and State for Multi-Turn Features",
+        "slug": "session-and-state-management",
+        "status": "live"
+      },
+      {
+        "title": "Storing and Reloading Conversation History",
+        "slug": "storing-conversation-history",
+        "status": "live"
+      },
+      {
+        "title": "Context Limits and Why History Must Be Trimmed",
+        "slug": "context-limits-and-trimming",
+        "status": "live"
+      },
+      {
+        "title": "Trimming: Sliding Windows and Rolling Summaries",
+        "slug": "sliding-window-and-summarization-trim",
+        "status": "live"
+      },
+      {
+        "title": "Why Application Code Needs Structured Output",
+        "slug": "structured-output-in-apps",
+        "status": "live"
+      },
+      {
+        "title": "Schema, Validation, and Auto-Repair",
+        "slug": "json-schema-and-validation",
+        "status": "live"
+      },
+      {
+        "title": "Extracting Typed Records From Freeform Text",
+        "slug": "extracting-typed-data-from-freeform",
+        "status": "live"
+      },
+      {
+        "title": "Structured Output Failures and Repair Traps",
+        "slug": "structured-output-failures",
+        "status": "live"
+      },
+      {
+        "title": "Tool Calls Are Requests for Authority",
+        "slug": "tool-calling-as-authority",
+        "status": "live"
+      },
+      {
+        "title": "Implementing the Tool-Call Loop",
+        "slug": "implementing-a-tool-call-loop",
+        "status": "live"
+      },
+      {
+        "title": "Two Tools: A Read API and a Guarded DB Write",
+        "slug": "building-a-weather-and-db-tool",
+        "status": "live"
+      },
+      {
+        "title": "Multi-Step Tool Loops and Where They Go Wrong",
+        "slug": "multi-step-agentic-tool-loops",
+        "status": "live"
+      },
+      {
+        "title": "Tool-Calling Authority Mistakes",
+        "slug": "tool-call-authority-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Tool/Function Calling Across Providers",
+        "slug": "function-calling-across-providers",
+        "status": "live"
+      },
+      {
+        "title": "State, Structured Output, and Tools Cheatsheet",
+        "slug": "state-and-tools-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Quiz: State, Structured Output, and Tools",
+        "slug": "quiz-state-structured-tools",
         "status": "live"
       },
       {
@@ -7711,6 +8553,11 @@ const unsortedTracks: Track[] = [
       {
         "title": "Treat tool calls as requests for authority",
         "slug": "tool-calling-and-authority",
+        "status": "live"
+      },
+      {
+        "title": "Capstone: Ship a Production GenAI Assistant",
+        "slug": "capstone-ship-a-genai-assistant",
         "status": "live"
       }
     ]
@@ -8010,17 +8857,157 @@ const unsortedTracks: Track[] = [
     "n": "15",
     "name": "Tools & Function Calling",
     "group": "Building",
-    "meta": "25 lessons",
+    "meta": "123 lessons",
     "summary": "Give a model hands: design tool schemas it can call correctly, execute them safely, and handle the ways tool calling breaks.",
     "nodes": [
+      {
+        "title": "The Whole Game: A Tool Call From Question to Answer",
+        "slug": "tool-calling-whole-game",
+        "status": "live"
+      },
       {
         "title": "What Is Tool Calling",
         "slug": "what-is-tool-calling",
         "status": "live"
       },
       {
+        "title": "Anatomy of a Tool Call",
+        "slug": "anatomy-of-a-tool-call",
+        "status": "live"
+      },
+      {
+        "title": "Tools Are the Model's Only Hands",
+        "slug": "tools-as-the-models-hands",
+        "status": "live"
+      },
+      {
+        "title": "The Agent Loop",
+        "slug": "the-tool-call-loop",
+        "status": "live"
+      },
+      {
+        "title": "Your First Tool Call, End to End",
+        "slug": "first-tool-call-walkthrough",
+        "status": "live"
+      },
+      {
+        "title": "Why a Model Needs Tools at All",
+        "slug": "why-models-need-tools",
+        "status": "live"
+      },
+      {
+        "title": "How Models Learn to Emit Tool Calls",
+        "slug": "how-models-learn-to-call-tools",
+        "status": "live"
+      },
+      {
+        "title": "Tool Calling Across Providers",
+        "slug": "tool-calling-across-providers",
+        "status": "live"
+      },
+      {
+        "title": "Structured Output vs. Tool Calls: Which and When",
+        "slug": "structured-output-vs-tool-calls-when",
+        "status": "live"
+      },
+      {
+        "title": "Beginner Tool-Calling Mistakes",
+        "slug": "foundations-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "It's Still Text In, Text Out",
+        "slug": "tool-calling-still-text-in-text-out",
+        "status": "live"
+      },
+      {
+        "title": "Tool-Calling Vocabulary Cheatsheet",
+        "slug": "tool-calling-glossary-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Foundations Quiz",
+        "slug": "foundations-quiz",
+        "status": "live"
+      },
+      {
         "title": "Designing a Tool Schema",
         "slug": "designing-a-tool-schema",
+        "status": "live"
+      },
+      {
+        "title": "The JSON Schema Subset That Matters for Tools",
+        "slug": "json-schema-for-tools-essentials",
+        "status": "live"
+      },
+      {
+        "title": "Designing a Schema From a Fuzzy Requirement",
+        "slug": "designing-a-tool-schema-walkthrough",
+        "status": "live"
+      },
+      {
+        "title": "Writing Descriptions Models Actually Follow",
+        "slug": "writing-descriptions-models-follow-deep",
+        "status": "live"
+      },
+      {
+        "title": "Good vs. Bad Descriptions, Side by Side",
+        "slug": "good-vs-bad-tool-descriptions",
+        "status": "live"
+      },
+      {
+        "title": "Parameter Design Patterns",
+        "slug": "parameter-design-patterns",
+        "status": "live"
+      },
+      {
+        "title": "Enum vs. Free-Form Parameters",
+        "slug": "enum-vs-freeform-parameters",
+        "status": "live"
+      },
+      {
+        "title": "Descriptions Are Prompt Engineering",
+        "slug": "descriptions-are-prompts",
+        "status": "live"
+      },
+      {
+        "title": "The Token Cost of Tool Schemas",
+        "slug": "token-cost-of-schemas-deep",
+        "status": "live"
+      },
+      {
+        "title": "Measuring and Trimming Schema Tokens",
+        "slug": "measuring-and-trimming-schema-tokens",
+        "status": "live"
+      },
+      {
+        "title": "Converting an OpenAPI Spec to Tool Schemas",
+        "slug": "openapi-to-schema-conversion",
+        "status": "live"
+      },
+      {
+        "title": "Versioning Schemas Without Breaking Agents",
+        "slug": "schema-versioning-strategies",
+        "status": "live"
+      },
+      {
+        "title": "Evolving send_email v1 to v2",
+        "slug": "versioning-a-schema-worked",
+        "status": "live"
+      },
+      {
+        "title": "Schema Design Mistakes",
+        "slug": "schema-design-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Production Schema Checklist",
+        "slug": "tool-schema-design-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Schema Design Quiz",
+        "slug": "schema-design-quiz",
         "status": "live"
       },
       {
@@ -8039,6 +9026,86 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "From tool_call to Function Call",
+        "slug": "execution-authority-model",
+        "status": "live"
+      },
+      {
+        "title": "Building a Registry and Dispatcher",
+        "slug": "building-a-tool-dispatcher",
+        "status": "live"
+      },
+      {
+        "title": "Never Trust the Model's Arguments",
+        "slug": "validating-tool-arguments",
+        "status": "live"
+      },
+      {
+        "title": "The Confused-Deputy Problem",
+        "slug": "the-authority-problem",
+        "status": "live"
+      },
+      {
+        "title": "Sandboxing Principles",
+        "slug": "sandboxing-execution-principles",
+        "status": "live"
+      },
+      {
+        "title": "Sandboxing a Tool in a Container",
+        "slug": "sandboxing-with-containers",
+        "status": "live"
+      },
+      {
+        "title": "Subprocess vs. Container vs. microVM vs. WASM",
+        "slug": "sandboxing-approaches-compared",
+        "status": "live"
+      },
+      {
+        "title": "Human-in-the-Loop Approval Gates",
+        "slug": "approval-gates-design",
+        "status": "live"
+      },
+      {
+        "title": "Implementing an Approval Gate",
+        "slug": "implementing-an-approval-gate",
+        "status": "live"
+      },
+      {
+        "title": "Classifying Tools by Risk Tier",
+        "slug": "classifying-tool-risk-tiers",
+        "status": "live"
+      },
+      {
+        "title": "Returning Results the Model Can Use",
+        "slug": "returning-results-to-the-model",
+        "status": "live"
+      },
+      {
+        "title": "Returning a 5,000-Row Result Without Blowing Context",
+        "slug": "formatting-large-tool-results",
+        "status": "live"
+      },
+      {
+        "title": "Tool Results Are an Injection Vector",
+        "slug": "tool-results-as-injection-vector",
+        "status": "live"
+      },
+      {
+        "title": "Caching Tool Results Across Calls",
+        "slug": "caching-tool-results",
+        "status": "live"
+      },
+      {
+        "title": "Execution Safety Mistakes",
+        "slug": "execution-safety-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Execution Safety Quiz",
+        "slug": "execution-safety-quiz",
+        "status": "live"
+      },
+      {
         "title": "Sandboxing Tool Execution",
         "slug": "sandboxing-tool-execution",
         "status": "live"
@@ -8051,6 +9118,71 @@ const unsortedTracks: Track[] = [
       {
         "title": "Handling Tool Errors and Retries",
         "slug": "handling-tool-errors-and-retries",
+        "status": "live"
+      },
+      {
+        "title": "A Taxonomy of Tool-Calling Failures",
+        "slug": "taxonomy-of-tool-failures",
+        "status": "live"
+      },
+      {
+        "title": "Handling Tool Errors and Retries",
+        "slug": "handling-errors-and-retries",
+        "status": "live"
+      },
+      {
+        "title": "Returning Errors the Model Can Act On",
+        "slug": "returning-actionable-errors",
+        "status": "live"
+      },
+      {
+        "title": "Retry, Back Off, or Give Up",
+        "slug": "retry-strategies-for-tools",
+        "status": "live"
+      },
+      {
+        "title": "How a Model Corrects Its Own Call",
+        "slug": "self-correction-mechanics",
+        "status": "live"
+      },
+      {
+        "title": "Self-Correction in a Full Trace",
+        "slug": "self-correction-worked-example",
+        "status": "live"
+      },
+      {
+        "title": "When the Model Invents a Tool",
+        "slug": "hallucinated-tool-calls",
+        "status": "live"
+      },
+      {
+        "title": "Stopping Runaway Loops",
+        "slug": "infinite-loop-and-retry-caps",
+        "status": "live"
+      },
+      {
+        "title": "Debugging a Stuck Agent",
+        "slug": "debugging-a-stuck-agent-loop",
+        "status": "live"
+      },
+      {
+        "title": "Fail to the Model, the User, or Silently Retry",
+        "slug": "error-surface-strategies",
+        "status": "live"
+      },
+      {
+        "title": "Reliability Mistakes",
+        "slug": "reliability-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Error Handling Cheatsheet",
+        "slug": "error-handling-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Reliability Quiz",
+        "slug": "reliability-quiz",
         "status": "live"
       },
       {
@@ -8094,6 +9226,66 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "Tool Choice: auto, required, none, and Named",
+        "slug": "tool-choice-modes",
+        "status": "live"
+      },
+      {
+        "title": "Forcing extract_invoice Every Time",
+        "slug": "forcing-a-specific-tool-worked",
+        "status": "live"
+      },
+      {
+        "title": "When to Force and When to Let It Decide",
+        "slug": "when-to-force-vs-auto",
+        "status": "live"
+      },
+      {
+        "title": "Why More Tools Means Worse Choices",
+        "slug": "too-many-tools-confuse-models",
+        "status": "live"
+      },
+      {
+        "title": "Selecting From Hundreds of Tools",
+        "slug": "tool-selection-at-scale-strategies",
+        "status": "live"
+      },
+      {
+        "title": "Retrieval Over a 200-Tool Registry",
+        "slug": "rag-over-tools-retrieval",
+        "status": "live"
+      },
+      {
+        "title": "Progressive Disclosure and Namespacing",
+        "slug": "progressive-tool-disclosure-patterns",
+        "status": "live"
+      },
+      {
+        "title": "Router Tools and Grouped Dispatch",
+        "slug": "tool-namespacing-and-grouping",
+        "status": "live"
+      },
+      {
+        "title": "Selection Accuracy at 5, 50, and 200 Tools",
+        "slug": "measuring-selection-accuracy-vs-count",
+        "status": "live"
+      },
+      {
+        "title": "Tool Selection Mistakes at Scale",
+        "slug": "tool-selection-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Scaling Tools Cheatsheet",
+        "slug": "scaling-tools-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Tool Selection Quiz",
+        "slug": "tool-selection-quiz",
+        "status": "live"
+      },
+      {
         "title": "Caching Tool Results Across Calls",
         "slug": "tool-result-caching",
         "status": "live"
@@ -8106,6 +9298,76 @@ const unsortedTracks: Track[] = [
       {
         "title": "Chaining Tool Calls into a DAG Workflow",
         "slug": "chaining-tools-into-workflows",
+        "status": "live"
+      },
+      {
+        "title": "Sequential, Dependent Tool Use",
+        "slug": "sequential-multi-step-basics",
+        "status": "live"
+      },
+      {
+        "title": "A Sequential Booking Flow",
+        "slug": "sequential-booking-flow-worked",
+        "status": "live"
+      },
+      {
+        "title": "Parallel Tool Calls",
+        "slug": "parallel-tool-calls-mechanics",
+        "status": "live"
+      },
+      {
+        "title": "Executing Parallel Calls Concurrently",
+        "slug": "executing-parallel-calls-async",
+        "status": "live"
+      },
+      {
+        "title": "Parallel or Sequential?",
+        "slug": "parallel-vs-sequential-decision",
+        "status": "live"
+      },
+      {
+        "title": "Chaining Calls Into a DAG",
+        "slug": "chaining-into-dag-workflows",
+        "status": "live"
+      },
+      {
+        "title": "Building a DAG Executor",
+        "slug": "building-a-tool-dag-executor",
+        "status": "live"
+      },
+      {
+        "title": "Model-Driven vs. Code-Driven Orchestration",
+        "slug": "model-driven-vs-code-driven-orchestration",
+        "status": "live"
+      },
+      {
+        "title": "Streaming Partial Tool Calls",
+        "slug": "streaming-partial-tool-calls-concept",
+        "status": "live"
+      },
+      {
+        "title": "Parsing Streamed Argument Deltas",
+        "slug": "parsing-streamed-tool-call-deltas",
+        "status": "live"
+      },
+      {
+        "title": "A Live 'Calling search_flights…' UI",
+        "slug": "streaming-ui-for-tool-calls",
+        "status": "live"
+      },
+      {
+        "title": "Orchestration Mistakes",
+        "slug": "orchestration-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Orchestration Cheatsheet",
+        "slug": "orchestration-cheatsheet",
+        "status": "live"
+      },
+      {
+        "title": "Orchestration Quiz",
+        "slug": "orchestration-quiz",
         "status": "live"
       },
       {
@@ -8129,6 +9391,76 @@ const unsortedTracks: Track[] = [
         "status": "live"
       },
       {
+        "title": "Code Execution as a Tool",
+        "slug": "code-execution-as-a-tool-concept",
+        "status": "live"
+      },
+      {
+        "title": "Building a Sandboxed Code Interpreter",
+        "slug": "building-a-code-interpreter-tool",
+        "status": "live"
+      },
+      {
+        "title": "One Code Tool vs. Dozens of API Tools",
+        "slug": "code-execution-vs-many-tools",
+        "status": "live"
+      },
+      {
+        "title": "Computer-Use and Browser-Control Tools",
+        "slug": "computer-use-and-browser-tools-concept",
+        "status": "live"
+      },
+      {
+        "title": "Building a Browser-Control Loop",
+        "slug": "building-a-browser-tool-loop",
+        "status": "live"
+      },
+      {
+        "title": "API Tools vs. Computer Use for the Same Task",
+        "slug": "api-tools-vs-computer-use",
+        "status": "live"
+      },
+      {
+        "title": "Testing Tool Calls",
+        "slug": "testing-tool-calls-strategies",
+        "status": "live"
+      },
+      {
+        "title": "Unit-Testing Handlers and Replaying Traces",
+        "slug": "unit-testing-tool-handlers",
+        "status": "live"
+      },
+      {
+        "title": "Debugging With Trace Logging",
+        "slug": "debugging-with-trace-logging",
+        "status": "live"
+      },
+      {
+        "title": "Benchmarking Tool Use With BFCL",
+        "slug": "benchmarking-with-bfcl",
+        "status": "live"
+      },
+      {
+        "title": "Building Your Own Eval Harness",
+        "slug": "building-a-tool-use-eval-harness",
+        "status": "live"
+      },
+      {
+        "title": "Reading BFCL Scores Critically",
+        "slug": "reading-bfcl-leaderboard",
+        "status": "live"
+      },
+      {
+        "title": "Advanced-Tools Mistakes",
+        "slug": "advanced-tools-common-mistakes",
+        "status": "live"
+      },
+      {
+        "title": "Advanced Tools and Testing Quiz",
+        "slug": "advanced-tools-quiz",
+        "status": "live"
+      },
+      {
         "title": "Computer-Use and Browser-Control Tools",
         "slug": "computer-use-and-browser-tools",
         "status": "live"
@@ -8136,6 +9468,11 @@ const unsortedTracks: Track[] = [
       {
         "title": "Versioning Tool Schemas Without Breaking Running Agents",
         "slug": "tool-schema-versioning",
+        "status": "live"
+      },
+      {
+        "title": "Capstone: Build a Complete Tool-Using Agent",
+        "slug": "capstone-build-a-tool-using-agent",
         "status": "live"
       }
     ]
